@@ -1,30 +1,40 @@
 @echo off
-setlocal EnableExtensions EnableDelayedExpansion
+REM Delayed expansion AUS lassen, sonst frisst batch das '!' im FTP_PASS.
+setlocal EnableExtensions DisableDelayedExpansion
 
 REM ============================================================
 REM appArcherries - Deploy to IONOS via WinSCP
 REM ------------------------------------------------------------
-REM Vor dem ersten Lauf: .env.deploy.example zu .env.deploy kopieren
-REM und FTP_HOST / FTP_USER / FTP_PASS / REMOTE_ROOT eintragen.
+REM Vor dem ersten Lauf: .env.deploy.cmd.example zu .env.deploy.cmd
+REM kopieren und FTP_HOST / FTP_USER / FTP_PASS / REMOTE_ROOT eintragen.
 REM ============================================================
 
-if not exist ".env.deploy" (
-    echo [ERR] .env.deploy fehlt.
-    echo Bitte ".env.deploy.example" zu ".env.deploy" kopieren und Werte eintragen.
+if not exist ".env.deploy.cmd" (
+    echo [ERR] .env.deploy.cmd fehlt.
+    echo Bitte ".env.deploy.cmd.example" zu ".env.deploy.cmd" kopieren und Werte eintragen.
     exit /b 1
 )
-call ".env.deploy"
+call ".\.env.deploy.cmd"
 
 if not defined FTP_HOST    ( echo [ERR] FTP_HOST nicht gesetzt    & exit /b 1 )
 if not defined FTP_USER    ( echo [ERR] FTP_USER nicht gesetzt    & exit /b 1 )
 if not defined FTP_PASS    ( echo [ERR] FTP_PASS nicht gesetzt    & exit /b 1 )
 if not defined REMOTE_ROOT ( echo [ERR] REMOTE_ROOT nicht gesetzt & exit /b 1 )
 
+REM URL-encode FTP_PASS fuer die sftp://-URL in WinSCP.
+REM Wir geben FTP_PASS ueber eine PowerShell-Env-Variable weiter, damit batch-Quoting
+REM nicht mit Sonderzeichen kollidiert. EscapeDataString kodiert @ ! # & : / ? + % usw.
+for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "[uri]::EscapeDataString($env:FTP_PASS)"`) do set "FTP_PASS_ENC=%%P"
+if not defined FTP_PASS_ENC (
+    echo [ERR] URL-Encoding des FTP-Passworts fehlgeschlagen.
+    exit /b 1
+)
+
 REM WinSCP suchen (Reihenfolge: LocalAppData -> Program Files (x86) -> Program Files)
 set "WINSCP="
 if exist "%LOCALAPPDATA%\Programs\WinSCP\WinSCP.com" set "WINSCP=%LOCALAPPDATA%\Programs\WinSCP\WinSCP.com"
 if not defined WINSCP if exist "C:\Program Files (x86)\WinSCP\WinSCP.com" set "WINSCP=C:\Program Files (x86)\WinSCP\WinSCP.com"
-if not defined WINSCP if exist "C:\Program Files\WinSCP\WinSCP.com"      set "WINSCP=C:\Program Files\WinSCP\WinSCP.com"
+if not defined WINSCP if exist "C:\Program Files\WinSCP\WinSCP.com"       set "WINSCP=C:\Program Files\WinSCP\WinSCP.com"
 if not defined WINSCP (
     echo [ERR] WinSCP nicht gefunden. Bitte installieren ^(https://winscp.net/^) oder Pfad in deploy.bat anpassen.
     exit /b 1
@@ -41,7 +51,7 @@ echo === [2/2] Sync per WinSCP ===
     /parameter ^
     //FTP_HOST="%FTP_HOST%" ^
     //FTP_USER="%FTP_USER%" ^
-    //FTP_PASS="%FTP_PASS%" ^
+    //FTP_PASS="%FTP_PASS_ENC%" ^
     //REMOTE_ROOT="%REMOTE_ROOT%"
 if errorlevel 1 goto :err
 

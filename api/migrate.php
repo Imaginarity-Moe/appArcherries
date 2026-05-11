@@ -63,16 +63,17 @@ try {
         $sql = file_get_contents($path);
         if ($sql === false || trim($sql) === '') continue;
 
-        $db->beginTransaction();
+        // Bewusst KEINE Transaktion: MySQL macht bei DDL (CREATE/ALTER/DROP TABLE)
+        // ein implicit commit, dadurch wäre $db->commit() ein No-Op und $db->rollBack()
+        // würde "There is no active transaction" werfen. Migrations sind durch
+        // "CREATE TABLE IF NOT EXISTS" idempotent — Retry nach Teilausfall ist safe.
         try {
             foreach (split_sql($sql) as $stmt) {
                 if (trim($stmt) === '') continue;
                 $db->exec($stmt);
             }
             $db->prepare('INSERT INTO schema_migrations (filename) VALUES (?)')->execute([$name]);
-            $db->commit();
         } catch (Throwable $e) {
-            $db->rollBack();
             migrate_out(['error' => "Migration $name failed: " . $e->getMessage(), 'applied' => $run], $isCli, 500);
         }
         $run[] = $name;

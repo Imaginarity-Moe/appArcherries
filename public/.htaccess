@@ -1,25 +1,24 @@
-RewriteEngine On
+Options -Indexes
 
-# /api/* nicht in die SPA umleiten
-RewriteCond %{REQUEST_URI} ^/api/ [NC]
-RewriteRule ^ - [L]
+# Sensible Dateien schützen
+<FilesMatch "^\.env|^\.htaccess|\.sql$">
+    Require all denied
+</FilesMatch>
 
-# Echte Dateien & Ordner direkt ausliefern (Assets, Bilder, etc.)
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
+<IfModule mod_rewrite.c>
+    RewriteEngine On
 
-# Alles andere -> SPA-Entrypoint
-RewriteRule . /index.html [L]
+    # SPA-Fallback NUR für Nicht-/api/-Pfade. Die Ausnahme als RewriteCond
+    # direkt in der Rule ist zuverlässiger als ein separates "^api/ - [L]"
+    # (mod_rewrite ignoriert das [L] manchmal bei No-Op-Targets in .htaccess).
+    RewriteCond %{REQUEST_URI} !^/api(/|$)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . /index.html [L]
+</IfModule>
 
-# Sicherheits-Header
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
-
-# .env nie ausliefern
-<FilesMatch "^\.env">
-    Require all denied
-</FilesMatch>

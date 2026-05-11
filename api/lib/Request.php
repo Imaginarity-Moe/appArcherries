@@ -8,9 +8,18 @@ function req_method(): string
 
 function req_path(): string
 {
+    // Auf IONOS Shared Hosting werden Apache-Rewrites für nicht-existente
+    // /api/*-Pfade vom Reverse-Proxy abgefangen und auf /index.html gemappt.
+    // Workaround: das Frontend ruft /api/index.php/<route> auf — dann ist
+    // index.php eine echte Datei und Apache leitet die Subpath in PATH_INFO weiter.
+    $pi = $_SERVER['PATH_INFO'] ?? '';
+    if ($pi !== '') {
+        return $pi;
+    }
+
+    // Fallback für direkte /api/<route>-Aufrufe (falls Rewrite doch greift).
     $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-    // /api-Präfix abschneiden, falls vorhanden (Vite-Proxy bzw. Live-Pfad)
-    $uri = preg_replace('#^/api#', '', $uri) ?? '/';
+    $uri = preg_replace('#^/api(/index\.php)?#', '', $uri) ?? '/';
     if ($uri === '' || $uri === false) $uri = '/';
     return $uri;
 }

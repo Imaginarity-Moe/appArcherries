@@ -1,4 +1,8 @@
-const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
+// Auf IONOS Shared Hosting intercepted der Reverse-Proxy /api/<route>-Anfragen
+// (gibt /index.html zurück), bevor Apache mod_rewrite greift. Wir umgehen das,
+// indem wir index.php direkt im Pfad nennen — das ist eine echte Datei, die
+// von IONOS unangetastet bleibt. PATH_INFO trägt dann die Route.
+const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
 
 const TOKEN_KEY = "archerries.token";
 
@@ -37,9 +41,10 @@ export async function api<T = unknown>(
   const data = text ? safeJson(text) : null;
 
   if (!res.ok) {
-    const msg =
-      (data && typeof data === "object" && "error" in data && String((data as { error: unknown }).error)) ||
-      `Request failed (${res.status})`;
+    let msg = `Request failed (${res.status})`;
+    if (data && typeof data === "object" && "error" in data) {
+      msg = String((data as { error: unknown }).error);
+    }
     throw new ApiError(res.status, msg, data);
   }
   return data as T;

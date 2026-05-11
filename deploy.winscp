@@ -1,8 +1,7 @@
 option batch abort
 option confirm off
 
-# Verbindung (Host-Key wird beim ersten Lauf akzeptiert; danach festen
-# Fingerprint einsetzen, falls gewünscht).
+# Verbindung (Host-Key wird beim ersten Lauf akzeptiert)
 open sftp://%FTP_USER%:%FTP_PASS%@%FTP_HOST%:22 -hostkey="*"
 
 # Frontend (dist/) -> %REMOTE_ROOT%
@@ -10,9 +9,20 @@ open sftp://%FTP_USER%:%FTP_PASS%@%FTP_HOST%:22 -hostkey="*"
 # die dürfen nicht entfernt werden.
 synchronize remote "dist" "%REMOTE_ROOT%"
 
-# Backend (api/) -> %REMOTE_ROOT%/api
-# Ebenfalls kein -delete (.env nicht im api/-Unterordner, aber Symmetrie zum sicheren Sync).
-synchronize remote "api" "%REMOTE_ROOT%/api"
+# .htaccess-Dateien explizit nachschieben — WinSCP synchronize vergleicht
+# standardmäßig nur Mtime, was bei Dotfiles oft zu false-"unverändert" führt.
+put -nopermissions "dist\.htaccess" "/.htaccess"
+
+# Sicherstellen, dass /api existiert (Fehler ignorieren, falls schon da).
+option batch continue
+mkdir /api
+option batch abort
+
+# Backend (api/) -> /api
+synchronize remote "api" "/api"
+
+# api/.htaccess auch explizit nachschieben
+put -nopermissions "api\.htaccess" "/api/.htaccess"
 
 close
 exit
