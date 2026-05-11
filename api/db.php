@@ -1,13 +1,14 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/config.php';
+
 function db(): PDO
 {
     static $pdo = null;
     if ($pdo !== null) return $pdo;
 
-    $cfg = require __DIR__ . '/config.php';
-    $d = $cfg['db'];
+    $d = config()['db'];
     $dsn = sprintf(
         'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
         $d['host'], $d['port'], $d['name']

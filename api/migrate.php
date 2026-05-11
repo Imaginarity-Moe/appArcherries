@@ -1,33 +1,39 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/config.php';
-require __DIR__ . '/db.php';
-
-use Archerries\Request;
-use Archerries\Response;
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib/Request.php';
+require_once __DIR__ . '/lib/Response.php';
 
 $isCli = PHP_SAPI === 'cli';
 
 if (!$isCli) {
-    $cfg    = require __DIR__ . '/config.php';
     $given  = $_SERVER['HTTP_X_MIGRATE_SECRET'] ?? '';
-    $secret = $cfg['migrate_secret'];
-    if (!$secret || !hash_equals($secret, (string)$given)) {
-        Response::error('Forbidden', 403);
+    $secret = (string)config()['migrate_secret'];
+    if ($secret === '' || !hash_equals($secret, (string)$given)) {
+        res_error('Forbidden', 403);
     }
-    if (Request::method() !== 'POST') {
-        Response::error('Use POST', 405);
+    if (req_method() !== 'POST') {
+        res_error('Use POST', 405);
     }
 }
 
-function out(array $payload, bool $isCli, int $status = 200): void
+function migrate_out(array $payload, bool $isCli, int $status = 200): void
 {
     if ($isCli) {
         fwrite(STDOUT, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
         exit($status >= 400 ? 1 : 0);
     }
-    Response::json($payload, $status);
+    res_json($payload, $status);
+}
+
+function split_sql(string $sql): array
+{
+    // Naive split an ';' am Zeilenende. Reicht für Schema-Migrationen
+    // (keine Stored Procedures / DELIMITER-Wechsel).
+    $parts = preg_split('/;\s*\R/', $sql);
+    return $parts === false ? [$sql] : $parts;
 }
 
 try {
@@ -45,7 +51,7 @@ try {
         'filename'
     );
 
-    $dir = __DIR__ . '/migrations';
+    $dir   = __DIR__ . '/migrations';
     $files = glob($dir . '/*.sql') ?: [];
     sort($files, SORT_STRING);
 
@@ -59,7 +65,6 @@ try {
 
         $db->beginTransaction();
         try {
-            // Mehrere Statements pro Datei erlauben (split an Semikolon-Zeilenende).
             foreach (split_sql($sql) as $stmt) {
                 if (trim($stmt) === '') continue;
                 $db->exec($stmt);
@@ -68,20 +73,12 @@ try {
             $db->commit();
         } catch (Throwable $e) {
             $db->rollBack();
-            out(['error' => "Migration $name failed: " . $e->getMessage(), 'applied' => $run], $isCli, 500);
+            migrate_out(['error' => "Migration $name failed: " . $e->getMessage(), 'applied' => $run], $isCli, 500);
         }
         $run[] = $name;
     }
 
-    out(['ok' => true, 'applied' => $run, 'already' => $applied], $isCli);
+    migrate_out(['ok' => true, 'applied' => $run, 'already' => $applied], $isCli);
 } catch (Throwable $e) {
-    out(['error' => $e->getMessage()], $isCli, 500);
-}
-
-function split_sql(string $sql): array
-{
-    // Naive split: trennt an ';' am Zeilenende. Reicht für unsere Schema-Migrationen
-    // (keine Stored Procedures / DELIMITER-Wechsel).
-    $parts = preg_split('/;\s*\R/', $sql);
-    return $parts === false ? [$sql] : $parts;
+    migrate_out(['error' => $e->getMessage()], $isCli, 500);
 }

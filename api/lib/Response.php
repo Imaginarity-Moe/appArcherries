@@ -1,20 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Archerries;
-
-final class Response
+function res_json(mixed $data, int $status = 200): never
 {
-    public static function json(mixed $data, int $status = 200): never
-    {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
 
-    public static function error(string $message, int $status = 400, array $extra = []): never
-    {
-        self::json(array_merge(['error' => $message], $extra), $status);
-    }
+function res_error(string $message, int $status = 400, array $extra = []): never
+{
+    res_json(array_merge(['error' => $message], $extra), $status);
 }

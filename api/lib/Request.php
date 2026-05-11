@@ -1,34 +1,30 @@
 <?php
 declare(strict_types=1);
 
-namespace Archerries;
-
-final class Request
+function req_method(): string
 {
-    public static function method(): string
-    {
-        return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-    }
+    return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+}
 
-    public static function path(): string
-    {
-        $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-        $uri = preg_replace('#^/api#', '', $uri) ?? '/';
-        if ($uri === '' || $uri === false) $uri = '/';
-        return $uri;
-    }
+function req_path(): string
+{
+    $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+    // /api-Präfix abschneiden, falls vorhanden (Vite-Proxy bzw. Live-Pfad)
+    $uri = preg_replace('#^/api#', '', $uri) ?? '/';
+    if ($uri === '' || $uri === false) $uri = '/';
+    return $uri;
+}
 
-    /** @return array<string,mixed> */
-    public static function json(): array
-    {
-        $raw = file_get_contents('php://input') ?: '';
-        if ($raw === '') return [];
-        $decoded = json_decode($raw, true);
-        return is_array($decoded) ? $decoded : [];
-    }
+/** @return array<string,mixed> */
+function req_json(): array
+{
+    $raw = file_get_contents('php://input') ?: '';
+    if ($raw === '') return [];
+    $d = json_decode($raw, true);
+    return is_array($d) ? $d : [];
+}
 
-    public static function query(string $key, ?string $default = null): ?string
-    {
-        return isset($_GET[$key]) ? (string)$_GET[$key] : $default;
-    }
+function req_query(string $key, ?string $default = null): ?string
+{
+    return isset($_GET[$key]) ? (string)$_GET[$key] : $default;
 }

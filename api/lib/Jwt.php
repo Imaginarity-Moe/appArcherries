@@ -1,39 +1,58 @@
 <?php
 declare(strict_types=1);
 
-namespace Archerries;
+require_once __DIR__ . '/../config.php';
 
-use Firebase\JWT\JWT as FJwt;
-use Firebase\JWT\Key;
+const JWT_TTL = 60 * 60 * 24 * 30; // 30 Tage
 
-final class Jwt
+function jwt_sign(array $payload, ?int $ttl = null): string
 {
-    public static function sign(array $claims, int $ttlSeconds = 86400 * 30): string
-    {
-        $cfg = require __DIR__ . '/../config.php';
-        $now = time();
-        $payload = array_merge($claims, [
-            'iat' => $now,
-            'exp' => $now + $ttlSeconds,
-        ]);
-        return FJwt::encode($payload, $cfg['jwt_secret'], 'HS256');
-    }
+    $secret = (string)config()['jwt_secret'];
+    if ($secret === '') throw new RuntimeException('JWT_SECRET nicht konfiguriert');
 
-    public static function verify(string $token): ?array
-    {
-        $cfg = require __DIR__ . '/../config.php';
-        try {
-            $decoded = FJwt::decode($token, new Key($cfg['jwt_secret'], 'HS256'));
-            return (array)$decoded;
-        } catch (\Throwable) {
-            return null;
-        }
-    }
+    $now = time();
+    $payload = array_merge($payload, [
+        'iat' => $now,
+        'exp' => $now + ($ttl ?? JWT_TTL),
+    ]);
+    $header = b64url((string)json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+    $body   = b64url((string)json_encode($payload));
+    $sig    = b64url(hash_hmac('sha256', "$header.$body", $secret, true));
+    return "$header.$body.$sig";
+}
 
-    public static function fromAuthHeader(): ?array
-    {
-        $h = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-        if (!preg_match('/Bearer\s+(.+)/i', $h, $m)) return null;
-        return self::verify($m[1]);
-    }
+function jwt_verify(string $token): ?array
+{
+    $secret = (string)config()['jwt_secret'];
+    $parts  = explode('.', $token);
+    if (count($parts) !== 3) return null;
+    [$header, $body, $sig] = $parts;
+
+    $expected = b64url(hash_hmac('sha256', "$header.$body", $secret, true));
+    if (!hash_equals($expected, $sig)) return null;
+
+    $payload = json_decode(b64url_decode($body), true);
+    if (!is_array($payload)) return null;
+    if (isset($payload['exp']) && $payload['exp'] < time()) return null;
+    return $payload;
+}
+
+function jwt_from_auth_header(): ?array
+{
+    $h = $_SERVER['HTTP_AUTHORIZATION']
+         ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+         ?? '';
+    if (!preg_match('/Bearer\s+(.+)/i', $h, $m)) return null;
+    return jwt_verify(trim($m[1]));
+}
+
+function b64url(string $data): string
+{
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function b64url_decode(string $data): string
+{
+    $pad = (4 - strlen($data) % 4) % 4;
+    return (string)base64_decode(strtr($data, '-_', '+/') . str_repeat('=', $pad));
 }
