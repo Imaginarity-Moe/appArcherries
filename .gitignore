@@ -24,3 +24,7 @@ Thumbs.db
 
 # Build artefacts
 *.tsbuildinfo
+
+# User-Uploads (Server-State, nicht ins Repo)
+uploads/**
+!uploads/.htaccess

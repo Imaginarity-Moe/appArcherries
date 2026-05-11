@@ -1,0 +1,15 @@
+{
+  "greeting": "Hallo, {{name}}",
+  "no_trainings": "Noch kein Training erfasst.",
+  "empty_cta": "Leg los — die App ist auch parcours-tauglich auf dem Handy.",
+  "first_training": "Erstes Training anlegen",
+  "new_training": "Neues Training",
+  "recent_trainings": "Letzte Trainings",
+  "show_older": "Älter ansehen",
+  "stats": {
+    "total_trainings": "Trainings",
+    "personal_best": "Bestleistung",
+    "avg_4_weeks": "Ø letzte 4 Wochen",
+    "avg_per_station": "Ø pro Station"
+  }
+}

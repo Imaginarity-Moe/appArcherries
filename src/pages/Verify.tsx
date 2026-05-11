@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { api } from "../api/client";
+import { AuthLayout } from "../components/Layout";
 
 export default function Verify() {
+  const { t } = useTranslation("auth");
   const [params] = useSearchParams();
   const token = params.get("token");
   const [state, setState] = useState<"loading" | "ok" | "fail">("loading");
@@ -11,37 +15,44 @@ export default function Verify() {
   useEffect(() => {
     if (!token) {
       setState("fail");
-      setMessage("Kein Token in der URL.");
+      setMessage(t("verify.no_token"));
       return;
     }
     api(`/auth/verify?token=${encodeURIComponent(token)}`)
-      .then(() => {
-        setState("ok");
-      })
+      .then(() => setState("ok"))
       .catch((err) => {
         setState("fail");
-        setMessage(err instanceof Error ? err.message : "Verifizierung fehlgeschlagen");
+        setMessage(err instanceof Error ? err.message : "Verification failed");
       });
-  }, [token]);
+  }, [token, t]);
 
   return (
-    <div className="card max-w-md mx-auto text-center">
-      {state === "loading" && <p className="text-archer-700">Prüfe…</p>}
-      {state === "ok" && (
-        <>
-          <h1 className="text-2xl font-semibold mb-2">E-Mail bestätigt</h1>
-          <p className="text-archer-700 mb-4">Dein Konto ist jetzt aktiviert.</p>
-          <Link to="/login" className="btn">
-            Zum Login
-          </Link>
-        </>
-      )}
-      {state === "fail" && (
-        <>
-          <h1 className="text-2xl font-semibold mb-2">Bestätigung fehlgeschlagen</h1>
-          <p className="text-red-600">{message}</p>
-        </>
-      )}
-    </div>
+    <AuthLayout>
+      <div className="card text-center animate-fade-in">
+        {state === "loading" && (
+          <>
+            <Loader2 size={48} className="mx-auto text-copper-500 animate-spin mb-3" />
+            <p className="text-forest-700">{t("verify.checking")}</p>
+          </>
+        )}
+        {state === "ok" && (
+          <>
+            <CheckCircle2 size={48} className="mx-auto text-forest-500 mb-3" />
+            <h1 className="font-display text-2xl font-semibold mb-2">{t("verify.success_title")}</h1>
+            <p className="text-forest-700 dark:text-forest-300 mb-5">{t("verify.success_text")}</p>
+            <Link to="/login" className="btn tap-large">
+              {t("verify.go_login")}
+            </Link>
+          </>
+        )}
+        {state === "fail" && (
+          <>
+            <XCircle size={48} className="mx-auto text-red-600 mb-3" />
+            <h1 className="font-display text-2xl font-semibold mb-2">{t("verify.fail_title")}</h1>
+            <p className="text-red-700">{message}</p>
+          </>
+        )}
+      </div>
+    </AuthLayout>
   );
 }

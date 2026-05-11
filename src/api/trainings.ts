@@ -34,6 +34,8 @@ export type Training = {
   notes: string | null;
   summary_score: number | null;
   total_score: number;
+  parcours_id: number | null;
+  parcours_name?: string | null;
   targets?: Target[];
 };
 

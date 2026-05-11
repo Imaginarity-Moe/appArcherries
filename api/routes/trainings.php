@@ -71,10 +71,12 @@ function trainings_list(int $user_id): void
     $off   = ($page - 1) * $limit;
 
     $stmt = db()->prepare(
-        'SELECT id, started_at, ended_at, discipline, bow_type, peg_color,
-                distance_marked, location, summary_score
-         FROM trainings WHERE user_id = ?
-         ORDER BY started_at DESC LIMIT ? OFFSET ?'
+        'SELECT t.id, t.started_at, t.ended_at, t.discipline, t.bow_type, t.peg_color,
+                t.distance_marked, t.location, t.summary_score, t.parcours_id, p.name AS parcours_name
+         FROM trainings t
+         LEFT JOIN parcours p ON p.id = t.parcours_id
+         WHERE t.user_id = ?
+         ORDER BY t.started_at DESC LIMIT ? OFFSET ?'
     );
     $stmt->bindValue(1, $user_id, PDO::PARAM_INT);
     $stmt->bindValue(2, $limit, PDO::PARAM_INT);
@@ -121,12 +123,22 @@ function trainings_create(int $user_id): void
     if ($ts === false) res_error('Ungültiges started_at');
     $started_at = date('Y-m-d H:i:s', $ts);
 
+    // Parcours-Validierung
+    $parcours_id = null;
+    if (isset($in['parcours_id']) && $in['parcours_id'] !== null) {
+        $pid = (int)$in['parcours_id'];
+        $s = db()->prepare('SELECT id FROM parcours WHERE id = ? AND (user_id = ? OR is_public = 1)');
+        $s->execute([$pid, $user_id]);
+        if ($s->fetch()) $parcours_id = $pid;
+    }
+
     $stmt = db()->prepare(
-        'INSERT INTO trainings (user_id, started_at, discipline, bow_type, peg_color, distance_marked, location, weather, notes, summary_score)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO trainings (user_id, parcours_id, started_at, discipline, bow_type, peg_color, distance_marked, location, weather, notes, summary_score)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $user_id,
+        $parcours_id,
         $started_at,
         $discipline,
         $bow_type,
@@ -143,7 +155,11 @@ function trainings_create(int $user_id): void
 
 function trainings_detail(int $user_id, int $id, int $status = 200): void
 {
-    $stmt = db()->prepare('SELECT * FROM trainings WHERE id = ? AND user_id = ?');
+    $stmt = db()->prepare(
+        'SELECT t.*, p.name AS parcours_name
+         FROM trainings t LEFT JOIN parcours p ON p.id = t.parcours_id
+         WHERE t.id = ? AND t.user_id = ?'
+    );
     $stmt->execute([$id, $user_id]);
     $t = $stmt->fetch();
     if (!$t) res_error('Not found', 404);

@@ -36,6 +36,12 @@ try {
     } elseif (str_starts_with($path, '/trainings')) {
         require __DIR__ . '/routes/trainings.php';
         handle_trainings($method, $path);
+    } elseif (str_starts_with($path, '/parcours')) {
+        require __DIR__ . '/routes/parcours.php';
+        handle_parcours($method, $path);
+    } elseif (str_starts_with($path, '/stats')) {
+        require __DIR__ . '/routes/stats.php';
+        handle_stats($method, $path);
     } elseif ($path === '/health') {
         res_json(['ok' => true, 'time' => date('c')]);
     } else {

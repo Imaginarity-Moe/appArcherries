@@ -1,0 +1,15 @@
+{
+  "greeting": "Hello, {{name}}",
+  "no_trainings": "No training recorded yet.",
+  "empty_cta": "Get started — the app works great on your phone on the course.",
+  "first_training": "Create first training",
+  "new_training": "New training",
+  "recent_trainings": "Recent trainings",
+  "show_older": "Show older",
+  "stats": {
+    "total_trainings": "Trainings",
+    "personal_best": "Personal best",
+    "avg_4_weeks": "Avg last 4 weeks",
+    "avg_per_station": "Avg per target"
+  }
+}

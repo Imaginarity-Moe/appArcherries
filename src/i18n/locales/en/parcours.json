@@ -1,0 +1,36 @@
+{
+  "title": "Courses",
+  "my_parcours": "My courses",
+  "public_parcours": "Public courses",
+  "new": "New course",
+  "empty_state": "You haven't created a course yet.",
+  "create_cta": "Create first course",
+  "form": {
+    "name": "Name",
+    "name_placeholder": "e.g. Eichwald course",
+    "description": "Description",
+    "description_placeholder": "Number of targets, difficulty, notable features…",
+    "address": "Address / location",
+    "address_placeholder": "City or full address",
+    "coordinates": "Coordinates (tap on map)",
+    "image": "Photo",
+    "upload_image": "Upload image",
+    "drop_image": "Drop image here or tap",
+    "is_public": "Public (other archers can also use this course)",
+    "submit": "Save course",
+    "submitting": "Saving…"
+  },
+  "detail": {
+    "open_map": "Show on map",
+    "start_training": "Train here",
+    "edit": "Edit course",
+    "delete": "Delete course",
+    "delete_confirm": "Really delete this course? Trainings remain but lose the course link."
+  },
+  "map": {
+    "show_list": "List",
+    "show_map": "Map",
+    "your_location": "Your location",
+    "no_location": "Location unavailable"
+  }
+}

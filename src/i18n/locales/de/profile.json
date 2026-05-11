@@ -1,0 +1,19 @@
+{
+  "title": "Profil",
+  "account": "Konto",
+  "display_name": "Anzeigename",
+  "email": "E-Mail",
+  "settings": "Einstellungen",
+  "language": "Sprache",
+  "theme": "Erscheinungsbild",
+  "theme_light": "Hell",
+  "theme_dark": "Dunkel",
+  "theme_auto": "Automatisch",
+  "default_bow": "Standard-Bogen",
+  "save": "Speichern",
+  "saved": "Gespeichert",
+  "logout": "Abmelden",
+  "danger_zone": "Gefahrenzone",
+  "delete_account": "Konto löschen",
+  "delete_account_confirm": "Konto wirklich löschen? Alle Trainings, Parcours und Daten werden unwiderruflich entfernt."
+}

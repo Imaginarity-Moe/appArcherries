@@ -1,20 +1,25 @@
-RewriteEngine On
+<IfModule mod_rewrite.c>
+    RewriteEngine On
 
-# Sensible Dateien nie ausliefern
-<FilesMatch "\.(sql|md|json|lock|env)$">
+    # IONOS/Apache strippt den Authorization-Header vor PHP-Übergabe.
+    # Mit dieser Rule wird er explizit als Umgebungsvariable durchgereicht,
+    # so dass $_SERVER['HTTP_AUTHORIZATION'] in PHP gefüllt ist.
+    RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Migrate-Secret-Header ebenfalls explizit weiterreichen
+    RewriteRule ^ - [E=HTTP_X_MIGRATE_SECRET:%{HTTP:X-Migrate-Secret}]
+</IfModule>
+
+# Sensible Dateien blockieren
+<FilesMatch "\.(sql|md|json|lock|env|log)$">
     Require all denied
 </FilesMatch>
 <FilesMatch "^(composer\.(json|lock)|\.env.*)$">
     Require all denied
 </FilesMatch>
 
-# composer-vendor und migrations niemals direkt erreichbar
+# Vendor / Migrations / Source-Verzeichnisse niemals direkt erreichbar
 RedirectMatch 403 ^/api/vendor(/|$)
 RedirectMatch 403 ^/api/migrations(/|$)
 RedirectMatch 403 ^/api/lib(/|$)
 RedirectMatch 403 ^/api/routes(/|$)
-
-# Frontcontroller: alles auf index.php (ausser existierende Dateien)
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [L,QSA]

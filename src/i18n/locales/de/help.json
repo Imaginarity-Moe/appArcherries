@@ -1,0 +1,15 @@
+{
+  "title": "Hilfe",
+  "subtitle": "Alles, was du über die App und den Sport wissen musst.",
+  "search_placeholder": "Begriff suchen …",
+  "categories": {
+    "getting_started": "Erste Schritte",
+    "disciplines": "Disziplinen",
+    "scoring": "Wertungssysteme",
+    "pegs": "Pflöcke & Distanzen",
+    "bows": "Bogenklassen",
+    "glossary": "Glossar",
+    "app": "Über die App"
+  },
+  "back_to_help": "← Zurück zur Hilfe"
+}

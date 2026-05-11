@@ -1,0 +1,75 @@
+{
+  "app_name": "Archerries",
+  "tagline": "Your tracker for 3D archery & field shooting",
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "continue": "Continue",
+    "confirm": "Confirm",
+    "close": "Close",
+    "loading": "Loading…",
+    "saving": "Saving…"
+  },
+  "nav": {
+    "home": "Home",
+    "trainings": "Trainings",
+    "new_training": "New",
+    "parcours": "Courses",
+    "stats": "Stats",
+    "help": "Help",
+    "profile": "Profile"
+  },
+  "discipline": {
+    "3d_wa": "3D · WA",
+    "3d_ifaa": "3D · IFAA",
+    "3d_bowhunter": "3D · Bowhunter",
+    "field_wa": "Field · WA",
+    "simple": "Simple"
+  },
+  "discipline_short": {
+    "3d_wa": "WA",
+    "3d_ifaa": "IFAA",
+    "3d_bowhunter": "Bowhunter",
+    "field_wa": "Field",
+    "simple": "Simple"
+  },
+  "bow": {
+    "recurve": "Recurve",
+    "compound": "Compound",
+    "barebow": "Barebow",
+    "traditional": "Traditional"
+  },
+  "peg": {
+    "blue": "Blue",
+    "red": "Red",
+    "yellow": "Yellow",
+    "white": "White"
+  },
+  "score": "points",
+  "score_short": "pts",
+  "station": "Target",
+  "stations": "Targets",
+  "shot": "Arrow",
+  "shots": "Arrows",
+  "miss": "Miss",
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network unavailable",
+    "unauthorized": "Please sign in again",
+    "not_found": "Not found"
+  },
+  "time": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "this_week": "This week",
+    "last_week": "Last week",
+    "this_month": "This month",
+    "this_year": "This year"
+  }
+}

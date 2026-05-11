@@ -1,0 +1,75 @@
+{
+  "app_name": "Archerries",
+  "tagline": "Dein Tracker für 3D-Parcours & Feldbogen",
+  "actions": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Anlegen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Vorherige",
+    "continue": "Weiter",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "loading": "Lade…",
+    "saving": "Speichere…"
+  },
+  "nav": {
+    "home": "Übersicht",
+    "trainings": "Trainings",
+    "new_training": "Neu",
+    "parcours": "Parcours",
+    "stats": "Statistik",
+    "help": "Hilfe",
+    "profile": "Profil"
+  },
+  "discipline": {
+    "3d_wa": "3D · WA",
+    "3d_ifaa": "3D · IFAA",
+    "3d_bowhunter": "3D · Bowhunter",
+    "field_wa": "Feldbogen · WA",
+    "simple": "Einfach"
+  },
+  "discipline_short": {
+    "3d_wa": "WA",
+    "3d_ifaa": "IFAA",
+    "3d_bowhunter": "Bowhunter",
+    "field_wa": "Feld",
+    "simple": "Einfach"
+  },
+  "bow": {
+    "recurve": "Recurve",
+    "compound": "Compound",
+    "barebow": "Blank",
+    "traditional": "Traditionell"
+  },
+  "peg": {
+    "blue": "Blau",
+    "red": "Rot",
+    "yellow": "Gelb",
+    "white": "Weiß"
+  },
+  "score": "Punkte",
+  "score_short": "Pkt",
+  "station": "Station",
+  "stations": "Stationen",
+  "shot": "Pfeil",
+  "shots": "Pfeile",
+  "miss": "Fehl",
+  "errors": {
+    "generic": "Etwas ist schiefgelaufen",
+    "network": "Netzwerk nicht erreichbar",
+    "unauthorized": "Bitte erneut anmelden",
+    "not_found": "Nicht gefunden"
+  },
+  "time": {
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "this_week": "Diese Woche",
+    "last_week": "Letzte Woche",
+    "this_month": "Diesen Monat",
+    "this_year": "Dieses Jahr"
+  }
+}

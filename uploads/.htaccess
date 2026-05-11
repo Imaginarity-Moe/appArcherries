@@ -1,0 +1,22 @@
+# Uploads-Ordner: Bilder ausliefern, aber kein PHP/Script-Ausführen
+<FilesMatch "\.(php|phar|phtml|html|htm|cgi|pl|py|sh)$">
+    Require all denied
+</FilesMatch>
+
+# Nur erlaubte Bild-Extensions ausliefern
+<FilesMatch "\.(jpg|jpeg|png|webp|gif)$">
+    Require all granted
+</FilesMatch>
+
+# MIME hart setzen
+<IfModule mod_mime.c>
+    AddType image/jpeg .jpg .jpeg
+    AddType image/png  .png
+    AddType image/webp .webp
+</IfModule>
+
+# Caching für Bilder
+<IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=604800"
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>

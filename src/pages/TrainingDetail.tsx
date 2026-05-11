@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, ArrowRight, Check, Grid3x3, MoreHorizontal, Trash2, X } from "lucide-react";
 import {
   BOW_LABELS,
   DISCIPLINE_LABELS,
   PEG_LABELS,
-  ZONES_BY_DISCIPLINE,
   deleteTarget,
   deleteTraining,
   getTraining,
@@ -13,8 +14,9 @@ import {
   type Discipline,
   type Target,
   type Training,
-  type ZoneDef,
 } from "../api/trainings";
+import BullseyePad from "../components/BullseyePad";
+import { fmtDateTime } from "../lib/format";
 
 // Anzahl Pfeil-Slots je Disziplin
 const SLOTS_BY_DISCIPLINE: Record<Discipline, number> = {
@@ -25,13 +27,45 @@ const SLOTS_BY_DISCIPLINE: Record<Discipline, number> = {
   simple: 0,
 };
 
+/** Lokale Wertungs-Vorschau (Server berechnet beim Speichern autoritativ neu) */
+function previewArrowPoints(discipline: Discipline, zone: string | null, slot: number, allZones: (string | null)[]): number {
+  if (!zone || zone === "miss") return 0;
+
+  if (discipline === "3d_ifaa") {
+    const firstHit = allZones.findIndex((z) => z && z !== "miss");
+    if (firstHit !== slot) return 0;
+    const isVital = ["X", "kill", "inner", "vital"].includes(zone);
+    if (slot === 0) return isVital ? 20 : 18;
+    if (slot === 1) return isVital ? 16 : 14;
+    if (slot === 2) return isVital ? 12 : 10;
+    return 0;
+  }
+  if (discipline === "3d_bowhunter") return 0; // TBD
+
+  if (discipline === "3d_wa") {
+    const m: Record<string, number> = { X: 11, kill: 11, inner: 10, outer: 8, body: 5 };
+    return m[zone] ?? 0;
+  }
+  if (discipline === "field_wa") {
+    if (zone === "X") return 6;
+    const n = parseInt(zone, 10);
+    return n >= 1 && n <= 6 ? n : 0;
+  }
+  return 0;
+}
+
 export default function TrainingDetail() {
   const { id } = useParams();
+  const { t } = useTranslation(["training", "common"]);
   const nav = useNavigate();
   const trainingId = Number(id);
   const [training, setTraining] = useState<Training | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const stationParam = searchParams.get("station");
+  const focusedStation = stationParam ? parseInt(stationParam, 10) : null;
 
   const refresh = useCallback(async () => {
     try {
@@ -48,283 +82,302 @@ export default function TrainingDetail() {
     refresh();
   }, [refresh]);
 
+  if (loading) return <p className="text-forest-700">{t("common:actions.loading")}</p>;
+  if (error || !training) return <p className="text-red-700">{error ?? "Not found"}</p>;
+
+  // Live-Eingabe-Modus: ?station=N → Fokus auf eine Station
+  if (focusedStation !== null && training.discipline !== "simple") {
+    return (
+      <StationLiveEntry
+        training={training}
+        stationIndex={focusedStation}
+        onChange={refresh}
+        onClose={() => setSearchParams({})}
+        onNavigate={(n) => setSearchParams({ station: String(n) })}
+      />
+    );
+  }
+
+  return <TrainingOverview training={training} onChange={refresh} nav={nav} />;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Übersicht (Stations-Liste + Header)
+
+function TrainingOverview({
+  training,
+  onChange,
+  nav,
+}: {
+  training: Training;
+  onChange: () => Promise<void>;
+  nav: (path: string) => void;
+}) {
+  const { t } = useTranslation(["training", "common"]);
+  const [, setSearchParams] = useSearchParams();
+  const isSimple = training.discipline === "simple";
+  const targets = training.targets ?? [];
+  const isOpen = !training.ended_at;
+  const nextIndex = (targets[targets.length - 1]?.target_index ?? 0) + 1;
+
   async function handleDelete() {
-    if (!confirm("Dieses Training wirklich löschen?")) return;
-    await deleteTraining(trainingId);
+    if (!confirm(t("training:detail.delete_confirm"))) return;
+    await deleteTraining(training.id);
     nav("/");
   }
 
   async function handleEnd() {
-    await updateTraining(trainingId, {
-      ended_at: new Date().toISOString().slice(0, 19).replace("T", " "),
-    });
-    await refresh();
+    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    await updateTraining(training.id, { ended_at: now });
+    await onChange();
+    nav(`/trainings/${training.id}/summary`);
   }
 
-  if (loading) return <p className="text-archer-700">Lade…</p>;
-  if (error || !training) return <p className="text-red-600">{error ?? "Nicht gefunden"}</p>;
-
-  const isSimple = training.discipline === "simple";
-  const targets = training.targets ?? [];
-  const isOpen = !training.ended_at;
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
+      <Link to="/" className="inline-flex items-center gap-1 text-sm text-forest-700 hover:text-copper-500">
+        <ArrowLeft size={16} /> {t("common:actions.back")}
+      </Link>
+
+      {/* Header */}
       <div className="card">
-        <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-          <div>
-            <div className="text-sm text-archer-700">
-              <Link to="/" className="hover:underline">
-                ← zurück
-              </Link>
-            </div>
-            <h1 className="text-2xl font-semibold">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-2xl font-semibold">
               {DISCIPLINE_LABELS[training.discipline]}
             </h1>
-            <div className="text-sm text-archer-700">
+            <div className="text-sm text-forest-700 dark:text-forest-300 mt-1">
               {BOW_LABELS[training.bow_type]}
-              {training.peg_color && ` · Pflock ${PEG_LABELS[training.peg_color]}`}
+              {training.peg_color && ` · ${PEG_LABELS[training.peg_color]}`}
               {training.distance_marked !== null &&
-                ` · ${training.distance_marked ? "markiert" : "unmarkiert"}`}
+                ` · ${training.distance_marked ? t("training:wizard.distance_marked") : t("training:wizard.distance_unmarked")}`}
             </div>
+            <div className="text-xs text-forest-300 mt-1">{fmtDateTime(training.started_at)}</div>
             {training.location && (
-              <div className="text-sm text-archer-700">📍 {training.location}</div>
+              <div className="text-sm text-forest-700 dark:text-forest-300 mt-1">📍 {training.location}</div>
             )}
           </div>
-          <div className="text-right">
-            <div className="text-4xl font-bold text-archer-700">{training.total_score}</div>
-            <div className="text-xs text-archer-700">
-              Gesamt {targets.length > 0 && `· ${targets.length} Stationen`}
+          <div className="text-right shrink-0">
+            <div className="score text-score-xl leading-none animate-count-up">{training.total_score}</div>
+            <div className="text-[10px] uppercase tracking-wider text-forest-300 mt-1">
+              {targets.length > 0 ? t("training:detail.n_stations", { count: targets.length }) : "Pkt"}
             </div>
           </div>
         </div>
 
-        <div className="flex gap-2 mt-3">
+        {!isSimple && targets.length > 0 && (
+          <div className="mt-4">
+            <StationStatusGrid
+              targets={targets}
+              onPick={(idx) => setSearchParams({ station: String(idx) })}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 mt-4">
           {isOpen && (
-            <button className="btn-ghost" onClick={handleEnd}>
-              Training beenden
+            <button onClick={handleEnd} className="btn-secondary">
+              <Check size={16} /> {t("training:detail.end_training")}
             </button>
           )}
-          <button className="btn-ghost text-red-600" onClick={handleDelete}>
-            Löschen
+          <button onClick={handleDelete} className="btn-ghost danger">
+            <Trash2 size={16} /> {t("training:detail.delete_training")}
           </button>
         </div>
       </div>
 
+      {/* Simple-Modus */}
       {isSimple ? (
-        <SimpleScoreForm training={training} onChange={refresh} />
+        <SimpleScoreCard training={training} onChange={onChange} />
       ) : (
         <>
-          <h2 className="text-lg font-semibold mt-4">Stationen</h2>
-          {targets.map((t) => (
-            <TargetCard
-              key={t.id}
-              target={t}
-              discipline={training.discipline}
-              trainingId={training.id}
-              onChange={refresh}
-            />
-          ))}
           {isOpen && (
-            <AddTargetButton
-              discipline={training.discipline}
-              trainingId={training.id}
-              nextIndex={(targets[targets.length - 1]?.target_index ?? 0) + 1}
-              onAdded={refresh}
-            />
+            <button
+              onClick={() => setSearchParams({ station: String(nextIndex) })}
+              className="btn w-full tap-large"
+            >
+              {t("training:detail.add_station", { n: nextIndex })}
+            </button>
           )}
+
+          {/* Stations-Karten */}
+          <div className="space-y-2">
+            {targets.map((tgt) => (
+              <StationRow
+                key={tgt.id}
+                target={tgt}
+                onClick={() => setSearchParams({ station: String(tgt.target_index) })}
+              />
+            ))}
+          </div>
         </>
       )}
     </div>
   );
 }
 
-// ─── Simple-Modus ─────────────────────────────────────────────────────────────
+function StationStatusGrid({
+  targets,
+  onPick,
+}: {
+  targets: Target[];
+  onPick: (idx: number) => void;
+}) {
+  const byIdx = new Map(targets.map((t) => [t.target_index, t]));
+  const max = Math.max(28, ...Array.from(byIdx.keys()));
+  const cells = Array.from({ length: max }, (_, i) => i + 1);
 
-function SimpleScoreForm({
+  return (
+    <div className="grid grid-cols-7 sm:grid-cols-14 gap-1.5">
+      {cells.map((idx) => {
+        const tgt = byIdx.get(idx);
+        const filled = tgt && tgt.shots.length > 0;
+        return (
+          <button
+            key={idx}
+            onClick={() => onPick(idx)}
+            className={`aspect-square rounded-md text-[10px] font-mono tabular-nums font-bold transition hover:scale-110 ${
+              filled
+                ? "bg-copper-500 text-white"
+                : tgt
+                ? "bg-copper-100 text-copper-700"
+                : "bg-forest-100 dark:bg-forest-800 text-forest-700 dark:text-forest-300"
+            }`}
+          >
+            {idx}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function StationRow({
+  target,
+  onClick,
+}: {
+  target: Target;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="card-interactive w-full text-left flex items-center justify-between gap-3"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wider text-forest-300">#{target.target_index}</span>
+          <span className="font-semibold truncate">{target.animal_or_face || "—"}</span>
+        </div>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {target.shots.map((s) => (
+            <span key={s.arrow_seq} className="chip text-[10px] py-0.5">
+              {s.zone ?? "—"}
+              <span className="text-forest-300">·{s.points}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="score text-score-md">{target.target_total}</div>
+    </button>
+  );
+}
+
+function SimpleScoreCard({
   training,
   onChange,
 }: {
   training: Training;
   onChange: () => Promise<void>;
 }) {
+  const { t } = useTranslation("training");
   const [value, setValue] = useState(training.summary_score?.toString() ?? "");
   const [busy, setBusy] = useState(false);
 
   async function save() {
     setBusy(true);
     try {
-      await updateTraining(training.id, {
-        summary_score: value === "" ? null : Number(value),
-      });
+      await updateTraining(training.id, { summary_score: value === "" ? null : Number(value) });
       await onChange();
     } finally {
       setBusy(false);
     }
   }
-
   return (
     <div className="card">
-      <label className="block">
-        <span className="text-sm font-medium text-archer-700 mb-1 block">
-          Gesamt-Score
-        </span>
-        <div className="flex gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            className="input"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-          <button className="btn" onClick={save} disabled={busy}>
-            Speichern
-          </button>
-        </div>
+      <label className="text-sm font-medium text-forest-700 dark:text-forest-300 mb-2 block">
+        {t("detail.summary_score")}
       </label>
-    </div>
-  );
-}
-
-// ─── Station-Karte ────────────────────────────────────────────────────────────
-
-function TargetCard({
-  target,
-  discipline,
-  trainingId,
-  onChange,
-}: {
-  target: Target;
-  discipline: Discipline;
-  trainingId: number;
-  onChange: () => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-
-  if (editing) {
-    return (
-      <TargetEditor
-        discipline={discipline}
-        trainingId={trainingId}
-        initial={target}
-        onCancel={() => setEditing(false)}
-        onSaved={async () => {
-          setEditing(false);
-          await onChange();
-        }}
-      />
-    );
-  }
-
-  return (
-    <div className="card flex items-center justify-between">
-      <div>
-        <div className="text-lg font-semibold">Station {target.target_index}</div>
-        <div className="text-sm text-archer-700">
-          {target.animal_or_face || "—"}
-          {target.distance_m != null && ` · ${target.distance_m} m`}
-        </div>
-        <div className="text-sm text-archer-700 mt-1">
-          {target.shots.map((s) => (
-            <span
-              key={s.arrow_seq}
-              className="inline-block mr-1 px-2 py-0.5 bg-archer-100 rounded text-xs"
-            >
-              {s.zone ?? "—"} ({s.points})
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="text-right ml-2">
-        <div className="text-2xl font-bold text-archer-700">{target.target_total}</div>
-        <button
-          className="text-xs text-archer-700 hover:underline mt-1"
-          onClick={() => setEditing(true)}
-        >
-          Bearbeiten
+      <div className="flex gap-2">
+        <input
+          type="number"
+          inputMode="numeric"
+          className="input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="z.B. 287"
+        />
+        <button onClick={save} className="btn" disabled={busy}>
+          {t("detail.save")}
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Neue Station hinzufügen ──────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// LIVE-Eingabe für eine Station
 
-function AddTargetButton({
-  discipline,
-  trainingId,
-  nextIndex,
-  onAdded,
+function StationLiveEntry({
+  training,
+  stationIndex,
+  onChange,
+  onClose,
+  onNavigate,
 }: {
-  discipline: Discipline;
-  trainingId: number;
-  nextIndex: number;
-  onAdded: () => Promise<void>;
+  training: Training;
+  stationIndex: number;
+  onChange: () => Promise<void>;
+  onClose: () => void;
+  onNavigate: (n: number) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
-      <button className="btn w-full" onClick={() => setOpen(true)}>
-        + Station {nextIndex} hinzufügen
-      </button>
-    );
-  }
-  return (
-    <TargetEditor
-      discipline={discipline}
-      trainingId={trainingId}
-      initial={{
-        id: 0,
-        target_index: nextIndex,
-        animal_or_face: null,
-        distance_m: null,
-        notes: null,
-        shots: [],
-        target_total: 0,
-      }}
-      onCancel={() => setOpen(false)}
-      onSaved={async () => {
-        setOpen(false);
-        await onAdded();
-      }}
-    />
-  );
-}
+  const { t } = useTranslation(["training", "common"]);
+  const slots = SLOTS_BY_DISCIPLINE[training.discipline];
 
-// ─── Station-Editor mit Zonen-Buttons ─────────────────────────────────────────
+  const existing = training.targets?.find((t) => t.target_index === stationIndex);
+  const totalStations = Math.max(28, ...(training.targets?.map((t) => t.target_index) ?? [0]));
 
-function TargetEditor({
-  discipline,
-  trainingId,
-  initial,
-  onCancel,
-  onSaved,
-}: {
-  discipline: Discipline;
-  trainingId: number;
-  initial: Target;
-  onCancel: () => void;
-  onSaved: () => Promise<void>;
-}) {
-  const slots = SLOTS_BY_DISCIPLINE[discipline];
-  const zones = ZONES_BY_DISCIPLINE[discipline];
-
-  const [animal, setAnimal] = useState(initial.animal_or_face ?? "");
-  const [distance, setDistance] = useState(initial.distance_m?.toString() ?? "");
+  const [animal, setAnimal] = useState(existing?.animal_or_face ?? "");
+  const [distance, setDistance] = useState(existing?.distance_m?.toString() ?? "");
+  const [activeSlot, setActiveSlot] = useState(0);
   const [zonesPicked, setZonesPicked] = useState<(string | null)[]>(() => {
     const arr: (string | null)[] = Array(slots).fill(null);
-    for (const s of initial.shots) {
-      if (s.arrow_seq >= 1 && s.arrow_seq <= slots) arr[s.arrow_seq - 1] = s.zone;
+    if (existing) {
+      for (const s of existing.shots) {
+        if (s.arrow_seq >= 1 && s.arrow_seq <= slots) arr[s.arrow_seq - 1] = s.zone;
+      }
     }
     return arr;
   });
   const [busy, setBusy] = useState(false);
+  const [showStationGrid, setShowStationGrid] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
-  function setZone(idx: number, code: string) {
+  // Beim Pfeil-Tap: nächsten leeren Slot aktivieren
+  function handleZoneSelect(code: string) {
     const next = [...zonesPicked];
-    next[idx] = code;
+    next[activeSlot] = code;
     setZonesPicked(next);
+    // Nächsten leeren Slot suchen
+    const nextEmpty = next.findIndex((z, i) => i > activeSlot && z === null);
+    if (nextEmpty !== -1) setActiveSlot(nextEmpty);
+    else if (activeSlot < slots - 1) setActiveSlot(activeSlot + 1);
   }
+
+  // Lokale Vorschau-Summe
+  const previewTotal = useMemo(() => {
+    return zonesPicked.reduce((sum, z, i) => sum + previewArrowPoints(training.discipline, z, i, zonesPicked), 0);
+  }, [zonesPicked, training.discipline]);
 
   async function save() {
     setBusy(true);
@@ -332,156 +385,204 @@ function TargetEditor({
       const shots = zonesPicked
         .map((z, i) => ({ arrow_seq: i + 1, zone: z }))
         .filter((s) => s.zone !== null);
-      await upsertTarget(trainingId, {
-        target_index: initial.target_index,
+      await upsertTarget(training.id, {
+        target_index: stationIndex,
         animal_or_face: animal || null,
         distance_m: distance ? Number(distance) : null,
         shots,
       });
-      await onSaved();
+      await onChange();
     } finally {
       setBusy(false);
     }
   }
 
-  async function remove() {
-    if (initial.id === 0) {
-      onCancel();
-      return;
-    }
-    if (!confirm("Station wirklich löschen?")) return;
+  async function saveAndNext() {
+    await save();
+    if (stationIndex < 99) onNavigate(stationIndex + 1);
+  }
+
+  async function deleteStation() {
+    if (!existing || !confirm(t("training:live.delete_station_confirm"))) return;
     setBusy(true);
     try {
-      await deleteTarget(trainingId, initial.id);
-      await onSaved();
+      await deleteTarget(training.id, existing.id);
+      await onChange();
+      onClose();
     } finally {
       setBusy(false);
     }
   }
 
-  return (
-    <div className="card space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Station {initial.target_index}</h3>
-        <div className="text-xl font-bold text-archer-700">
-          {computePreviewTotal(discipline, zonesPicked, zones)}
-        </div>
-      </div>
+  // Falls IFAA und schon Treffer dokumentiert: weitere Slots ausgrauen
+  const ifaaFirstHit = training.discipline === "3d_ifaa"
+    ? zonesPicked.findIndex((z) => z && z !== "miss")
+    : -1;
 
-      <div className="grid grid-cols-2 gap-2">
-        <label>
-          <span className="text-xs text-archer-700">Tier / Auflage</span>
+  return (
+    <div className="fixed inset-0 z-30 bg-canvas dark:bg-canvas-dark overflow-y-auto animate-fade-in">
+      {/* Top-Bar */}
+      <header className="sticky top-0 z-10 bg-canvas/95 dark:bg-canvas-dark/95 backdrop-blur border-b border-forest-100 dark:border-forest-800">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button onClick={onClose} className="btn-icon" aria-label="Close">
+            <X size={22} />
+          </button>
+          <button
+            onClick={() => setShowStationGrid(true)}
+            className="flex items-center gap-2 font-display text-base font-semibold"
+          >
+            <Grid3x3 size={18} />
+            {t("training:live.station_of_total", { current: stationIndex, total: totalStations })}
+          </button>
+          <button onClick={() => setShowMenu(true)} className="btn-icon" aria-label="Menu">
+            <MoreHorizontal size={22} />
+          </button>
+        </div>
+      </header>
+
+      <div className="container-app py-4 space-y-4">
+        {/* Inline-Edit für Tier/Distanz */}
+        <div className="grid grid-cols-2 gap-2">
           <input
             className="input"
-            placeholder="z. B. Reh, 80cm"
+            placeholder={t("training:live.animal_or_face")}
             value={animal}
             onChange={(e) => setAnimal(e.target.value)}
           />
-        </label>
-        <label>
-          <span className="text-xs text-archer-700">Distanz (m)</span>
           <input
             className="input"
             type="number"
             inputMode="decimal"
             step="0.5"
+            placeholder={t("training:live.distance_m")}
             value={distance}
             onChange={(e) => setDistance(e.target.value)}
           />
-        </label>
-      </div>
-
-      {Array.from({ length: slots }).map((_, i) => (
-        <div key={i}>
-          <div className="text-xs text-archer-700 mb-1">Pfeil {i + 1}</div>
-          <div className="grid grid-cols-5 sm:grid-cols-7 gap-2">
-            {zones.map((z) => {
-              const sel = zonesPicked[i] === z.code;
-              return (
-                <button
-                  key={z.code}
-                  type="button"
-                  onClick={() => setZone(i, z.code)}
-                  className={
-                    "py-3 rounded-md font-bold transition " +
-                    (sel
-                      ? "bg-archer-700 text-white"
-                      : "bg-archer-100 text-archer-900 hover:bg-archer-50")
-                  }
-                  title={z.hint}
-                >
-                  {z.label}
-                </button>
-              );
-            })}
-          </div>
         </div>
-      ))}
 
-      <div className="flex gap-2 pt-2">
-        <button type="button" className="btn-ghost" onClick={onCancel} disabled={busy}>
-          Abbrechen
-        </button>
-        {initial.id > 0 && (
-          <button
-            type="button"
-            className="btn-ghost text-red-600"
-            onClick={remove}
-            disabled={busy}
-          >
-            Löschen
-          </button>
+        {/* Stations-Total */}
+        <div className="text-center py-3">
+          <div className="score text-display leading-none animate-count-up" key={previewTotal}>
+            {previewTotal}
+          </div>
+          <div className="text-xs uppercase tracking-wider text-forest-300 mt-1">Punkte</div>
+        </div>
+
+        {/* Pfeil-Slots */}
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${slots}, 1fr)` }}>
+          {Array.from({ length: slots }).map((_, i) => {
+            const z = zonesPicked[i];
+            const isActive = activeSlot === i;
+            const points = previewArrowPoints(training.discipline, z, i, zonesPicked);
+            const isIfaaDisabled = ifaaFirstHit !== -1 && i > ifaaFirstHit;
+            return (
+              <button
+                key={i}
+                onClick={() => setActiveSlot(i)}
+                className={`tap-large rounded-2xl flex flex-col items-center justify-center transition active:scale-[0.98] ${
+                  isActive
+                    ? "bg-copper-50 border-2 border-copper-500"
+                    : z
+                    ? "bg-sunken dark:bg-sunken-dark border-2 border-transparent"
+                    : "bg-canvas dark:bg-canvas-dark border-2 border-dashed border-forest-200 dark:border-forest-700"
+                } ${isIfaaDisabled ? "opacity-50" : ""}`}
+              >
+                <div className="text-[10px] uppercase tracking-wider text-forest-300">
+                  {t("training:live.shot_n", { n: i + 1 })}
+                </div>
+                <div className={z ? "score text-2xl" : "text-2xl text-forest-300 font-bold"}>
+                  {z ?? "·"}
+                </div>
+                {z && points > 0 && (
+                  <div className="text-[10px] text-copper-700 font-mono tabular-nums">+{points}</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* IFAA-Hinweis */}
+        {training.discipline === "3d_ifaa" && (
+          <div className="text-xs text-forest-700 dark:text-forest-300 italic px-1 text-center">
+            {t("training:live.ifaa_hint")}
+          </div>
         )}
-        <button className="btn flex-1" onClick={save} disabled={busy}>
-          {busy ? "Speichere…" : "Station speichern"}
-        </button>
+
+        {/* Bullseye-Pad */}
+        <BullseyePad
+          discipline={training.discipline}
+          selectedZone={zonesPicked[activeSlot] ?? null}
+          onZoneSelect={(code) => handleZoneSelect(code)}
+          disabled={ifaaFirstHit !== -1 && activeSlot > ifaaFirstHit}
+        />
+
+        {/* Speichern */}
+        <div className="space-y-2 pt-4">
+          <button onClick={saveAndNext} className="btn w-full tap-large" disabled={busy}>
+            {busy ? t("training:live.saving") : t("training:live.save_station")} <ArrowRight size={18} />
+          </button>
+          <button onClick={save} className="btn-secondary w-full" disabled={busy}>
+            {t("training:live.save_station")}
+          </button>
+        </div>
+
+        {/* Bottom-Nav: prev/next */}
+        <div className="flex items-center justify-between pt-2">
+          <button
+            onClick={() => onNavigate(Math.max(1, stationIndex - 1))}
+            disabled={stationIndex <= 1}
+            className="btn-ghost"
+          >
+            <ArrowLeft size={18} /> {t("common:actions.previous")} {stationIndex - 1}
+          </button>
+          <button onClick={() => onNavigate(stationIndex + 1)} className="btn-ghost">
+            {t("common:actions.next")} {stationIndex + 1} <ArrowRight size={18} />
+          </button>
+        </div>
       </div>
+
+      {/* Stations-Grid (Bottom-Sheet-Style) */}
+      {showStationGrid && (
+        <BottomSheet onClose={() => setShowStationGrid(false)}>
+          <h3 className="font-display text-lg font-semibold mb-3">{t("training:detail.stations_title")}</h3>
+          <StationStatusGrid
+            targets={training.targets ?? []}
+            onPick={(idx) => {
+              setShowStationGrid(false);
+              onNavigate(idx);
+            }}
+          />
+        </BottomSheet>
+      )}
+
+      {/* Menu (Delete) */}
+      {showMenu && (
+        <BottomSheet onClose={() => setShowMenu(false)}>
+          {existing && (
+            <button onClick={deleteStation} className="btn-ghost danger w-full justify-start" disabled={busy}>
+              <Trash2 size={18} /> {t("training:live.delete_station")}
+            </button>
+          )}
+          <button onClick={() => setShowMenu(false)} className="btn-ghost w-full justify-start">
+            <X size={18} /> {t("common:actions.close")}
+          </button>
+        </BottomSheet>
+      )}
     </div>
   );
 }
 
-function computePreviewTotal(
-  discipline: Discipline,
-  zonesPicked: (string | null)[],
-  zones: ZoneDef[]
-): number {
-  // Lokale Vorschau-Berechnung — der Server berechnet beim Speichern erneut autoritativ.
-  // Für 3D-WA / Feld: jeder Pfeil unabhängig
-  const codeMap = new Map(zones.map((z) => [z.code, z]));
-  if (discipline === "3d_ifaa" || discipline === "3d_bowhunter") {
-    // Nur erster Treffer zählt
-    let firstHit = -1;
-    for (let i = 0; i < zonesPicked.length; i++) {
-      const z = zonesPicked[i];
-      if (z && z !== "miss") {
-        firstHit = i;
-        break;
-      }
-    }
-    if (firstHit < 0) return 0;
-    const z = zonesPicked[firstHit];
-    if (discipline === "3d_ifaa") {
-      const vital = z === "vital";
-      const seq = firstHit + 1;
-      const tbl: Record<string, number> = {
-        "true_1": 20, "true_2": 16, "true_3": 12,
-        "false_1": 18, "false_2": 14, "false_3": 10,
-      };
-      return tbl[`${vital}_${seq}`] ?? 0;
-    }
-    return 0;
-  }
-  let sum = 0;
-  for (const code of zonesPicked) {
-    if (!code || code === "miss") continue;
-    if (discipline === "field_wa") {
-      if (code === "X") sum += 6;
-      else sum += parseInt(code, 10) || 0;
-    } else if (discipline === "3d_wa") {
-      const m: Record<string, number> = { X: 11, inner: 10, outer: 8, body: 5 };
-      sum += m[code] ?? 0;
-    }
-    void codeMap;
-  }
-  return sum;
+function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-40 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-forest-900/50 animate-fade-in" />
+      <div
+        className="relative w-full max-w-2xl mx-auto bg-elevated dark:bg-elevated-dark rounded-t-3xl p-5 shadow-lift animate-slide-up pb-[max(env(safe-area-inset-bottom),1.25rem)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="h-1 w-12 rounded-full bg-forest-200 mx-auto mb-4" />
+        {children}
+      </div>
+    </div>
+  );
 }

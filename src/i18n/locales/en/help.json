@@ -1,0 +1,15 @@
+{
+  "title": "Help",
+  "subtitle": "Everything you need to know about the app and the sport.",
+  "search_placeholder": "Search…",
+  "categories": {
+    "getting_started": "Getting started",
+    "disciplines": "Disciplines",
+    "scoring": "Scoring systems",
+    "pegs": "Pegs & distances",
+    "bows": "Bow classes",
+    "glossary": "Glossary",
+    "app": "About the app"
+  },
+  "back_to_help": "← Back to help"
+}

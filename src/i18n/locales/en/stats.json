@@ -1,0 +1,27 @@
+{
+  "title": "Statistics",
+  "filters": {
+    "discipline": "Discipline",
+    "bow": "Bow",
+    "period": "Period",
+    "all": "All"
+  },
+  "no_data": "Not enough data yet — shoot a few trainings and it gets interesting.",
+  "score_trend": "Score over time",
+  "zone_distribution": "Zone distribution",
+  "arrow_consistency": "Arrow consistency",
+  "personal_bests": "Personal bests",
+  "no_pb": "No personal best for this combination yet.",
+  "arrow_avg": "Arrow {{n}} avg",
+  "training_summary": {
+    "title": "Summary",
+    "subtitle": "{{date}} · {{discipline}} · {{bow}}",
+    "score": "Total score",
+    "stations": "Targets",
+    "avg_per_station": "Avg per target",
+    "best_station": "Best target",
+    "worst_station": "Weakest target",
+    "by_arrow": "By arrow order",
+    "by_zone": "By hit zone"
+  }
+}

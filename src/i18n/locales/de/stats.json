@@ -1,0 +1,27 @@
+{
+  "title": "Statistik",
+  "filters": {
+    "discipline": "Disziplin",
+    "bow": "Bogen",
+    "period": "Zeitraum",
+    "all": "Alle"
+  },
+  "no_data": "Noch nicht genug Daten — schieße ein paar Trainings, dann wird's hier interessant.",
+  "score_trend": "Punkte-Verlauf",
+  "zone_distribution": "Zonen-Verteilung",
+  "arrow_consistency": "Pfeil-Konsistenz",
+  "personal_bests": "Persönliche Bestleistungen",
+  "no_pb": "Noch keine Bestleistung in dieser Kombination.",
+  "arrow_avg": "Pfeil {{n}} Ø",
+  "training_summary": {
+    "title": "Auswertung",
+    "subtitle": "{{date}} · {{discipline}} · {{bow}}",
+    "score": "Gesamt-Score",
+    "stations": "Stationen",
+    "avg_per_station": "Ø pro Station",
+    "best_station": "Beste Station",
+    "worst_station": "Schwächste Station",
+    "by_arrow": "Nach Pfeilreihenfolge",
+    "by_zone": "Nach Trefferzone"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "title": "Profile",
+  "account": "Account",
+  "display_name": "Display name",
+  "email": "Email",
+  "settings": "Settings",
+  "language": "Language",
+  "theme": "Appearance",
+  "theme_light": "Light",
+  "theme_dark": "Dark",
+  "theme_auto": "Auto",
+  "default_bow": "Default bow",
+  "save": "Save",
+  "saved": "Saved",
+  "logout": "Sign out",
+  "danger_zone": "Danger zone",
+  "delete_account": "Delete account",
+  "delete_account_confirm": "Really delete account? All trainings, courses and data will be permanently removed."
+}

@@ -1,0 +1,36 @@
+{
+  "title": "Parcours",
+  "my_parcours": "Meine Parcours",
+  "public_parcours": "Öffentliche Parcours",
+  "new": "Neuer Parcours",
+  "empty_state": "Du hast noch keinen Parcours angelegt.",
+  "create_cta": "Ersten Parcours anlegen",
+  "form": {
+    "name": "Name",
+    "name_placeholder": "z.B. Parcours Eichwald",
+    "description": "Beschreibung",
+    "description_placeholder": "Anzahl Stationen, Schwierigkeit, Besonderheiten …",
+    "address": "Adresse / Ort",
+    "address_placeholder": "Ort oder vollständige Adresse",
+    "coordinates": "Koordinaten (auf Karte tippen)",
+    "image": "Foto",
+    "upload_image": "Bild hochladen",
+    "drop_image": "Bild hierher ziehen oder antippen",
+    "is_public": "Öffentlich (andere Schützen können diesen Parcours auch nutzen)",
+    "submit": "Parcours speichern",
+    "submitting": "Speichere…"
+  },
+  "detail": {
+    "open_map": "Auf Karte anzeigen",
+    "start_training": "Hier trainieren",
+    "edit": "Parcours bearbeiten",
+    "delete": "Parcours löschen",
+    "delete_confirm": "Diesen Parcours wirklich löschen? Trainings bleiben erhalten, verlieren aber die Parcours-Zuordnung."
+  },
+  "map": {
+    "show_list": "Liste",
+    "show_map": "Karte",
+    "your_location": "Dein Standort",
+    "no_location": "Standort nicht verfügbar"
+  }
+}
