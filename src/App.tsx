@@ -7,6 +7,8 @@ import Verify from "./pages/Verify";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import NewTraining from "./pages/NewTraining";
+import TrainingDetail from "./pages/TrainingDetail";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -29,6 +31,22 @@ export default function App() {
           element={
             <RequireAuth>
               <Dashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/trainings/new"
+          element={
+            <RequireAuth>
+              <NewTraining />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/trainings/:id"
+          element={
+            <RequireAuth>
+              <TrainingDetail />
             </RequireAuth>
           }
         />
