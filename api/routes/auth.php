@@ -105,7 +105,7 @@ function auth_login(): void
 
     if (!$email || !$pass) res_error('E-Mail und Passwort erforderlich', 400);
 
-    $stmt = db()->prepare('SELECT id, email, password_hash, display_name, status FROM users WHERE email = ?');
+    $stmt = db()->prepare('SELECT id, email, password_hash, display_name, status, role FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $u = $stmt->fetch();
 
@@ -116,7 +116,7 @@ function auth_login(): void
         res_error('Bitte E-Mail-Adresse zuerst bestätigen', 403);
     }
 
-    $token = jwt_sign(['uid' => (int)$u['id']]);
+    $token = jwt_sign(['uid' => (int)$u['id'], 'role' => $u['role']]);
     res_json([
         'token' => $token,
         'user' => [
@@ -124,6 +124,7 @@ function auth_login(): void
             'email'        => $u['email'],
             'display_name' => $u['display_name'],
             'status'       => $u['status'],
+            'role'         => $u['role'],
         ],
     ]);
 }

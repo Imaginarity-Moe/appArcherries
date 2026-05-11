@@ -9,11 +9,14 @@ import {
 } from "react";
 import { api, getToken, setToken } from "../api/client";
 
+export type Role = "admin" | "user" | "guest";
+
 export type User = {
   id: number;
   email: string;
   display_name: string | null;
   status: "pending" | "active";
+  role: Role;
 };
 
 type AuthState = {
