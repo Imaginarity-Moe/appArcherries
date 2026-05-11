@@ -1,0 +1,15 @@
+option batch abort
+option confirm off
+option exclude "node_modules/; .git/; .env; .env.production; *.log; .DS_Store"
+
+# Verbindung (Host-Key wird beim ersten Lauf abgenommen — danach: festen Fingerprint einsetzen)
+open sftp://%FTP_USER%:%FTP_PASS%@%FTP_HOST%:22 -hostkey="*"
+
+# Frontend (dist/) -> %REMOTE_ROOT%
+synchronize remote -delete "dist" "%REMOTE_ROOT%"
+
+# Backend (api/) -> %REMOTE_ROOT%/api (NICHT -delete, schützt server-seitige .env)
+synchronize remote "api" "%REMOTE_ROOT%/api"
+
+close
+exit

@@ -1,0 +1,25 @@
+# Secrets
+.env
+.env.local
+.env.production
+.env.deploy
+info.txt
+
+# Node
+node_modules/
+dist/
+*.log
+npm-debug.log*
+
+# PHP
+api/vendor/
+composer.phar
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build artefacts
+*.tsbuildinfo

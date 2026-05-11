@@ -1,0 +1,25 @@
+RewriteEngine On
+
+# /api/* nicht in die SPA umleiten
+RewriteCond %{REQUEST_URI} ^/api/ [NC]
+RewriteRule ^ - [L]
+
+# Echte Dateien & Ordner direkt ausliefern (Assets, Bilder, etc.)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Alles andere -> SPA-Entrypoint
+RewriteRule . /index.html [L]
+
+# Sicherheits-Header
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# .env nie ausliefern
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
