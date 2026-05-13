@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Target, TrendingUp, Calendar, Plus } from "lucide-react";
+import { Target, TrendingUp, Calendar, Plus, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import {
   BOW_LABELS,
@@ -135,13 +135,19 @@ function GlimpseCard({
 }
 
 function TrainingCard({ item }: { item: TrainingListItem }) {
-  // Achievement-Ahnung der Sparkline: simulieren via Zonen-Tendenz ist nicht möglich auf der List-Seite.
-  // Wir nutzen daher den Score-Wert als 1-Punkt-Skala — die echte Sparkline kommt auf der Detail-Seite.
   return (
     <Link to={`/trainings/${item.id}`} className="card-interactive flex items-center justify-between gap-4">
       <div className="min-w-0 flex-1">
-        <div className="text-xs text-forest-700 dark:text-forest-300 mb-0.5">
-          {fmtDate(item.started_at)}
+        <div className="text-xs text-forest-700 dark:text-forest-300 mb-0.5 flex items-center gap-2">
+          <span>{fmtDate(item.started_at)}</span>
+          {item.is_shared && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-copper-600 bg-copper-50 dark:bg-copper-700/20 rounded-full px-1.5 py-0.5"
+              title="Geteilte Runde — du bist Gast"
+            >
+              <Users size={10} /> Geteilt
+            </span>
+          )}
         </div>
         <div className="font-semibold truncate">
           {DISCIPLINE_LABELS[item.discipline]} · {BOW_LABELS[item.bow_type]}

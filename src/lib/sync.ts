@@ -1,0 +1,151 @@
+import { api, ApiError } from "../api/client";
+import { db } from "./db";
+import { invalidateCache } from "./cache";
+import {
+  listPending,
+  markFailed,
+  notifyOutboxChanged,
+  removeEntry,
+} from "./outbox";
+
+let draining = false;
+let scheduledTimer: number | null = null;
+
+/**
+ * Versucht alle ausstehenden Outbox-Einträge an den Server zu senden.
+ * Wird automatisch bei `online`-Event aufgerufen + alle 30s wenn online.
+ */
+export async function drain(): Promise<{ sent: number; failed: number }> {
+  if (draining) return { sent: 0, failed: 0 };
+  if (!navigator.onLine) return { sent: 0, failed: 0 };
+
+  draining = true;
+  let sent = 0;
+  let failed = 0;
+
+  try {
+    const entries = await listPending();
+    for (const entry of entries) {
+      if (!navigator.onLine) break;
+      try {
+        const resolvedPath = await resolveTempIds(entry.path);
+        const resolvedBody = await resolveTempIdsInBody(entry.body);
+
+        const init: RequestInit = { method: entry.method };
+        if (entry.method !== "DELETE" && resolvedBody !== undefined) {
+          init.body = JSON.stringify(resolvedBody);
+        }
+        const response = await api<{ training?: { id: number } }>(resolvedPath, init);
+
+        // POST /trainings legt ein Training mit temporärer ID an — Mapping speichern
+        if (entry.method === "POST" && entry.path === "/trainings") {
+          const tempId = extractTempIdFromBody(entry.body);
+          if (tempId && response.training?.id) {
+            await saveIdMapping(tempId, response.training.id, "training");
+          }
+        }
+
+        // Caches die zu diesem Endpoint passen invalidieren
+        await invalidateForPath(entry.path);
+
+        await removeEntry(entry.id!);
+        sent++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        // 4xx-Fehler (außer 408, 429) sind nicht durch Retry lösbar — verwerfen
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) {
+          console.warn("[sync] dropping unrecoverable entry", entry, err);
+          await removeEntry(entry.id!);
+        } else {
+          await markFailed(entry.id!, msg);
+          failed++;
+        }
+      }
+    }
+  } finally {
+    draining = false;
+    notifyOutboxChanged();
+  }
+
+  return { sent, failed };
+}
+
+async function resolveTempIds(path: string): Promise<string> {
+  const conn = await db();
+  let resolved = path;
+  // Pattern: /trainings/tmp_xyz oder /trainings/tmp_xyz/targets
+  const match = resolved.match(/tmp_[a-zA-Z0-9]+/g);
+  if (match) {
+    for (const tempId of match) {
+      const mapping = await conn.get("id_map", tempId);
+      if (mapping) resolved = resolved.split(tempId).join(String(mapping.realId));
+    }
+  }
+  return resolved;
+}
+
+async function resolveTempIdsInBody(body: unknown): Promise<unknown> {
+  if (body === null || body === undefined) return body;
+  const conn = await db();
+  const json = JSON.stringify(body);
+  const matches = json.match(/tmp_[a-zA-Z0-9]+/g);
+  if (!matches) return body;
+  let resolved = json;
+  for (const tempId of matches) {
+    const mapping = await conn.get("id_map", tempId);
+    if (mapping) resolved = resolved.split(`"${tempId}"`).join(String(mapping.realId));
+  }
+  return JSON.parse(resolved);
+}
+
+function extractTempIdFromBody(body: unknown): string | null {
+  if (body && typeof body === "object" && "tempId" in body) {
+    return (body as { tempId: string }).tempId;
+  }
+  return null;
+}
+
+async function saveIdMapping(tempId: string, realId: number, resource: "training" | "parcours"): Promise<void> {
+  const conn = await db();
+  await conn.put("id_map", { tempId, realId, resource, resolvedAt: Date.now() });
+}
+
+async function invalidateForPath(path: string): Promise<void> {
+  // Liste-Caches immer invalidieren bei zugehörigem POST/PATCH/DELETE
+  if (path.startsWith("/trainings")) {
+    await invalidateCache(/^\/trainings/);
+    await invalidateCache(/^\/stats/);
+  } else if (path.startsWith("/parcours")) {
+    await invalidateCache(/^\/parcours/);
+  }
+}
+
+/** Wird aus main.tsx beim App-Start aufgerufen. */
+export function startSync(): void {
+  // Sofort versuchen
+  drain().catch((e) => console.warn("[sync] initial drain failed", e));
+
+  // Bei Reconnect
+  window.addEventListener("online", () => {
+    drain().catch((e) => console.warn("[sync] online drain failed", e));
+  });
+
+  // Periodisch (alle 30s) — fängt langsamen Online-Übergang ab, wo `online`-Event verspätet kommt
+  scheduledTimer = window.setInterval(() => {
+    if (navigator.onLine) drain().catch(() => {});
+  }, 30_000);
+}
+
+export function stopSync(): void {
+  if (scheduledTimer !== null) {
+    clearInterval(scheduledTimer);
+    scheduledTimer = null;
+  }
+}
+
+/** Hilfs-Funktion: prüft ob ein Fehler ein Netzwerkfehler ist (vs. 4xx/5xx vom Server). */
+export function isNetworkError(err: unknown): boolean {
+  if (err instanceof ApiError) return false; // Server hat geantwortet
+  if (err instanceof TypeError) return true; // "Failed to fetch"
+  return !navigator.onLine;
+}

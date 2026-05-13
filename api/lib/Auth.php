@@ -27,3 +27,27 @@ function require_auth(): array
         'role'         => $u['role'],
     ];
 }
+
+/**
+ * Optionale Auth: gibt den User zurück wenn ein gültiges JWT vorhanden ist,
+ * sonst null. Bricht nicht ab.
+ *
+ * @return array{id:int, email:string, display_name:?string, status:string, role:string}|null
+ */
+function try_auth(): ?array
+{
+    $claims = jwt_from_auth_header();
+    if (!$claims || empty($claims['uid'])) return null;
+
+    $stmt = db()->prepare('SELECT id, email, display_name, status, role FROM users WHERE id = ?');
+    $stmt->execute([(int)$claims['uid']]);
+    $u = $stmt->fetch();
+    if (!$u || $u['status'] !== 'active') return null;
+    return [
+        'id'           => (int)$u['id'],
+        'email'        => $u['email'],
+        'display_name' => $u['display_name'],
+        'status'       => $u['status'],
+        'role'         => $u['role'],
+    ];
+}

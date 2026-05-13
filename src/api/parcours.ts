@@ -1,4 +1,4 @@
-import { api, getToken } from "./client";
+import { api, apiCached, getToken } from "./client";
 
 export type Parcours = {
   id: number;
@@ -16,11 +16,11 @@ export type Parcours = {
 };
 
 export async function listParcours(includePublic = false): Promise<{ parcours: Parcours[] }> {
-  return api(`/parcours${includePublic ? "?include_public=1" : ""}`);
+  return apiCached(`/parcours${includePublic ? "?include_public=1" : ""}`);
 }
 
 export async function getParcours(id: number): Promise<{ parcours: Parcours }> {
-  return api(`/parcours/${id}`);
+  return apiCached(`/parcours/${id}`);
 }
 
 export async function createParcours(body: Partial<Parcours>): Promise<{ parcours: Parcours }> {

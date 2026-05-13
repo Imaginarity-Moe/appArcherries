@@ -85,8 +85,17 @@ function score_arrow_seq(string $discipline, string $zone, int $seq): int
     }
 
     if ($discipline === '3d_bowhunter') {
-        // TODO: IFAA-Bowhunter-Standard-Wertung 5/4/3 absichern. Vorerst Platzhalter.
-        return 0;
+        // IFAA Bowhunter Round: 3 Pfeile, nur erster treffender zählt.
+        // Vital 5/4/3, Wound 3/2/1 je nach Pfeil-Nummer.
+        return match (true) {
+            $is_vital  && $seq === 1 => 5,
+            $is_vital  && $seq === 2 => 4,
+            $is_vital  && $seq === 3 => 3,
+            !$is_vital && $seq === 1 => 3,
+            !$is_vital && $seq === 2 => 2,
+            !$is_vital && $seq === 3 => 1,
+            default                  => 0,
+        };
     }
 
     return 0;

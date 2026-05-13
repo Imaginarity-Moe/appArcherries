@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/Auth.php';
 require_once __DIR__ . '/../lib/Scoring.php';
+require_once __DIR__ . '/../lib/Uploads.php';
+require_once __DIR__ . '/invitations.php';
+
+const STATIONS_UPLOAD_DIR = '/uploads/stations';
 
 const VALID_DISCIPLINES = ['3d_wa', '3d_ifaa', '3d_bowhunter', 'field_wa', 'simple'];
 const VALID_BOW_TYPES   = ['recurve', 'compound', 'barebow', 'traditional'];
@@ -14,10 +18,12 @@ function handle_trainings(string $method, string $path): void
     $sub  = substr($path, strlen('/trainings'));
 
     // Patterns:
-    //   ''                                  -> Liste + Create
-    //   '/<id>'                             -> Detail / Update / Delete
-    //   '/<id>/targets'                     -> Target erstellen
-    //   '/<id>/targets/<tid>'               -> Target updaten / löschen
+    //   ''                                       -> Liste + Create
+    //   '/<id>'                                  -> Detail / Update / Delete
+    //   '/<id>/invitations'                      -> Invite-Liste + Create
+    //   '/<id>/invitations/<invid>'              -> Invite löschen
+    //   '/<id>/targets'                          -> Target erstellen
+    //   '/<id>/targets/<tid>'                    -> Target updaten / löschen
 
     if ($sub === '' || $sub === '/') {
         match ($method) {
@@ -34,6 +40,26 @@ function handle_trainings(string $method, string $path): void
             'GET'    => trainings_detail($user['id'], $id),
             'PATCH'  => trainings_update($user['id'], $id),
             'DELETE' => trainings_delete($user['id'], $id),
+            default  => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+
+    if (preg_match('#^/(\d+)/invitations$#', $sub, $m)) {
+        $id = (int)$m[1];
+        match ($method) {
+            'GET'  => invitations_list($user['id'], $id),
+            'POST' => invitations_create($user['id'], $id),
+            default => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+
+    if (preg_match('#^/(\d+)/invitations/(\d+)$#', $sub, $m)) {
+        $id    = (int)$m[1];
+        $invid = (int)$m[2];
+        match ($method) {
+            'DELETE' => invitations_delete($user['id'], $id, $invid),
             default  => res_error('Method not allowed', 405),
         };
         return;
@@ -59,7 +85,59 @@ function handle_trainings(string $method, string $path): void
         return;
     }
 
+    if (preg_match('#^/(\d+)/targets/(\d+)/image$#', $sub, $m)) {
+        $id  = (int)$m[1];
+        $tid = (int)$m[2];
+        match ($method) {
+            'POST'   => target_image_upload($user['id'], $id, $tid),
+            'DELETE' => target_image_delete($user['id'], $id, $tid),
+            default  => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+
     res_error('Not found', 404);
+}
+
+function target_image_upload(int $user_id, int $training_id, int $tid): void
+{
+    $pid = user_participant_id($user_id, $training_id);
+    if ($pid === null) res_error('Not found', 404);
+
+    $stmt = db()->prepare(
+        'SELECT image_path FROM training_targets WHERE id = ? AND training_id = ? AND participant_id = ?'
+    );
+    $stmt->execute([$tid, $training_id, $pid]);
+    $row = $stmt->fetch();
+    if (!$row) res_error('Not found', 404);
+
+    $rel = process_image_upload(STATIONS_UPLOAD_DIR, sprintf('s%d', $tid));
+
+    // Altes Bild löschen
+    delete_upload_file($row['image_path'] ?? null);
+
+    db()->prepare('UPDATE training_targets SET image_path = ? WHERE id = ?')
+        ->execute([$rel, $tid]);
+
+    res_json(['ok' => true, 'image_path' => $rel, 'image_url' => $rel]);
+}
+
+function target_image_delete(int $user_id, int $training_id, int $tid): void
+{
+    $pid = user_participant_id($user_id, $training_id);
+    if ($pid === null) res_error('Not found', 404);
+
+    $stmt = db()->prepare(
+        'SELECT image_path FROM training_targets WHERE id = ? AND training_id = ? AND participant_id = ?'
+    );
+    $stmt->execute([$tid, $training_id, $pid]);
+    $row = $stmt->fetch();
+    if (!$row) res_error('Not found', 404);
+
+    delete_upload_file($row['image_path'] ?? null);
+    db()->prepare('UPDATE training_targets SET image_path = NULL WHERE id = ?')->execute([$tid]);
+
+    res_json(['ok' => true]);
 }
 
 // ─── Trainings ────────────────────────────────────────────────────────────────
@@ -70,34 +148,43 @@ function trainings_list(int $user_id): void
     $limit = min(100, max(1, (int)(req_query('limit', '20') ?? '20')));
     $off   = ($page - 1) * $limit;
 
+    // Trainings, in denen User Owner ODER Participant ist
     $stmt = db()->prepare(
-        'SELECT t.id, t.started_at, t.ended_at, t.discipline, t.bow_type, t.peg_color,
-                t.distance_marked, t.location, t.summary_score, t.parcours_id, p.name AS parcours_name
+        'SELECT DISTINCT t.id, t.started_at, t.ended_at, t.discipline, t.bow_type, t.peg_color,
+                t.distance_marked, t.location, t.summary_score, t.parcours_id, p.name AS parcours_name,
+                t.user_id AS owner_user_id
          FROM trainings t
          LEFT JOIN parcours p ON p.id = t.parcours_id
-         WHERE t.user_id = ?
+         LEFT JOIN training_participants tp ON tp.training_id = t.id AND tp.user_id = ?
+         WHERE t.user_id = ? OR tp.user_id IS NOT NULL
          ORDER BY t.started_at DESC LIMIT ? OFFSET ?'
     );
     $stmt->bindValue(1, $user_id, PDO::PARAM_INT);
-    $stmt->bindValue(2, $limit, PDO::PARAM_INT);
-    $stmt->bindValue(3, $off,   PDO::PARAM_INT);
+    $stmt->bindValue(2, $user_id, PDO::PARAM_INT);
+    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
+    $stmt->bindValue(4, $off,   PDO::PARAM_INT);
     $stmt->execute();
     $items = $stmt->fetchAll();
 
     foreach ($items as &$it) {
-        $it['id'] = (int)$it['id'];
+        $it['id']            = (int)$it['id'];
+        $it['owner_user_id'] = (int)$it['owner_user_id'];
+        $it['is_shared']     = $it['owner_user_id'] !== $user_id;
         if ($it['summary_score'] !== null) $it['summary_score'] = (int)$it['summary_score'];
-        // Total aus shots berechnen wenn keine summary
         if ($it['summary_score'] === null) {
-            $it['total_score'] = training_total($user_id, (int)$it['id']);
+            $it['total_score'] = participant_total($user_id, (int)$it['id']);
         } else {
             $it['total_score'] = (int)$it['summary_score'];
         }
     }
     unset($it);
 
-    $count_stmt = db()->prepare('SELECT COUNT(*) FROM trainings WHERE user_id = ?');
-    $count_stmt->execute([$user_id]);
+    $count_stmt = db()->prepare(
+        'SELECT COUNT(DISTINCT t.id) FROM trainings t
+         LEFT JOIN training_participants tp ON tp.training_id = t.id AND tp.user_id = ?
+         WHERE t.user_id = ? OR tp.user_id IS NOT NULL'
+    );
+    $count_stmt->execute([$user_id, $user_id]);
     $total = (int)$count_stmt->fetchColumn();
 
     res_json(['trainings' => $items, 'total' => $total, 'page' => $page, 'limit' => $limit]);
@@ -118,12 +205,10 @@ function trainings_create(int $user_id): void
     }
 
     $started_at = (string)($in['started_at'] ?? date('Y-m-d H:i:s'));
-    // Sanity: erlauben "2026-05-11T18:30" und "2026-05-11 18:30:00"
     $ts = strtotime($started_at);
     if ($ts === false) res_error('Ungültiges started_at');
     $started_at = date('Y-m-d H:i:s', $ts);
 
-    // Parcours-Validierung
     $parcours_id = null;
     if (isset($in['parcours_id']) && $in['parcours_id'] !== null) {
         $pid = (int)$in['parcours_id'];
@@ -132,54 +217,83 @@ function trainings_create(int $user_id): void
         if ($s->fetch()) $parcours_id = $pid;
     }
 
-    $stmt = db()->prepare(
-        'INSERT INTO trainings (user_id, parcours_id, started_at, discipline, bow_type, peg_color, distance_marked, location, weather, notes, summary_score)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    $stmt->execute([
-        $user_id,
-        $parcours_id,
-        $started_at,
-        $discipline,
-        $bow_type,
-        $peg_color,
-        isset($in['distance_marked']) ? ($in['distance_marked'] ? 1 : 0) : null,
-        isset($in['location']) ? (string)$in['location'] : null,
-        isset($in['weather'])  ? (string)$in['weather']  : null,
-        isset($in['notes'])    ? (string)$in['notes']    : null,
-        isset($in['summary_score']) ? (int)$in['summary_score'] : null,
-    ]);
-    $id = (int)db()->lastInsertId();
+    db()->beginTransaction();
+    try {
+        $stmt = db()->prepare(
+            'INSERT INTO trainings (user_id, parcours_id, started_at, discipline, bow_type, peg_color, distance_marked, location, weather, notes, summary_score)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            $user_id,
+            $parcours_id,
+            $started_at,
+            $discipline,
+            $bow_type,
+            $peg_color,
+            isset($in['distance_marked']) ? ($in['distance_marked'] ? 1 : 0) : null,
+            isset($in['location']) ? (string)$in['location'] : null,
+            isset($in['weather'])  ? (string)$in['weather']  : null,
+            isset($in['notes'])    ? (string)$in['notes']    : null,
+            isset($in['summary_score']) ? (int)$in['summary_score'] : null,
+        ]);
+        $id = (int)db()->lastInsertId();
+
+        // Owner-Participant anlegen
+        db()->prepare(
+            'INSERT INTO training_participants (training_id, user_id, role) VALUES (?, ?, ?)'
+        )->execute([$id, $user_id, 'owner']);
+
+        db()->commit();
+    } catch (Throwable $e) {
+        db()->rollBack();
+        throw $e;
+    }
+
     trainings_detail($user_id, $id, 201);
 }
 
 function trainings_detail(int $user_id, int $id, int $status = 200): void
 {
+    if (!user_can_access_training($user_id, $id)) res_error('Not found', 404);
+
     $stmt = db()->prepare(
         'SELECT t.*, p.name AS parcours_name
          FROM trainings t LEFT JOIN parcours p ON p.id = t.parcours_id
-         WHERE t.id = ? AND t.user_id = ?'
+         WHERE t.id = ?'
     );
-    $stmt->execute([$id, $user_id]);
+    $stmt->execute([$id]);
     $t = $stmt->fetch();
     if (!$t) res_error('Not found', 404);
 
+    // Alle Participants laden
+    $p_stmt = db()->prepare(
+        'SELECT tp.id, tp.user_id, tp.role, tp.joined_at, u.display_name, u.role AS user_role
+         FROM training_participants tp
+         JOIN users u ON u.id = tp.user_id
+         WHERE tp.training_id = ?
+         ORDER BY tp.role = "owner" DESC, tp.joined_at ASC'
+    );
+    $p_stmt->execute([$id]);
+    $participants = $p_stmt->fetchAll();
+
+    // Alle Targets aller Participants
     $tgt_stmt = db()->prepare(
-        'SELECT id, target_index, animal_or_face, distance_m, notes
-         FROM training_targets WHERE training_id = ? ORDER BY target_index ASC'
+        'SELECT id, participant_id, target_index, animal_or_face, distance_m, notes, image_path
+         FROM training_targets WHERE training_id = ? ORDER BY participant_id, target_index ASC'
     );
     $tgt_stmt->execute([$id]);
     $targets = $tgt_stmt->fetchAll();
 
     $shot_stmt = db()->prepare(
-        'SELECT id, arrow_seq, zone, points
-         FROM shots WHERE target_id = ? ORDER BY arrow_seq ASC'
+        'SELECT id, arrow_seq, zone, points FROM shots WHERE target_id = ? ORDER BY arrow_seq ASC'
     );
 
-    $running_total = 0;
+    // Pro Participant: Total & seine Targets
+    $participant_totals = [];
     foreach ($targets as &$t2) {
-        $t2['id']           = (int)$t2['id'];
-        $t2['target_index'] = (int)$t2['target_index'];
+        $t2['id']             = (int)$t2['id'];
+        $t2['participant_id'] = (int)$t2['participant_id'];
+        $t2['target_index']   = (int)$t2['target_index'];
         if ($t2['distance_m'] !== null) $t2['distance_m'] = (float)$t2['distance_m'];
 
         $shot_stmt->execute([$t2['id']]);
@@ -192,17 +306,36 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
             $sum           += $s['points'];
         }
         unset($s);
-        $t2['shots']       = $shots;
+        $t2['shots']        = $shots;
         $t2['target_total'] = $sum;
-        $running_total    += $sum;
+        $participant_totals[$t2['participant_id']] = ($participant_totals[$t2['participant_id']] ?? 0) + $sum;
     }
     unset($t2);
 
-    $t['id'] = (int)$t['id'];
-    if ($t['summary_score'] !== null) $t['summary_score'] = (int)$t['summary_score'];
+    foreach ($participants as &$p) {
+        $p['id']      = (int)$p['id'];
+        $p['user_id'] = (int)$p['user_id'];
+        $p['total_score'] = (int)($participant_totals[$p['id']] ?? 0);
+        $p['is_self']     = $p['user_id'] === $user_id;
+    }
+    unset($p);
+
+    // Aktueller User: eigene participant_id ermitteln
+    $own_pid = null;
+    foreach ($participants as $p) {
+        if ($p['user_id'] === $user_id) { $own_pid = (int)$p['id']; break; }
+    }
+
+    $t['id']             = (int)$t['id'];
+    $t['user_id']        = (int)$t['user_id'];
+    $t['is_owner']       = $t['user_id'] === $user_id;
+    $t['my_participant_id'] = $own_pid;
+    if ($t['summary_score']   !== null) $t['summary_score']   = (int)$t['summary_score'];
     if ($t['distance_marked'] !== null) $t['distance_marked'] = (bool)$t['distance_marked'];
-    $t['targets']     = $targets;
-    $t['total_score'] = $t['summary_score'] ?? $running_total;
+    $t['targets']      = $targets;
+    $t['participants'] = $participants;
+    // total_score = own participant's total (UI kann das pro-Participant anzeigen)
+    $t['total_score']  = (int)($participant_totals[$own_pid] ?? 0);
 
     res_json(['training' => $t], $status);
 }
@@ -268,7 +401,9 @@ function trainings_delete(int $user_id, int $id): void
 
 function targets_create(int $user_id, int $training_id): void
 {
-    if (!training_owned($user_id, $training_id)) res_error('Not found', 404);
+    $pid = user_participant_id($user_id, $training_id);
+    if ($pid === null) res_error('Not found', 404);
+
     $in   = req_json();
     $disc = training_discipline($training_id);
 
@@ -277,10 +412,9 @@ function targets_create(int $user_id, int $training_id): void
 
     db()->beginTransaction();
     try {
-        // ON DUPLICATE bei target_index: existierendes target nehmen, sonst neu
         $stmt = db()->prepare(
-            'INSERT INTO training_targets (training_id, target_index, animal_or_face, distance_m, notes)
-             VALUES (?, ?, ?, ?, ?)
+            'INSERT INTO training_targets (training_id, participant_id, target_index, animal_or_face, distance_m, notes)
+             VALUES (?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
                animal_or_face = VALUES(animal_or_face),
                distance_m     = VALUES(distance_m),
@@ -288,6 +422,7 @@ function targets_create(int $user_id, int $training_id): void
         );
         $stmt->execute([
             $training_id,
+            $pid,
             $target_index,
             isset($in['animal_or_face']) ? (string)$in['animal_or_face'] : null,
             isset($in['distance_m'])     ? (float)$in['distance_m']      : null,
@@ -295,9 +430,10 @@ function targets_create(int $user_id, int $training_id): void
         ]);
         $tid = (int)db()->lastInsertId();
         if ($tid === 0) {
-            // war ein UPDATE — ID nachholen
-            $f = db()->prepare('SELECT id FROM training_targets WHERE training_id = ? AND target_index = ?');
-            $f->execute([$training_id, $target_index]);
+            $f = db()->prepare(
+                'SELECT id FROM training_targets WHERE training_id = ? AND participant_id = ? AND target_index = ?'
+            );
+            $f->execute([$training_id, $pid, $target_index]);
             $tid = (int)$f->fetchColumn();
         }
 
@@ -316,10 +452,11 @@ function targets_create(int $user_id, int $training_id): void
 
 function targets_update(int $user_id, int $training_id, int $tid): void
 {
-    if (!training_owned($user_id, $training_id)) res_error('Not found', 404);
+    $pid = user_participant_id($user_id, $training_id);
+    if ($pid === null) res_error('Not found', 404);
 
-    $stmt = db()->prepare('SELECT id FROM training_targets WHERE id = ? AND training_id = ?');
-    $stmt->execute([$tid, $training_id]);
+    $stmt = db()->prepare('SELECT id FROM training_targets WHERE id = ? AND training_id = ? AND participant_id = ?');
+    $stmt->execute([$tid, $training_id, $pid]);
     if (!$stmt->fetch()) res_error('Not found', 404);
 
     $in   = req_json();
@@ -351,8 +488,10 @@ function targets_update(int $user_id, int $training_id, int $tid): void
 
 function targets_delete(int $user_id, int $training_id, int $tid): void
 {
-    if (!training_owned($user_id, $training_id)) res_error('Not found', 404);
-    db()->prepare('DELETE FROM training_targets WHERE id = ? AND training_id = ?')->execute([$tid, $training_id]);
+    $pid = user_participant_id($user_id, $training_id);
+    if ($pid === null) res_error('Not found', 404);
+    db()->prepare('DELETE FROM training_targets WHERE id = ? AND training_id = ? AND participant_id = ?')
+        ->execute([$tid, $training_id, $pid]);
     res_json(['ok' => true]);
 }
 
@@ -365,6 +504,26 @@ function training_owned(int $user_id, int $training_id): bool
     return (bool)$s->fetchColumn();
 }
 
+function user_can_access_training(int $user_id, int $training_id): bool
+{
+    $s = db()->prepare(
+        'SELECT 1 FROM trainings t
+         LEFT JOIN training_participants tp ON tp.training_id = t.id AND tp.user_id = ?
+         WHERE t.id = ? AND (t.user_id = ? OR tp.user_id IS NOT NULL)
+         LIMIT 1'
+    );
+    $s->execute([$user_id, $training_id, $user_id]);
+    return (bool)$s->fetchColumn();
+}
+
+function user_participant_id(int $user_id, int $training_id): ?int
+{
+    $s = db()->prepare('SELECT id FROM training_participants WHERE training_id = ? AND user_id = ?');
+    $s->execute([$training_id, $user_id]);
+    $v = $s->fetchColumn();
+    return $v === false ? null : (int)$v;
+}
+
 function training_discipline(int $training_id): string
 {
     $s = db()->prepare('SELECT discipline FROM trainings WHERE id = ?');
@@ -372,14 +531,14 @@ function training_discipline(int $training_id): string
     return (string)$s->fetchColumn();
 }
 
-function training_total(int $user_id, int $training_id): int
+function participant_total(int $user_id, int $training_id): int
 {
     $s = db()->prepare(
         'SELECT COALESCE(SUM(s.points), 0)
          FROM shots s
-         JOIN training_targets t ON t.id = s.target_id
-         JOIN trainings tr        ON tr.id = t.training_id
-         WHERE tr.id = ? AND tr.user_id = ?'
+         JOIN training_targets t  ON t.id = s.target_id
+         JOIN training_participants tp ON tp.id = t.participant_id
+         WHERE t.training_id = ? AND tp.user_id = ?'
     );
     $s->execute([$training_id, $user_id]);
     return (int)$s->fetchColumn();
@@ -387,7 +546,6 @@ function training_total(int $user_id, int $training_id): int
 
 function replace_shots(int $target_id, string $discipline, array $shots): void
 {
-    // Eingehende Shots normalisieren
     $clean = [];
     foreach ($shots as $s) {
         if (!is_array($s)) continue;
@@ -395,10 +553,8 @@ function replace_shots(int $target_id, string $discipline, array $shots): void
         if ($seq < 1) continue;
         $clean[] = ['arrow_seq' => $seq, 'zone' => isset($s['zone']) ? (string)$s['zone'] : null];
     }
-    // Punkte berechnen
     $scored = score_target($discipline, $clean);
 
-    // Alte Shots löschen, neue einfügen
     db()->prepare('DELETE FROM shots WHERE target_id = ?')->execute([$target_id]);
     if (!$scored) return;
     $stmt = db()->prepare('INSERT INTO shots (target_id, arrow_seq, zone, points) VALUES (?, ?, ?, ?)');
@@ -410,7 +566,7 @@ function replace_shots(int $target_id, string $discipline, array $shots): void
 function target_detail(int $training_id, int $tid): void
 {
     $stmt = db()->prepare(
-        'SELECT id, target_index, animal_or_face, distance_m, notes
+        'SELECT id, participant_id, target_index, animal_or_face, distance_m, notes, image_path
          FROM training_targets WHERE id = ? AND training_id = ?'
     );
     $stmt->execute([$tid, $training_id]);
@@ -431,8 +587,9 @@ function target_detail(int $training_id, int $tid): void
     }
     unset($s);
 
-    $t['id']           = (int)$t['id'];
-    $t['target_index'] = (int)$t['target_index'];
+    $t['id']             = (int)$t['id'];
+    $t['participant_id'] = (int)$t['participant_id'];
+    $t['target_index']   = (int)$t['target_index'];
     if ($t['distance_m'] !== null) $t['distance_m'] = (float)$t['distance_m'];
     $t['shots']        = $shots;
     $t['target_total'] = $sum;

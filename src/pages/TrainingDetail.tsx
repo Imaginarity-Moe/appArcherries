@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, Check, Grid3x3, MoreHorizontal, Trash2, X } from "lucide-react";
@@ -16,13 +16,19 @@ import {
   type Training,
 } from "../api/trainings";
 import BullseyePad from "../components/BullseyePad";
+import ParticipantsBar from "../components/ParticipantsBar";
+import StationPhoto from "../components/StationPhoto";
 import { fmtDateTime } from "../lib/format";
+import { useLivePolling } from "../lib/useLivePolling";
+
+// Lazy: qrcode.react wird nur beim Öffnen des Einladen-Modals geladen
+const InviteModal = lazy(() => import("../components/InviteModal"));
 
 // Anzahl Pfeil-Slots je Disziplin
 const SLOTS_BY_DISCIPLINE: Record<Discipline, number> = {
   "3d_wa": 2,
   "3d_ifaa": 3,
-  "3d_bowhunter": 4,
+  "3d_bowhunter": 3, // IFAA-Standard: 3 Pfeile, nur erster treffender zählt
   "field_wa": 3,
   simple: 0,
 };
@@ -40,7 +46,16 @@ function previewArrowPoints(discipline: Discipline, zone: string | null, slot: n
     if (slot === 2) return isVital ? 12 : 10;
     return 0;
   }
-  if (discipline === "3d_bowhunter") return 0; // TBD
+  if (discipline === "3d_bowhunter") {
+    // IFAA Bowhunter Round: 3 Pfeile, nur erster treffender zählt. Vital 5/4/3, Wound 3/2/1.
+    const firstHit = allZones.findIndex((z) => z && z !== "miss");
+    if (firstHit !== slot) return 0;
+    const isVital = ["X", "kill", "inner", "vital"].includes(zone);
+    if (slot === 0) return isVital ? 5 : 3;
+    if (slot === 1) return isVital ? 4 : 2;
+    if (slot === 2) return isVital ? 3 : 1;
+    return 0;
+  }
 
   if (discipline === "3d_wa") {
     const m: Record<string, number> = { X: 11, kill: 11, inner: 10, outer: 8, body: 5 };
@@ -58,7 +73,8 @@ export default function TrainingDetail() {
   const { id } = useParams();
   const { t } = useTranslation(["training", "common"]);
   const nav = useNavigate();
-  const trainingId = Number(id);
+  // ID kann eine temp-ID sein (offline angelegtes Training, "tmp_…")
+  const trainingId: number | string = id?.startsWith("tmp_") ? id : Number(id);
   const [training, setTraining] = useState<Training | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +98,11 @@ export default function TrainingDetail() {
     refresh();
   }, [refresh]);
 
+  // Live-Sync für geteilte Runden: pollt alle 5s wenn Training offen und shared
+  const isShared = (training?.participants?.length ?? 0) > 1;
+  const isOpenPoll = training !== null && !training.ended_at;
+  const { isPolling } = useLivePolling(refresh, isOpenPoll && isShared, 5000);
+
   if (loading) return <p className="text-forest-700">{t("common:actions.loading")}</p>;
   if (error || !training) return <p className="text-red-700">{error ?? "Not found"}</p>;
 
@@ -98,7 +119,7 @@ export default function TrainingDetail() {
     );
   }
 
-  return <TrainingOverview training={training} onChange={refresh} nav={nav} />;
+  return <TrainingOverview training={training} onChange={refresh} nav={nav} isPolling={isPolling} isShared={isShared} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,17 +129,25 @@ function TrainingOverview({
   training,
   onChange,
   nav,
+  isPolling = false,
+  isShared = false,
 }: {
   training: Training;
   onChange: () => Promise<void>;
   nav: (path: string) => void;
+  isPolling?: boolean;
+  isShared?: boolean;
 }) {
   const { t } = useTranslation(["training", "common"]);
   const [, setSearchParams] = useSearchParams();
+  const [showInvite, setShowInvite] = useState(false);
   const isSimple = training.discipline === "simple";
-  const targets = training.targets ?? [];
+  // Nur eigene Targets anzeigen — andere Participants haben ihre eigenen
+  const myTargets = (training.targets ?? []).filter(
+    (t) => !t.participant_id || t.participant_id === training.my_participant_id
+  );
   const isOpen = !training.ended_at;
-  const nextIndex = (targets[targets.length - 1]?.target_index ?? 0) + 1;
+  const nextIndex = (myTargets[myTargets.length - 1]?.target_index ?? 0) + 1;
 
   async function handleDelete() {
     if (!confirm(t("training:detail.delete_confirm"))) return;
@@ -160,15 +189,25 @@ function TrainingOverview({
           <div className="text-right shrink-0">
             <div className="score text-score-xl leading-none animate-count-up">{training.total_score}</div>
             <div className="text-[10px] uppercase tracking-wider text-forest-300 mt-1">
-              {targets.length > 0 ? t("training:detail.n_stations", { count: targets.length }) : "Pkt"}
+              {myTargets.length > 0 ? t("training:detail.n_stations", { count: myTargets.length }) : "Pkt"}
             </div>
           </div>
         </div>
 
-        {!isSimple && targets.length > 0 && (
+        {training.participants && training.participants.length > 0 && (
+          <ParticipantsBar
+            participants={training.participants}
+            isOwner={!!training.is_owner}
+            onInvite={() => setShowInvite(true)}
+            isLive={isShared}
+            isPolling={isPolling}
+          />
+        )}
+
+        {!isSimple && myTargets.length > 0 && (
           <div className="mt-4">
             <StationStatusGrid
-              targets={targets}
+              targets={myTargets}
               onPick={(idx) => setSearchParams({ station: String(idx) })}
             />
           </div>
@@ -202,7 +241,7 @@ function TrainingOverview({
 
           {/* Stations-Karten */}
           <div className="space-y-2">
-            {targets.map((tgt) => (
+            {myTargets.map((tgt) => (
               <StationRow
                 key={tgt.id}
                 target={tgt}
@@ -211,6 +250,12 @@ function TrainingOverview({
             ))}
           </div>
         </>
+      )}
+
+      {showInvite && typeof training.id === "number" && (
+        <Suspense fallback={null}>
+          <InviteModal trainingId={training.id} onClose={() => setShowInvite(false)} />
+        </Suspense>
       )}
     </div>
   );
@@ -264,6 +309,14 @@ function StationRow({
       onClick={onClick}
       className="card-interactive w-full text-left flex items-center justify-between gap-3"
     >
+      {target.image_path && (
+        <img
+          src={target.image_path}
+          alt=""
+          className="w-12 h-12 rounded-lg object-cover shrink-0"
+          loading="lazy"
+        />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-wider text-forest-300">#{target.target_index}</span>
@@ -344,8 +397,11 @@ function StationLiveEntry({
   const { t } = useTranslation(["training", "common"]);
   const slots = SLOTS_BY_DISCIPLINE[training.discipline];
 
-  const existing = training.targets?.find((t) => t.target_index === stationIndex);
-  const totalStations = Math.max(28, ...(training.targets?.map((t) => t.target_index) ?? [0]));
+  const myTargets = (training.targets ?? []).filter(
+    (t) => !t.participant_id || t.participant_id === training.my_participant_id
+  );
+  const existing = myTargets.find((t) => t.target_index === stationIndex);
+  const totalStations = Math.max(28, ...myTargets.map((t) => t.target_index));
 
   const [animal, setAnimal] = useState(existing?.animal_or_face ?? "");
   const [distance, setDistance] = useState(existing?.distance_m?.toString() ?? "");
@@ -460,6 +516,16 @@ function StationLiveEntry({
           />
         </div>
 
+        {/* Foto */}
+        {existing && (
+          <StationPhoto
+            trainingId={training.id}
+            targetId={existing.id}
+            imagePath={existing.image_path}
+            onChange={() => onChange()}
+          />
+        )}
+
         {/* Stations-Total */}
         <div className="text-center py-3">
           <div className="score text-display leading-none animate-count-up" key={previewTotal}>
@@ -546,7 +612,7 @@ function StationLiveEntry({
         <BottomSheet onClose={() => setShowStationGrid(false)}>
           <h3 className="font-display text-lg font-semibold mb-3">{t("training:detail.stations_title")}</h3>
           <StationStatusGrid
-            targets={training.targets ?? []}
+            targets={myTargets}
             onPick={(idx) => {
               setShowStationGrid(false);
               onNavigate(idx);

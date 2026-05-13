@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { LogOut, Moon, Sun, Globe, Trash2 } from "lucide-react";
+import { LogOut, Moon, Sun, Globe, Trash2, Target, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 type Theme = "light" | "dark" | "auto";
@@ -72,6 +73,17 @@ export default function Profile() {
           </div>
         </div>
       </section>
+
+      <Link to="/bows" className="card-interactive flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Target size={20} className="text-copper-500" />
+          <div>
+            <div className="font-semibold">Meine Bögen</div>
+            <div className="text-sm text-forest-700 dark:text-forest-300">Bogen-Profile mit Setup-Daten verwalten</div>
+          </div>
+        </div>
+        <ChevronRight size={18} className="text-forest-300" />
+      </Link>
 
       <button onClick={handleLogout} className="btn-ghost w-full justify-start">
         <LogOut size={18} /> {t("profile:logout")}

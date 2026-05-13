@@ -4,6 +4,8 @@
 // von IONOS unangetastet bleibt. PATH_INFO trägt dann die Route.
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
 
+import { getCached, setCached } from "../lib/cache";
+
 const TOKEN_KEY = "archerries.token";
 
 export function getToken(): string | null {
@@ -56,4 +58,27 @@ function safeJson(s: string): unknown {
   } catch {
     return s;
   }
+}
+
+/**
+ * Offline-aware GET: versucht Netzwerk, fällt bei Netzwerkfehler oder offline auf IDB-Cache zurück.
+ * Bei erfolgreichem Netzwerkruf wird der Cache aktualisiert.
+ */
+export async function apiCached<T>(path: string): Promise<T> {
+  if (navigator.onLine) {
+    try {
+      const data = await api<T>(path);
+      await setCached(path, data);
+      return data;
+    } catch (err) {
+      // Netzwerk-Fehler: auf Cache zurückfallen. ApiError (4xx/5xx) wird durchgereicht.
+      if (err instanceof ApiError) throw err;
+      const cached = await getCached<T>(path);
+      if (cached !== null) return cached;
+      throw err;
+    }
+  }
+  const cached = await getCached<T>(path);
+  if (cached !== null) return cached;
+  throw new ApiError(0, "Offline und kein Cache verfügbar", null);
 }

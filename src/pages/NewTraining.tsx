@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Target, Crosshair, Hash, Bird, MapPin } from "lucide-react";
 import {
   BOW_LABELS,
   DISCIPLINE_LABELS,
@@ -12,6 +12,9 @@ import {
   type PegColor,
 } from "../api/trainings";
 import { listParcours, type Parcours } from "../api/parcours";
+import { listBows, type Bow } from "../api/bows";
+import { listTrainings } from "../api/trainings";
+import { Link } from "react-router-dom";
 
 const DISCIPLINES = Object.keys(DISCIPLINE_LABELS) as Discipline[];
 const BOWS = Object.keys(BOW_LABELS) as BowType[];
@@ -20,9 +23,17 @@ const PEGS = Object.keys(PEG_LABELS) as PegColor[];
 const DISCIPLINE_BLURBS: Record<Discipline, string> = {
   "3d_wa": "11/10/8/5, 2 Pfeile, beide zählen",
   "3d_ifaa": "20/18 → 16/14 → 12/10, nur Erstpfeil",
-  "3d_bowhunter": "5/4/3-Wertung, 4 Pfeile",
+  "3d_bowhunter": "5/4/3-Wertung, 3 Pfeile, nur Erstpfeil",
   "field_wa": "6-5-4-3-2-1, 3 Pfeile pro Auflage",
   simple: "Nur Gesamt-Score, keine Pfeile",
+};
+
+const DISCIPLINE_ICONS: Record<Discipline, ReactNode> = {
+  "3d_wa": <Bird size={20} />,
+  "3d_ifaa": <Bird size={20} />,
+  "3d_bowhunter": <Crosshair size={20} />,
+  "field_wa": <Target size={20} />,
+  simple: <Hash size={20} />,
 };
 
 const PEG_COLORS_HEX: Record<PegColor, string> = {
@@ -47,12 +58,47 @@ export default function NewTraining() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parcoursOptions, setParcoursOptions] = useState<Parcours[]>([]);
+  const [bows, setBows] = useState<Bow[]>([]);
+  const [selectedBowId, setSelectedBowId] = useState<number | null>(null);
+  const [showBowOverride, setShowBowOverride] = useState(false);
+  const [recentLocations, setRecentLocations] = useState<string[]>([]);
 
   const is3d = discipline.startsWith("3d_");
 
   useEffect(() => {
     listParcours().then((r) => setParcoursOptions(r.parcours)).catch(() => {});
+    listBows()
+      .then((r) => {
+        setBows(r.bows);
+        // Default-Bogen vorauswählen
+        const def = r.bows.find((b) => b.is_default) ?? r.bows[0];
+        if (def) {
+          setSelectedBowId(def.id);
+          setBowType(def.bow_type);
+        }
+      })
+      .catch(() => {});
+    // Letzte unique Locations für Vorschlag-Chips
+    listTrainings(1, 30)
+      .then((r) => {
+        const seen = new Set<string>();
+        const locs: string[] = [];
+        for (const t of r.trainings) {
+          if (t.location && !seen.has(t.location)) {
+            seen.add(t.location);
+            locs.push(t.location);
+            if (locs.length >= 5) break;
+          }
+        }
+        setRecentLocations(locs);
+      })
+      .catch(() => {});
   }, []);
+
+  function pickBow(b: Bow) {
+    setSelectedBowId(b.id);
+    setBowType(b.bow_type);
+  }
 
   async function submit() {
     setBusy(true);
@@ -117,9 +163,14 @@ export default function NewTraining() {
                       : "hover:shadow-lift"
                   }`}
                 >
-                  <div className="font-display text-base font-semibold mb-1 flex items-center gap-1">
-                    {DISCIPLINE_LABELS[d]}
-                    {sel && <Check size={16} className="text-copper-500 ml-auto" />}
+                  <div className="flex items-start gap-2 mb-1">
+                    <div className={sel ? "text-copper-500" : "text-forest-700 dark:text-forest-300"}>
+                      {DISCIPLINE_ICONS[d]}
+                    </div>
+                    <div className="font-display text-base font-semibold flex-1">
+                      {DISCIPLINE_LABELS[d]}
+                    </div>
+                    {sel && <Check size={16} className="text-copper-500" />}
                   </div>
                   <div className="text-xs text-forest-700 dark:text-forest-300">{DISCIPLINE_BLURBS[d]}</div>
                 </button>
@@ -140,31 +191,73 @@ export default function NewTraining() {
             <p className="text-sm text-forest-700 dark:text-forest-300">{t("training:wizard.step2_subtitle")}</p>
           </header>
 
-          {/* Bow */}
-          <div>
-            <label className="text-sm font-medium text-forest-700 dark:text-forest-300 mb-2 block">
-              {t("training:wizard.select_bow")}
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {BOWS.map((b) => {
-                const sel = b === bowType;
-                return (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setBowType(b)}
-                    className={`tap-target rounded-xl px-4 py-3 font-medium transition active:scale-[0.98] ${
-                      sel
-                        ? "bg-copper-500 text-white shadow-copper"
-                        : "bg-sunken text-forest-700 hover:bg-forest-100"
-                    }`}
-                  >
-                    {BOW_LABELS[b]}
-                  </button>
-                );
-              })}
+          {/* Bow-Profile (wenn vorhanden) */}
+          {bows.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-forest-700 dark:text-forest-300 mb-2 flex items-center justify-between">
+                <span>Mein Bogen</span>
+                <Link to="/bows" className="text-xs text-copper-600 font-normal">Verwalten →</Link>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {bows.map((b) => {
+                  const sel = b.id === selectedBowId;
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => pickBow(b)}
+                      className={`rounded-2xl px-3 py-2 text-sm font-medium transition active:scale-[0.98] ${
+                        sel
+                          ? "bg-copper-500 text-white shadow-copper"
+                          : "bg-sunken dark:bg-sunken-dark text-forest-700"
+                      }`}
+                    >
+                      {b.name}
+                      <span className={`ml-1.5 text-xs ${sel ? "text-white/80" : "text-forest-500"}`}>
+                        · {BOW_LABELS[b.bow_type]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Bow-Type: bei bestehenden Profilen versteckt unter "Andere Klasse..."  */}
+          {bows.length === 0 || showBowOverride ? (
+            <div>
+              <label className="text-sm font-medium text-forest-700 dark:text-forest-300 mb-2 block">
+                {bows.length > 0 ? "Bogenklasse manuell" : t("training:wizard.select_bow")}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {BOWS.map((b) => {
+                  const sel = b === bowType;
+                  return (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => { setBowType(b); setSelectedBowId(null); }}
+                      className={`tap-target rounded-xl px-4 py-3 font-medium transition active:scale-[0.98] ${
+                        sel
+                          ? "bg-copper-500 text-white shadow-copper"
+                          : "bg-sunken text-forest-700 hover:bg-forest-100"
+                      }`}
+                    >
+                      {BOW_LABELS[b]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowBowOverride(true)}
+              className="text-xs text-forest-700 dark:text-forest-300 underline"
+            >
+              Andere Bogenklasse wählen…
+            </button>
+          )}
 
           {/* Peg + Distance only for 3D */}
           {is3d && (
@@ -287,6 +380,24 @@ export default function NewTraining() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             />
+            {recentLocations.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {recentLocations.map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => setLocation(loc)}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                      location === loc
+                        ? "bg-copper-500 text-white"
+                        : "bg-sunken dark:bg-sunken-dark text-forest-700 dark:text-forest-300"
+                    }`}
+                  >
+                    <MapPin size={11} /> {loc}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

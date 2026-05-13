@@ -1,4 +1,9 @@
-import { api } from "./client";
+import { api, apiCached, getToken } from "./client";
+import { getCached, mutateCached, setCached, invalidateCache } from "../lib/cache";
+import { enqueue } from "../lib/outbox";
+import { isNetworkError } from "../lib/sync";
+import { db } from "../lib/db";
+import { scoreTarget } from "../lib/scoringPreview";
 
 export type Discipline = "3d_wa" | "3d_ifaa" | "3d_bowhunter" | "field_wa" | "simple";
 export type BowType = "recurve" | "compound" | "barebow" | "traditional";
@@ -13,16 +18,29 @@ export type Shot = {
 
 export type Target = {
   id: number;
+  participant_id?: number;
   target_index: number;
   animal_or_face: string | null;
   distance_m: number | null;
   notes: string | null;
+  image_path: string | null;
   shots: Shot[];
   target_total: number;
 };
 
-export type Training = {
+export type Participant = {
   id: number;
+  user_id: number;
+  display_name: string;
+  user_role: string;
+  role: "owner" | "scorer" | "viewer";
+  joined_at: string;
+  total_score: number;
+  is_self: boolean;
+};
+
+export type Training = {
+  id: number | string; // string = lokale temp-ID ("tmp_…")
   started_at: string;
   ended_at: string | null;
   discipline: Discipline;
@@ -37,9 +55,15 @@ export type Training = {
   parcours_id: number | null;
   parcours_name?: string | null;
   targets?: Target[];
+  participants?: Participant[];
+  is_owner?: boolean;
+  my_participant_id?: number | null;
 };
 
-export type TrainingListItem = Omit<Training, "targets">;
+export type TrainingListItem = Omit<Training, "targets"> & {
+  is_shared?: boolean;
+  owner_user_id?: number;
+};
 
 export const DISCIPLINE_LABELS: Record<Discipline, string> = {
   "3d_wa": "3D · WA / DSB",
@@ -96,39 +120,234 @@ export const ZONES_BY_DISCIPLINE: Record<Discipline, ZoneDef[]> = {
   simple: [],
 };
 
-export async function listTrainings(page = 1, limit = 20): Promise<{ trainings: TrainingListItem[]; total: number }> {
-  return api(`/trainings?page=${page}&limit=${limit}`);
+const trainingPath = (id: number | string) => `/trainings/${id}`;
+
+function tempId(): string {
+  return `tmp_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
 }
+
+/** Wenn id eine temp-ID ist, zur echten Server-ID auflösen (nach Sync). */
+export async function resolveId(id: number | string): Promise<number | string> {
+  if (typeof id === "number") return id;
+  if (!id.startsWith("tmp_")) return id;
+  const conn = await db();
+  const mapping = await conn.get("id_map", id);
+  return mapping ? mapping.realId : id;
+}
+
+// ============================================================
+// READS
+// ============================================================
+
+export async function listTrainings(page = 1, limit = 20): Promise<{ trainings: TrainingListItem[]; total: number }> {
+  return apiCached(`/trainings?page=${page}&limit=${limit}`);
+}
+
+export async function getTraining(id: number | string): Promise<{ training: Training }> {
+  const resolved = await resolveId(id);
+  return apiCached(trainingPath(resolved));
+}
+
+// ============================================================
+// WRITES
+// ============================================================
 
 export async function createTraining(body: Partial<Training>): Promise<{ training: Training }> {
-  return api(`/trainings`, { method: "POST", body: JSON.stringify(body) });
+  if (navigator.onLine) {
+    try {
+      const r = await api<{ training: Training }>(`/trainings`, { method: "POST", body: JSON.stringify(body) });
+      await setCached(trainingPath(r.training.id), r);
+      await invalidateCache(/^\/trainings\?/);
+      return r;
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
+  }
+  // Offline-Pfad: temp-ID erzeugen, optimistisch cachen, in Outbox queuen
+  const tid = tempId();
+  const optimistic: Training = {
+    id: tid,
+    started_at: new Date().toISOString(),
+    ended_at: null,
+    discipline: (body.discipline as Discipline) ?? "3d_wa",
+    bow_type: (body.bow_type as BowType) ?? "recurve",
+    peg_color: body.peg_color ?? null,
+    distance_marked: body.distance_marked ?? null,
+    location: body.location ?? null,
+    weather: body.weather ?? null,
+    notes: body.notes ?? null,
+    summary_score: null,
+    total_score: 0,
+    parcours_id: body.parcours_id ?? null,
+    targets: [],
+  };
+  await setCached(trainingPath(tid), { training: optimistic });
+  await enqueue({ method: "POST", path: "/trainings", body: { ...body, tempId: tid } });
+  return { training: optimistic };
 }
 
-export async function getTraining(id: number): Promise<{ training: Training }> {
-  return api(`/trainings/${id}`);
+export async function updateTraining(id: number | string, body: Partial<Training>): Promise<{ training: Training }> {
+  const resolved = await resolveId(id);
+  if (navigator.onLine && typeof resolved === "number") {
+    try {
+      const r = await api<{ training: Training }>(trainingPath(resolved), { method: "PATCH", body: JSON.stringify(body) });
+      await setCached(trainingPath(resolved), r);
+      await invalidateCache(/^\/trainings\?/);
+      return r;
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
+  }
+  // Offline / temp-ID: Cache patchen, queuen
+  await mutateCached<{ training: Training }>(trainingPath(resolved), (curr) => ({
+    training: { ...curr.training, ...body },
+  }));
+  await enqueue({ method: "PATCH", path: trainingPath(resolved), body });
+  const cached = await getCached<{ training: Training }>(trainingPath(resolved));
+  return cached ?? { training: { ...(body as Training), id: resolved } };
 }
 
-export async function updateTraining(id: number, body: Partial<Training>): Promise<{ training: Training }> {
-  return api(`/trainings/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export async function deleteTraining(id: number | string): Promise<{ ok: true }> {
+  const resolved = await resolveId(id);
+  if (navigator.onLine && typeof resolved === "number") {
+    try {
+      await api(trainingPath(resolved), { method: "DELETE" });
+      await invalidateCache(trainingPath(resolved));
+      await invalidateCache(/^\/trainings\?/);
+      return { ok: true };
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
+  }
+  // Offline: aus Caches entfernen + queuen
+  await invalidateCache(trainingPath(resolved));
+  await invalidateCache(/^\/trainings\?/);
+  if (typeof resolved === "number") {
+    await enqueue({ method: "DELETE", path: trainingPath(resolved), body: null });
+  }
+  return { ok: true };
 }
 
-export async function deleteTraining(id: number): Promise<{ ok: true }> {
-  return api(`/trainings/${id}`, { method: "DELETE" });
-}
+type UpsertTargetBody = {
+  target_index: number;
+  animal_or_face?: string | null;
+  distance_m?: number | null;
+  notes?: string | null;
+  shots?: Array<{ arrow_seq: number; zone: string | null }>;
+};
 
 export async function upsertTarget(
-  trainingId: number,
-  body: {
-    target_index: number;
-    animal_or_face?: string | null;
-    distance_m?: number | null;
-    notes?: string | null;
-    shots?: Array<{ arrow_seq: number; zone: string | null }>;
-  }
+  trainingId: number | string,
+  body: UpsertTargetBody
 ): Promise<{ target: Target }> {
-  return api(`/trainings/${trainingId}/targets`, { method: "POST", body: JSON.stringify(body) });
+  const resolved = await resolveId(trainingId);
+  if (navigator.onLine && typeof resolved === "number") {
+    try {
+      const r = await api<{ target: Target }>(`/trainings/${resolved}/targets`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      // Cache des Trainings invalidieren — wird beim nächsten Aufruf neu geholt
+      await invalidateCache(trainingPath(resolved));
+      return r;
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
+  }
+  // Offline-Pfad: optimistisches Update + queue
+  const cached = await getCached<{ training: Training }>(trainingPath(resolved));
+  const discipline = cached?.training.discipline ?? "3d_wa";
+  const scored = scoreTarget(discipline, body.shots ?? []);
+  const targetTotal = scored.reduce((s, sh) => s + sh.points, 0);
+
+  if (cached) {
+    const targets = cached.training.targets ?? [];
+    const idx = targets.findIndex((t) => t.target_index === body.target_index);
+    const optimisticTarget: Target = {
+      id: idx >= 0 ? targets[idx].id : -body.target_index, // temp negative id
+      target_index: body.target_index,
+      animal_or_face: body.animal_or_face ?? (idx >= 0 ? targets[idx].animal_or_face : null),
+      distance_m: body.distance_m ?? (idx >= 0 ? targets[idx].distance_m : null),
+      notes: body.notes ?? (idx >= 0 ? targets[idx].notes : null),
+      image_path: idx >= 0 ? targets[idx].image_path : null,
+      shots: scored.map((s, i) => ({ id: -(i + 1), arrow_seq: s.arrow_seq, zone: s.zone, points: s.points })),
+      target_total: targetTotal,
+    };
+    const nextTargets = idx >= 0
+      ? targets.map((t, i) => (i === idx ? optimisticTarget : t))
+      : [...targets, optimisticTarget];
+    const totalScore = nextTargets.reduce((s, t) => s + t.target_total, 0);
+    await setCached(trainingPath(resolved), {
+      training: { ...cached.training, targets: nextTargets, total_score: totalScore },
+    });
+  }
+  await enqueue({ method: "POST", path: `/trainings/${resolved}/targets`, body });
+
+  // Optimistische Response
+  return {
+    target: {
+      id: -body.target_index,
+      target_index: body.target_index,
+      animal_or_face: body.animal_or_face ?? null,
+      distance_m: body.distance_m ?? null,
+      notes: body.notes ?? null,
+      image_path: null,
+      shots: scored.map((s, i) => ({ id: -(i + 1), arrow_seq: s.arrow_seq, zone: s.zone, points: s.points })),
+      target_total: targetTotal,
+    },
+  };
 }
 
-export async function deleteTarget(trainingId: number, targetId: number): Promise<{ ok: true }> {
-  return api(`/trainings/${trainingId}/targets/${targetId}`, { method: "DELETE" });
+export async function deleteTarget(trainingId: number | string, targetId: number): Promise<{ ok: true }> {
+  const resolved = await resolveId(trainingId);
+  if (navigator.onLine && typeof resolved === "number" && targetId > 0) {
+    try {
+      await api(`/trainings/${resolved}/targets/${targetId}`, { method: "DELETE" });
+      await invalidateCache(trainingPath(resolved));
+      return { ok: true };
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
+  }
+  // Offline: Cache aktualisieren + queuen (nur bei positiver/echter target id)
+  await mutateCached<{ training: Training }>(trainingPath(resolved), (curr) => {
+    const nextTargets = (curr.training.targets ?? []).filter((t) => t.id !== targetId);
+    const totalScore = nextTargets.reduce((s, t) => s + t.target_total, 0);
+    return { training: { ...curr.training, targets: nextTargets, total_score: totalScore } };
+  });
+  if (typeof resolved === "number" && targetId > 0) {
+    await enqueue({ method: "DELETE", path: `/trainings/${resolved}/targets/${targetId}`, body: null });
+  }
+  return { ok: true };
+}
+
+// ============================================================
+// IMAGE UPLOAD (online-only — binary uploads bypassen die Outbox)
+// ============================================================
+
+export async function uploadTargetImage(
+  trainingId: number | string,
+  targetId: number,
+  file: File
+): Promise<{ image_path: string; image_url: string }> {
+  const resolved = await resolveId(trainingId);
+  if (typeof resolved !== "number" || targetId <= 0) {
+    throw new Error("Bilder können nur für gespeicherte Stationen hochgeladen werden");
+  }
+  const fd = new FormData();
+  fd.append("file", file);
+  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
+  const token = getToken();
+  const res = await fetch(`${base}/trainings/${resolved}/targets/${targetId}/image`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  if (!res.ok) throw new Error(`Upload fehlgeschlagen: ${res.status}`);
+  return res.json();
+}
+
+export async function deleteTargetImage(trainingId: number | string, targetId: number): Promise<{ ok: true }> {
+  const resolved = await resolveId(trainingId);
+  return api(`/trainings/${resolved}/targets/${targetId}/image`, { method: "DELETE" });
 }

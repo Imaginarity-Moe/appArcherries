@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { apiCached } from "./client";
 
 export type StatsOverview = {
   trend: Array<{ id: number; date: string; discipline: string; bow_type: string; score: number }>;
@@ -24,9 +24,9 @@ export async function getStatsOverview(filters: { discipline?: string; bow?: str
   if (filters.discipline) qs.set("discipline", filters.discipline);
   if (filters.bow) qs.set("bow", filters.bow);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
-  return api(`/stats${suffix}`);
+  return apiCached(`/stats${suffix}`);
 }
 
 export async function getTrainingStats(trainingId: number): Promise<TrainingStats> {
-  return api(`/stats/training/${trainingId}`);
+  return apiCached(`/stats/training/${trainingId}`);
 }

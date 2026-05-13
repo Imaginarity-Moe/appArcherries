@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { LogoMark, LogoWordmark } from "./Logo";
+import NetworkStatusIcon from "./NetworkStatusIcon";
 
 /**
  * Responsive Layout:
@@ -27,7 +28,7 @@ export default function Layout() {
   const navigate = useNavigate();
 
   const isAuthRoute =
-    /^\/(login|register|verify|forgot-password|reset-password)/.test(location.pathname);
+    /^\/(login|register|verify|forgot-password|reset-password|join)/.test(location.pathname);
 
   // In aktiven Trainings reduzieren wir Chrome
   const isLiveTraining = /^\/trainings\/\d+/.test(location.pathname);
@@ -44,9 +45,12 @@ export default function Layout() {
     <div className="min-h-screen bg-canvas dark:bg-canvas-dark">
       {/* Desktop-Sidebar */}
       <aside className="hidden lg:flex fixed top-0 left-0 h-screen w-60 flex-col border-r border-forest-100 bg-elevated dark:bg-elevated-dark dark:border-forest-800 z-20">
-        <Link to="/" className="block px-6 py-5">
-          <LogoWordmark />
-        </Link>
+        <div className="flex items-center justify-between px-6 py-5">
+          <Link to="/">
+            <LogoWordmark />
+          </Link>
+          <NetworkStatusIcon />
+        </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           <SidebarLink to="/" icon={<Home size={20} />} label={t("nav.home")} />
           <SidebarLink to="/stats" icon={<BarChart3 size={20} />} label={t("nav.stats")} />
@@ -71,9 +75,12 @@ export default function Layout() {
             <LogoMark size={28} className="text-copper-500" />
             <span className="font-display text-lg font-semibold">Archerries</span>
           </Link>
-          <Link to="/profile" className="btn-icon" aria-label="Profile">
-            <UserCircle size={24} />
-          </Link>
+          <div className="flex items-center gap-1">
+            <NetworkStatusIcon />
+            <Link to="/profile" className="btn-icon" aria-label="Profile">
+              <UserCircle size={24} />
+            </Link>
+          </div>
         </div>
       </header>
 
