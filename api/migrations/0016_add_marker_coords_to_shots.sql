@@ -1,0 +1,3 @@
+ALTER TABLE shots
+  ADD COLUMN x_norm DECIMAL(6,5) NULL AFTER zone,
+  ADD COLUMN y_norm DECIMAL(6,5) NULL AFTER x_norm;

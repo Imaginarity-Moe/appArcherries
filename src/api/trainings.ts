@@ -14,6 +14,9 @@ export type Shot = {
   arrow_seq: number;
   zone: string | null;
   points: number;
+  /** Normalisierte Position auf dem Stations-Foto (0..1). Null = nicht markiert. */
+  x_norm?: number | null;
+  y_norm?: number | null;
 };
 
 export type Target = {
@@ -233,7 +236,7 @@ type UpsertTargetBody = {
   animal_or_face?: string | null;
   distance_m?: number | null;
   notes?: string | null;
-  shots?: Array<{ arrow_seq: number; zone: string | null }>;
+  shots?: Array<{ arrow_seq: number; zone: string | null; x_norm?: number | null; y_norm?: number | null }>;
 };
 
 export async function upsertTarget(
@@ -270,7 +273,17 @@ export async function upsertTarget(
       distance_m: body.distance_m ?? (idx >= 0 ? targets[idx].distance_m : null),
       notes: body.notes ?? (idx >= 0 ? targets[idx].notes : null),
       image_path: idx >= 0 ? targets[idx].image_path : null,
-      shots: scored.map((s, i) => ({ id: -(i + 1), arrow_seq: s.arrow_seq, zone: s.zone, points: s.points })),
+      shots: scored.map((s, i) => {
+        const orig = (body.shots ?? []).find((b) => b.arrow_seq === s.arrow_seq);
+        return {
+          id: -(i + 1),
+          arrow_seq: s.arrow_seq,
+          zone: s.zone,
+          points: s.points,
+          x_norm: orig?.x_norm ?? null,
+          y_norm: orig?.y_norm ?? null,
+        };
+      }),
       target_total: targetTotal,
     };
     const nextTargets = idx >= 0
@@ -292,7 +305,17 @@ export async function upsertTarget(
       distance_m: body.distance_m ?? null,
       notes: body.notes ?? null,
       image_path: null,
-      shots: scored.map((s, i) => ({ id: -(i + 1), arrow_seq: s.arrow_seq, zone: s.zone, points: s.points })),
+      shots: scored.map((s, i) => {
+        const orig = (body.shots ?? []).find((b) => b.arrow_seq === s.arrow_seq);
+        return {
+          id: -(i + 1),
+          arrow_seq: s.arrow_seq,
+          zone: s.zone,
+          points: s.points,
+          x_norm: orig?.x_norm ?? null,
+          y_norm: orig?.y_norm ?? null,
+        };
+      }),
       target_total: targetTotal,
     },
   };

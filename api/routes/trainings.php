@@ -285,7 +285,7 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
     $targets = $tgt_stmt->fetchAll();
 
     $shot_stmt = db()->prepare(
-        'SELECT id, arrow_seq, zone, points FROM shots WHERE target_id = ? ORDER BY arrow_seq ASC'
+        'SELECT id, arrow_seq, zone, points, x_norm, y_norm FROM shots WHERE target_id = ? ORDER BY arrow_seq ASC'
     );
 
     // Pro Participant: Total & seine Targets
@@ -303,6 +303,8 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
             $s['id']        = (int)$s['id'];
             $s['arrow_seq'] = (int)$s['arrow_seq'];
             $s['points']    = (int)$s['points'];
+            if ($s['x_norm'] !== null) $s['x_norm'] = (float)$s['x_norm'];
+            if ($s['y_norm'] !== null) $s['y_norm'] = (float)$s['y_norm'];
             $sum           += $s['points'];
         }
         unset($s);
@@ -551,15 +553,29 @@ function replace_shots(int $target_id, string $discipline, array $shots): void
         if (!is_array($s)) continue;
         $seq = (int)($s['arrow_seq'] ?? 0);
         if ($seq < 1) continue;
-        $clean[] = ['arrow_seq' => $seq, 'zone' => isset($s['zone']) ? (string)$s['zone'] : null];
+        $clean[] = [
+            'arrow_seq' => $seq,
+            'zone'      => isset($s['zone']) ? (string)$s['zone'] : null,
+            'x_norm'    => isset($s['x_norm']) && $s['x_norm'] !== null ? (float)$s['x_norm'] : null,
+            'y_norm'    => isset($s['y_norm']) && $s['y_norm'] !== null ? (float)$s['y_norm'] : null,
+        ];
     }
     $scored = score_target($discipline, $clean);
 
     db()->prepare('DELETE FROM shots WHERE target_id = ?')->execute([$target_id]);
     if (!$scored) return;
-    $stmt = db()->prepare('INSERT INTO shots (target_id, arrow_seq, zone, points) VALUES (?, ?, ?, ?)');
+    $stmt = db()->prepare(
+        'INSERT INTO shots (target_id, arrow_seq, zone, points, x_norm, y_norm) VALUES (?, ?, ?, ?, ?, ?)'
+    );
     foreach ($scored as $s) {
-        $stmt->execute([$target_id, $s['arrow_seq'], $s['zone'], $s['points']]);
+        $stmt->execute([
+            $target_id,
+            $s['arrow_seq'],
+            $s['zone'],
+            $s['points'],
+            $s['x_norm'] ?? null,
+            $s['y_norm'] ?? null,
+        ]);
     }
 }
 
@@ -574,7 +590,7 @@ function target_detail(int $training_id, int $tid): void
     if (!$t) res_error('Not found', 404);
 
     $shot_stmt = db()->prepare(
-        'SELECT id, arrow_seq, zone, points FROM shots WHERE target_id = ? ORDER BY arrow_seq ASC'
+        'SELECT id, arrow_seq, zone, points, x_norm, y_norm FROM shots WHERE target_id = ? ORDER BY arrow_seq ASC'
     );
     $shot_stmt->execute([$tid]);
     $shots = $shot_stmt->fetchAll();

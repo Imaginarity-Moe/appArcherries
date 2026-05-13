@@ -18,6 +18,7 @@ import {
 import BullseyePad from "../components/BullseyePad";
 import ParticipantsBar from "../components/ParticipantsBar";
 import StationPhoto from "../components/StationPhoto";
+import PhotoMarkers from "../components/PhotoMarkers";
 import { fmtDateTime } from "../lib/format";
 import { useLivePolling } from "../lib/useLivePolling";
 
@@ -415,6 +416,17 @@ function StationLiveEntry({
     }
     return arr;
   });
+  const [markers, setMarkers] = useState<({ x: number; y: number } | null)[]>(() => {
+    const arr: ({ x: number; y: number } | null)[] = Array(slots).fill(null);
+    if (existing) {
+      for (const s of existing.shots) {
+        if (s.arrow_seq >= 1 && s.arrow_seq <= slots && s.x_norm != null && s.y_norm != null) {
+          arr[s.arrow_seq - 1] = { x: s.x_norm, y: s.y_norm };
+        }
+      }
+    }
+    return arr;
+  });
   const [busy, setBusy] = useState(false);
   const [showStationGrid, setShowStationGrid] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -439,7 +451,12 @@ function StationLiveEntry({
     setBusy(true);
     try {
       const shots = zonesPicked
-        .map((z, i) => ({ arrow_seq: i + 1, zone: z }))
+        .map((z, i) => ({
+          arrow_seq: i + 1,
+          zone: z,
+          x_norm: markers[i]?.x ?? null,
+          y_norm: markers[i]?.y ?? null,
+        }))
         .filter((s) => s.zone !== null);
       await upsertTarget(training.id, {
         target_index: stationIndex,
@@ -523,6 +540,25 @@ function StationLiveEntry({
             targetId={existing.id}
             imagePath={existing.image_path}
             onChange={() => onChange()}
+          />
+        )}
+
+        {/* Interaktive Marker auf dem Foto */}
+        {existing?.image_path && (
+          <PhotoMarkers
+            imagePath={existing.image_path}
+            markers={markers}
+            activeSlot={activeSlot}
+            onMarkerSet={(slot, x, y) => {
+              const next = [...markers];
+              next[slot] = { x, y };
+              setMarkers(next);
+            }}
+            onMarkerClear={(slot) => {
+              const next = [...markers];
+              next[slot] = null;
+              setMarkers(next);
+            }}
           />
         )}
 
