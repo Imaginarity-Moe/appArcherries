@@ -9,3 +9,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Wird via vite.config.ts -> define injiziert. Werte landen literal im Bundle.
+declare const __APP_REV__: string;
+declare const __APP_BUILT__: string;

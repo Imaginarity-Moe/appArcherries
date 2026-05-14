@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { LogOut, Moon, Sun, Globe, Trash2, Target, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Moon, Sun, Globe, Trash2, Target, ChevronRight } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import AvatarUploader from "../components/AvatarUploader";
 
 type Theme = "light" | "dark" | "auto";
 
 export default function Profile() {
-  const { user, logout } = useAuth();
-  const nav = useNavigate();
+  const { user } = useAuth();
   const { t, i18n } = useTranslation(["profile", "common"]);
 
   const [theme, setTheme] = useState<Theme>(
@@ -21,54 +20,45 @@ export default function Profile() {
     applyTheme(theme);
   }, [theme]);
 
-  function handleLogout() {
-    logout();
-    nav("/login");
-  }
-
   return (
     <div className="space-y-5 animate-fade-in max-w-2xl mx-auto">
-      <h1 className="font-display text-2xl font-semibold">{t("profile:title")}</h1>
+      <h1 className="display text-h1">{t("profile:title")}</h1>
 
       <section className="card">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-forest-700 mb-3">
-          {t("profile:account")}
-        </h2>
+        <h2 className="eyebrow mb-4">{t("profile:account")}</h2>
+        <AvatarUploader />
+        <div className="hairline my-4" />
         <div className="space-y-2">
           <Row label={t("profile:display_name")} value={user?.display_name ?? "—"} />
           <Row label={t("profile:email")} value={user?.email ?? "—"} />
-          {user?.role !== "user" && (
-            <Row label="Rolle" value={user?.role ?? "—"} />
-          )}
+          {user?.role !== "user" && <Row label="Rolle" value={user?.role ?? "—"} />}
         </div>
       </section>
 
       <section className="card">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-forest-700 mb-3">
-          {t("profile:settings")}
-        </h2>
+        <h2 className="eyebrow mb-4">{t("profile:settings")}</h2>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* Sprache */}
           <div>
-            <label className="text-sm font-medium text-forest-700 dark:text-forest-300 mb-2 flex items-center gap-2">
-              <Globe size={16} /> {t("profile:language")}
+            <label className="flex items-center gap-2 text-sm font-medium text-secondary mb-2">
+              <Globe size={15} strokeWidth={1.75} /> {t("profile:language")}
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <LangBtn code="de" current={i18n.language} label="Deutsch" />
-              <LangBtn code="en" current={i18n.language} label="English" />
+              <SegBtn active={i18n.language.startsWith("de")} onClick={() => i18n.changeLanguage("de")} label="Deutsch" />
+              <SegBtn active={i18n.language.startsWith("en")} onClick={() => i18n.changeLanguage("en")} label="English" />
             </div>
           </div>
 
           {/* Theme */}
           <div>
-            <label className="text-sm font-medium text-forest-700 dark:text-forest-300 mb-2 flex items-center gap-2">
-              <Sun size={16} /> {t("profile:theme")}
+            <label className="flex items-center gap-2 text-sm font-medium text-secondary mb-2">
+              <Sun size={15} strokeWidth={1.75} /> {t("profile:theme")}
             </label>
             <div className="grid grid-cols-3 gap-2">
-              <ThemeBtn current={theme} value="light" onClick={setTheme} icon={<Sun size={14} />} label={t("profile:theme_light")} />
-              <ThemeBtn current={theme} value="dark" onClick={setTheme} icon={<Moon size={14} />} label={t("profile:theme_dark")} />
-              <ThemeBtn current={theme} value="auto" onClick={setTheme} icon={<span>A</span>} label={t("profile:theme_auto")} />
+              <SegBtn active={theme === "light"} onClick={() => setTheme("light")} icon={<Sun size={14} strokeWidth={1.75} />} label={t("profile:theme_light")} />
+              <SegBtn active={theme === "dark"}  onClick={() => setTheme("dark")}  icon={<Moon size={14} strokeWidth={1.75} />} label={t("profile:theme_dark")} />
+              <SegBtn active={theme === "auto"}  onClick={() => setTheme("auto")}  icon={<span className="text-[11px] font-semibold">A</span>} label={t("profile:theme_auto")} />
             </div>
           </div>
         </div>
@@ -76,28 +66,22 @@ export default function Profile() {
 
       <Link to="/bows" className="card-interactive flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Target size={20} className="text-copper-500" />
+          <span className="w-9 h-9 rounded-full bg-surface flex items-center justify-center text-cherry-500">
+            <Target size={18} strokeWidth={1.75} />
+          </span>
           <div>
             <div className="font-semibold">Meine Bögen</div>
-            <div className="text-sm text-forest-700 dark:text-forest-300">Bogen-Profile mit Setup-Daten verwalten</div>
+            <div className="text-sm text-secondary">Bogen-Profile mit Setup-Daten verwalten</div>
           </div>
         </div>
-        <ChevronRight size={18} className="text-forest-300" />
+        <ChevronRight size={18} strokeWidth={1.75} className="text-muted" />
       </Link>
 
-      <button onClick={handleLogout} className="btn-ghost w-full justify-start">
-        <LogOut size={18} /> {t("profile:logout")}
-      </button>
-
-      <section className="card border-red-200">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-red-700 mb-2">
-          {t("profile:danger_zone")}
-        </h2>
-        <p className="text-xs text-forest-700 mb-3">
-          {t("profile:delete_account_confirm")}
-        </p>
+      <section className="card">
+        <h2 className="eyebrow mb-2 text-cherry-500">{t("profile:danger_zone")}</h2>
+        <p className="text-xs text-secondary mb-3">{t("profile:delete_account_confirm")}</p>
         <button className="btn-danger" disabled>
-          <Trash2 size={16} /> {t("profile:delete_account")}
+          <Trash2 size={15} strokeWidth={1.75} /> {t("profile:delete_account")}
         </button>
       </section>
     </div>
@@ -107,49 +91,39 @@ export default function Profile() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-sm text-forest-700">{label}</span>
-      <span className="text-sm font-medium text-forest-900 dark:text-forest-50 truncate">{value}</span>
+      <span className="text-sm text-secondary">{label}</span>
+      <span className="text-sm font-medium text-primary truncate">{value}</span>
     </div>
   );
 }
 
-function LangBtn({ code, current, label }: { code: string; current: string; label: string }) {
-  const sel = current.startsWith(code);
-  const { i18n } = useTranslation();
-  return (
-    <button
-      onClick={() => i18n.changeLanguage(code)}
-      className={`tap-target rounded-xl py-2 font-medium ${
-        sel ? "bg-copper-500 text-white" : "bg-sunken text-forest-700"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function ThemeBtn({
-  current,
-  value,
+/**
+ * Segmentierter Button — wie iOS Settings.
+ * Aktiv: dunkler Text auf Cherry-Hintergrund.
+ * Inaktiv: dezent — surface mit secondary-Text. Funktioniert in light & dark.
+ */
+function SegBtn({
+  active,
   onClick,
   icon,
   label,
 }: {
-  current: Theme;
-  value: Theme;
-  onClick: (v: Theme) => void;
-  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+  icon?: React.ReactNode;
   label: string;
 }) {
-  const sel = current === value;
   return (
     <button
-      onClick={() => onClick(value)}
-      className={`tap-target rounded-xl py-2 px-3 font-medium flex items-center justify-center gap-1 text-sm ${
-        sel ? "bg-copper-500 text-white" : "bg-sunken text-forest-700"
+      onClick={onClick}
+      className={`tap-target rounded-lg py-2 px-3 text-sm font-medium flex items-center justify-center gap-1.5 transition active:scale-[0.98] ${
+        active
+          ? "bg-cherry-500 text-cream"
+          : "bg-surface text-secondary hover:text-primary border border-hairline"
       }`}
     >
-      {icon} {label}
+      {icon}
+      {label}
     </button>
   );
 }

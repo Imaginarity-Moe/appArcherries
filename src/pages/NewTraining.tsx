@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, Check, Target, Crosshair, Hash, Bird, MapPin } from "lucide-react";
@@ -15,25 +15,34 @@ import { listParcours, type Parcours } from "../api/parcours";
 import { listBows, type Bow } from "../api/bows";
 import { listTrainings } from "../api/trainings";
 import { Link } from "react-router-dom";
+import { usePageFooter } from "../components/FooterContext";
+import { addFavorite, listFavorites, removeFavorite } from "../api/favorites";
+import { Star } from "lucide-react";
 
 const DISCIPLINES = Object.keys(DISCIPLINE_LABELS) as Discipline[];
 const BOWS = Object.keys(BOW_LABELS) as BowType[];
 const PEGS = Object.keys(PEG_LABELS) as PegColor[];
 
 const DISCIPLINE_BLURBS: Record<Discipline, string> = {
-  "3d_wa": "11/10/8/5, 2 Pfeile, beide zählen",
-  "3d_ifaa": "20/18 → 16/14 → 12/10, nur Erstpfeil",
-  "3d_bowhunter": "5/4/3-Wertung, 3 Pfeile, nur Erstpfeil",
-  "field_wa": "6-5-4-3-2-1, 3 Pfeile pro Auflage",
-  simple: "Nur Gesamt-Score, keine Pfeile",
+  "3d_wa":          "11/10/8/5, 2 Pfeile, beide zählen",
+  "3d_ifaa":        "Inner/Outer/Wound — 3 Pfeile, nur Erstpfeil. 20/18/16 → 14/12/10 → 8/6/4",
+  "3d_ifaa_hunter": "Inner 20 · Outer 17 · Wound 10 — 1 Pfeil pro Ziel",
+  "3d_ifaa_animal": "Kill/Wound 20/18 → 16/14 → 12/10, optional NFAA-Bonus +1",
+  "3d_bowhunter":   "Liga-Variante: 5/4/3, 3 Pfeile, nur Erstpfeil",
+  "field_wa":       "6-5-4-3-2-1, 4 Pfeile pro Auflage, X separat (Tie-Break)",
+  "field_ifaa":     "5-4-3, 4 Pfeile pro Scheibe",
+  simple:           "Nur Gesamt-Score, keine Pfeile",
 };
 
 const DISCIPLINE_ICONS: Record<Discipline, ReactNode> = {
-  "3d_wa": <Bird size={20} />,
-  "3d_ifaa": <Bird size={20} />,
-  "3d_bowhunter": <Crosshair size={20} />,
-  "field_wa": <Target size={20} />,
-  simple: <Hash size={20} />,
+  "3d_wa":          <Bird size={20} />,
+  "3d_ifaa":        <Bird size={20} />,
+  "3d_ifaa_hunter": <Crosshair size={20} />,
+  "3d_ifaa_animal": <Bird size={20} />,
+  "3d_bowhunter":   <Crosshair size={20} />,
+  "field_wa":       <Target size={20} />,
+  "field_ifaa":     <Target size={20} />,
+  simple:           <Hash size={20} />,
 };
 
 const PEG_COLORS_HEX: Record<PegColor, string> = {
@@ -62,8 +71,11 @@ export default function NewTraining() {
   const [selectedBowId, setSelectedBowId] = useState<number | null>(null);
   const [showBowOverride, setShowBowOverride] = useState(false);
   const [recentLocations, setRecentLocations] = useState<string[]>([]);
+  const [nfaaMode, setNfaaMode] = useState(false);
+  const [favDisciplines, setFavDisciplines] = useState<Set<Discipline>>(new Set());
 
   const is3d = discipline.startsWith("3d_");
+  const isAnimal = discipline === "3d_ifaa_animal";
 
   useEffect(() => {
     listParcours().then((r) => setParcoursOptions(r.parcours)).catch(() => {});
@@ -93,7 +105,47 @@ export default function NewTraining() {
         setRecentLocations(locs);
       })
       .catch(() => {});
+    // Favorisierte Disziplinen laden — werden im Step 1 oben sortiert
+    listFavorites()
+      .then((r) => {
+        const favs = new Set<Discipline>();
+        for (const f of r.favorites) {
+          if (f.kind === "discipline") favs.add(f.ref as Discipline);
+        }
+        setFavDisciplines(favs);
+        // Wenn nur 1 favorit & user noch nicht manuell geändert → vorauswählen
+        if (favs.size === 1 && discipline === "3d_wa") {
+          setDiscipline([...favs][0]);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function toggleDisciplineFavorite(d: Discipline) {
+    const next = new Set(favDisciplines);
+    if (next.has(d)) {
+      next.delete(d);
+      setFavDisciplines(next);
+      removeFavorite("discipline", d).catch(() => null);
+    } else {
+      next.add(d);
+      setFavDisciplines(next);
+      addFavorite("discipline", d).catch(() => null);
+    }
+  }
+
+  // Disziplinen sortiert: Favoriten zuerst, dann Rest in Original-Reihenfolge
+  const sortedDisciplines = useMemo(() => {
+    const fav = DISCIPLINES.filter((d) => favDisciplines.has(d));
+    const rest = DISCIPLINES.filter((d) => !favDisciplines.has(d));
+    return [...fav, ...rest];
+  }, [favDisciplines]);
+
+  // Während des Wizards die globale Bottom-Nav verstecken — der +-FAB würde
+  // sonst einen NEUEN Wizard starten und der User Home/Stats/Parcours/Help
+  // beim halb-ausgefüllten Wizard verwirrend wegschicken.
+  usePageFooter([]);
 
   function pickBow(b: Bow) {
     setSelectedBowId(b.id);
@@ -106,6 +158,7 @@ export default function NewTraining() {
     try {
       const r = await createTraining({
         discipline,
+        nfaa_mode: isAnimal ? nfaaMode : false,
         bow_type: bowType,
         peg_color: is3d && pegColor ? (pegColor as PegColor) : null,
         distance_marked: distanceMode === "" ? null : distanceMode === "marked",
@@ -150,33 +203,65 @@ export default function NewTraining() {
           </header>
 
           <div className="grid grid-cols-2 gap-3">
-            {DISCIPLINES.map((d) => {
+            {sortedDisciplines.map((d) => {
               const sel = d === discipline;
+              const isFav = favDisciplines.has(d);
               return (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDiscipline(d)}
-                  className={`card text-left tap-large transition active:scale-[0.98] ${
-                    sel
-                      ? "ring-2 ring-copper-500 bg-copper-50 dark:bg-copper-700/10"
-                      : "hover:shadow-lift"
-                  }`}
-                >
-                  <div className="flex items-start gap-2 mb-1">
-                    <div className={sel ? "text-copper-500" : "text-forest-700 dark:text-forest-300"}>
-                      {DISCIPLINE_ICONS[d]}
+                <div key={d} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setDiscipline(d)}
+                    className={`card text-left tap-large transition active:scale-[0.98] w-full ${
+                      sel
+                        ? "ring-2 ring-cherry-500 bg-cherry-50 dark:bg-cherry-900/20"
+                        : "hover:shadow-lift"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2 mb-1 pr-6">
+                      <div className={sel ? "text-cherry-500" : "text-secondary"}>
+                        {DISCIPLINE_ICONS[d]}
+                      </div>
+                      <div className="font-display text-base font-semibold flex-1">
+                        {DISCIPLINE_LABELS[d]}
+                      </div>
+                      {sel && <Check size={16} className="text-cherry-500" />}
                     </div>
-                    <div className="font-display text-base font-semibold flex-1">
-                      {DISCIPLINE_LABELS[d]}
-                    </div>
-                    {sel && <Check size={16} className="text-copper-500" />}
-                  </div>
-                  <div className="text-xs text-forest-700 dark:text-forest-300">{DISCIPLINE_BLURBS[d]}</div>
-                </button>
+                    <div className="text-xs text-secondary">{DISCIPLINE_BLURBS[d]}</div>
+                  </button>
+                  {/* Stern in der Ecke — Favorit-Toggle */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleDisciplineFavorite(d);
+                    }}
+                    className="absolute top-2 right-2 p-1.5 -m-1.5 rounded-full no-tap-highlight"
+                    aria-label={isFav ? "Favorit entfernen" : "Als Favorit speichern"}
+                  >
+                    <Star size={16} strokeWidth={1.5} className={isFav ? "fill-gold text-gold" : "text-muted"} />
+                  </button>
+                </div>
               );
             })}
           </div>
+
+          {/* NFAA-Toggle — nur sichtbar bei IFAA Animal Round */}
+          {isAnimal && (
+            <label className="card flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={nfaaMode}
+                onChange={(e) => setNfaaMode(e.target.checked)}
+                className="w-5 h-5 mt-0.5 accent-cherry-500"
+              />
+              <div className="flex-1">
+                <div className="font-semibold text-sm">NFAA-Modus</div>
+                <div className="text-xs text-secondary mt-0.5">
+                  +1 Bonuspunkt auf jeden Treffer (Kill & Wound). Statt 20/18 → 21/19 etc.
+                </div>
+              </div>
+            </label>
+          )}
 
           <button onClick={() => setStep(2)} className="btn w-full tap-large mt-4">
             {t("common:actions.next")} <ArrowRight size={18} />

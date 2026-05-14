@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Camera, ImageOff, X, Loader2 } from "lucide-react";
 import { uploadTargetImage, deleteTargetImage } from "../api/trainings";
+import { useConfirm } from "./ConfirmDialog";
 
 type Props = {
   trainingId: number | string;
@@ -19,6 +20,7 @@ export default function StationPhoto({ trainingId, targetId, imagePath, onChange
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(false);
+  const confirm = useConfirm();
 
   // Stationen die noch nicht gespeichert sind (kein echtes id) können kein Bild bekommen
   const canUpload = targetId > 0 && typeof trainingId === "number";
@@ -40,7 +42,13 @@ export default function StationPhoto({ trainingId, targetId, imagePath, onChange
   };
 
   const handleDelete = async () => {
-    if (!confirm("Foto entfernen?")) return;
+    const ok = await confirm({
+      title: "Foto entfernen?",
+      message: "Das Stations-Foto wird vom Server gelöscht.",
+      confirmLabel: "Entfernen",
+      variant: "danger",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await deleteTargetImage(trainingId, targetId);

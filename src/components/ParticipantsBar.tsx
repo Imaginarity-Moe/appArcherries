@@ -1,5 +1,6 @@
 import { UserPlus, Crown } from "lucide-react";
 import type { Participant } from "../api/trainings";
+import Avatar from "./Avatar";
 
 type Props = {
   participants: Participant[];
@@ -31,18 +32,19 @@ export default function ParticipantsBar({ participants, isOwner, onInvite, isLiv
       {participants.map((p) => (
         <div
           key={p.id}
-          className={`flex-shrink-0 flex items-center gap-2 rounded-2xl px-3 py-1.5 ${
+          className={`flex-shrink-0 flex items-center gap-2 rounded-full pl-1 pr-3 py-1 ${
             p.is_self
-              ? "bg-copper-500 text-white"
-              : "bg-elevated dark:bg-elevated-dark border border-forest-100 dark:border-forest-800"
+              ? "bg-cherry-500 text-cream"
+              : "bg-surface text-secondary border border-hairline"
           }`}
         >
-          {p.role === "owner" && <Crown size={12} className={p.is_self ? "text-white" : "text-copper-500"} />}
-          <span className="text-sm font-medium truncate max-w-[80px]">
+          <Avatar user={{ display_name: p.display_name, avatar_url: null }} size="xs" />
+          {p.role === "owner" && <Crown size={11} strokeWidth={1.75} className={p.is_self ? "text-cream" : "text-cherry-500"} />}
+          <span className="text-xs font-medium truncate max-w-[80px]">
             {p.display_name || "—"}
-            {p.user_role === "guest" && " (Gast)"}
+            {p.user_role === "guest" && " · Gast"}
           </span>
-          <span className={`font-mono text-sm font-bold ${p.is_self ? "text-white" : "text-copper-500"}`}>
+          <span className={`font-mono text-sm font-semibold tabular-nums ${p.is_self ? "text-cream" : "text-cherry-500"}`}>
             {p.total_score}
           </span>
         </div>

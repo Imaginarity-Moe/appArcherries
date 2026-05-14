@@ -4,10 +4,13 @@
   "search_placeholder": "Begriff suchen …",
   "categories": {
     "getting_started": "Erste Schritte",
+    "install": "App installieren & Offline",
+    "shared": "Gemeinsame Runden",
+    "community": "Community: Öffentliche Parcours, Bewertungen & Highscore",
     "disciplines": "Disziplinen",
     "scoring": "Wertungssysteme",
     "pegs": "Pflöcke & Distanzen",
-    "bows": "Bogenklassen",
+    "bows": "Bogenklassen & Profile",
     "glossary": "Glossar",
     "app": "Über die App"
   },

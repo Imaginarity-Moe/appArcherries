@@ -9,6 +9,7 @@ import {
   type Bow,
 } from "../api/bows";
 import { BOW_LABELS, type BowType } from "../api/trainings";
+import { useConfirm } from "../components/ConfirmDialog";
 
 const BOW_TYPES: BowType[] = ["recurve", "compound", "barebow", "traditional"];
 
@@ -16,6 +17,7 @@ export default function Bows() {
   const [bows, setBows] = useState<Bow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Bow | "new" | null>(null);
+  const confirm = useConfirm();
 
   const refresh = async () => {
     try {
@@ -30,8 +32,14 @@ export default function Bows() {
     refresh();
   }, []);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Diesen Bogen wirklich löschen?")) return;
+  const handleDelete = async (id: number, name: string) => {
+    const ok = await confirm({
+      title: "Bogen löschen?",
+      message: `„${name}" wird endgültig entfernt. Bisherige Trainings bleiben unangetastet.`,
+      confirmLabel: "Löschen",
+      variant: "danger",
+    });
+    if (!ok) return;
     await deleteBow(id);
     refresh();
   };
@@ -98,7 +106,7 @@ export default function Bows() {
               <button onClick={() => setEditing(b)} className="btn-icon" aria-label="Bearbeiten">
                 <Edit2 size={16} />
               </button>
-              <button onClick={() => handleDelete(b.id)} className="btn-icon danger" aria-label="Löschen">
+              <button onClick={() => handleDelete(b.id, b.name)} className="btn-icon danger" aria-label="Löschen">
                 <Trash2 size={16} />
               </button>
             </div>

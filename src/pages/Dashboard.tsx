@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Target, TrendingUp, Calendar, Plus, Users } from "lucide-react";
+import { Target, TrendingUp, Calendar, Plus, Users, Play } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import {
   BOW_LABELS,
@@ -10,7 +10,9 @@ import {
   type TrainingListItem,
 } from "../api/trainings";
 import Sparkline from "../components/Sparkline";
+import { LogoMark } from "../components/Logo";
 import { fmtDate } from "../lib/format";
+import { useSyncListener } from "../lib/useSyncListener";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -19,12 +21,19 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadTrainings = () => {
     listTrainings(1, 50)
       .then((r) => setItems(r.trainings))
       .catch((e) => setError(e instanceof Error ? e.message : "Fehler beim Laden"))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadTrainings();
   }, []);
+
+  // Nach Sync-Drain: Liste neu laden (Server hat ggf. neue Daten z.B. von geteilten Runden)
+  useSyncListener(loadTrainings);
 
   const stats = useMemo(() => {
     if (items.length === 0) return null;
@@ -47,15 +56,54 @@ export default function Dashboard() {
     return new Intl.DateTimeFormat(i18n.language, { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   }, [i18n.language]);
 
+  // Offenes Training (ended_at IS NULL) für Schnellstart-Banner
+  const openTraining = useMemo(
+    () => items.find((it) => !it.ended_at) ?? null,
+    [items]
+  );
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in relative">
+      {/* Watermark — flush am unteren Screen-Rand, voll sichtbar, dezent */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 z-0 flex justify-center opacity-[0.05] dark:opacity-[0.07]"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 5.5rem)" }}
+      >
+        <LogoMark size={260} className="text-primary" />
+      </div>
+
       {/* Greeting */}
       <div>
         <h1 className="font-display text-3xl font-semibold leading-tight">
           {t("dashboard:greeting", { name: user?.display_name ?? user?.email?.split("@")[0] })}
         </h1>
-        <p className="text-sm text-forest-700 dark:text-forest-300 mt-0.5 capitalize">{today}</p>
+        <p className="text-sm text-secondary mt-0.5 capitalize">{today}</p>
       </div>
+
+      {/* Schnellstart-Banner: offenes Training fortsetzen */}
+      {openTraining && (
+        <Link
+          to={`/trainings/${openTraining.id}`}
+          className="block card-interactive bg-gradient-to-br from-cherry-500 to-cherry-700 text-cream border-transparent shadow-cherry"
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-11 h-11 rounded-full bg-cream/15 flex items-center justify-center shrink-0">
+              <Play size={20} strokeWidth={2} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase tracking-wider opacity-80">Laufendes Training</div>
+              <div className="font-semibold truncate">
+                {DISCIPLINE_LABELS[openTraining.discipline]}
+                {openTraining.location && ` · ${openTraining.location}`}
+              </div>
+              <div className="text-xs opacity-80 mt-0.5">
+                Fortsetzen — Score: {openTraining.total_score}
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Glimpse-Karten */}
       {stats && stats.total > 0 && (
@@ -122,12 +170,13 @@ function GlimpseCard({
   highlight?: boolean;
 }) {
   return (
-    <div className={`card p-4 ${highlight ? "bg-gradient-to-br from-copper-50 to-elevated dark:from-copper-700/10 dark:to-elevated-dark border-copper-300/40" : ""}`}>
-      <div className="flex items-center gap-2 text-forest-700 dark:text-forest-300 text-xs font-medium mb-1">
-        {icon}
-        <span className="truncate">{label}</span>
+    <div className={`card p-3 sm:p-4 ${highlight ? "bg-gradient-to-br from-copper-50 to-elevated dark:from-copper-700/10 dark:to-elevated-dark border-copper-300/40" : ""}`}>
+      {/* Label und Icon: untereinander auf Mobile, sodass Label 2-zeilig sein darf */}
+      <div className="flex items-start gap-1.5 text-forest-700 dark:text-forest-300 text-[11px] sm:text-xs font-medium mb-1 min-h-[2.5em] leading-tight">
+        <span className="shrink-0 mt-0.5">{icon}</span>
+        <span className="break-words">{label}</span>
       </div>
-      <div className={`text-score-md ${highlight ? "score" : "font-mono tabular-nums font-bold text-forest-900 dark:text-forest-50"}`}>
+      <div className={`text-score-md leading-none ${highlight ? "score" : "font-mono tabular-nums font-bold text-forest-900 dark:text-forest-50"}`}>
         {value}
       </div>
     </div>

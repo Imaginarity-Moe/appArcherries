@@ -1,11 +1,31 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { execSync } from "child_process";
+
+// Build-Revision: git-Commit-Hash + Timestamp werden ins Bundle inlined.
+// Verfügbar im Frontend als __APP_REV__ / __APP_BUILT__ (siehe src/vite-env.d.ts).
+const APP_REV = (() => {
+  try { return execSync("git rev-parse --short HEAD").toString().trim(); }
+  catch { return "dev"; }
+})();
+const APP_BUILT = new Date().toISOString().slice(0, 16).replace("T", " ");
 
 export default defineConfig({
+  define: {
+    __APP_REV__: JSON.stringify(APP_REV),
+    __APP_BUILT__: JSON.stringify(APP_BUILT),
+  },
   plugins: [
     react(),
     VitePWA({
+      // prompt: zeigt dem User ein sichtbares "Neue Version verfügbar"-Signal
+      // (siehe PWAUpdatePrompt.tsx). Das alte autoUpdate-Verhalten war zu
+      // lautlos — User merkte nicht, dass eine neue Version da ist.
+      //
+      // Wichtig: index.html + sw.js + manifest haben no-cache-Header
+      // (public/.htaccess), damit Browser bei Reload immer frisch lädt.
+      // Vite-hashed Assets bleiben immutable.
       registerType: "prompt",
       includeAssets: ["favicon-32x32.png", "apple-touch-icon.png"],
       manifest: {
@@ -17,8 +37,8 @@ export default defineConfig({
         scope: "/",
         display: "standalone",
         orientation: "portrait",
-        background_color: "#FAF8F3",
-        theme_color: "#4F6B1A",
+        background_color: "#FAF8F4",
+        theme_color: "#111111",
         icons: [
           { src: "/pwa-192x192.png",          sizes: "192x192", type: "image/png" },
           { src: "/pwa-512x512.png",          sizes: "512x512", type: "image/png" },
@@ -27,10 +47,35 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
-        // Phase 1: API NICHT cachen — wir wollen keine veralteten Daten zeigen.
-        // Offline-Reads kommen in Phase 2 mit gezielter IDB-Cache-Strategie.
+        // KEIN skipWaiting + KEIN clientsClaim: der neue SW geht in "waiting",
+        // useRegisterSW.needRefresh wird true → der User sieht den
+        // "Neue Version verfügbar"-Banner und klickt selbst auf "Jetzt"
+        // (→ updateServiceWorker(true) macht skipWaiting + reload).
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api/],
+        navigateFallbackDenylist: [/^\/api/, /^\/uploads/],
+        runtimeCaching: [
+          {
+            // index.html / SPA-Navigationen: Network-First mit kurzem Timeout
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "archerries-html",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 16, maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
+          {
+            // Avatar / Stations / Parcours / Lanes-Bilder: Network-First,
+            // damit ein neu hochgeladenes Bild den alten Cache-Eintrag überholt.
+            urlPattern: /^\/uploads\//,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "archerries-uploads",
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
       },
       devOptions: {
         // SW im Dev-Modus aktivieren, damit du auf dem iPhone die PWA-Installation testen kannst.

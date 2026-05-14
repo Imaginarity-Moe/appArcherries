@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Wifi, WifiOff, CloudUpload, Check } from "lucide-react";
+import { Wifi, WifiOff, CloudUpload, Check, RefreshCw } from "lucide-react";
 import { countPending, subscribeOutbox } from "../lib/outbox";
 import { drain } from "../lib/sync";
 
@@ -119,6 +119,13 @@ export default function NetworkStatusIcon() {
                 Jetzt synchronisieren
               </button>
             )}
+            {/* Reload-Button — wichtig in der installierten PWA, dort fehlt sonst der Browser-Reload */}
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-ghost w-full mt-2 text-sm inline-flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={14} strokeWidth={1.75} /> App neu laden
+            </button>
           </div>
         </>
       )}

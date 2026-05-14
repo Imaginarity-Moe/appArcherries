@@ -4,10 +4,13 @@
   "search_placeholder": "Search…",
   "categories": {
     "getting_started": "Getting started",
+    "install": "Install app & offline",
+    "shared": "Shared rounds",
+    "community": "Community: public ranges, reviews & highscore",
     "disciplines": "Disciplines",
     "scoring": "Scoring systems",
     "pegs": "Pegs & distances",
-    "bows": "Bow classes",
+    "bows": "Bow classes & profiles",
     "glossary": "Glossary",
     "app": "About the app"
   },

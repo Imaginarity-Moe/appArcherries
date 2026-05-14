@@ -84,13 +84,13 @@ export default function Stats() {
           {data!.personal_bests.length > 0 && (
             <section className="card">
               <h2 className="font-display text-lg font-semibold mb-3 flex items-center gap-2">
-                <Trophy size={18} className="text-copper-500" />
+                <Trophy size={18} className="text-cherry-500" />
                 {t("stats:personal_bests")}
               </h2>
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                 {data!.personal_bests.map((pb, i) => (
                   <div key={i} className="shrink-0 min-w-[160px] card-sunken">
-                    <div className="text-xs text-forest-700">
+                    <div className="text-xs text-secondary">
                       {DISCIPLINE_LABELS[pb.discipline as Discipline] ?? pb.discipline}
                     </div>
                     <div className="text-sm font-semibold mb-2">
@@ -100,6 +100,32 @@ export default function Stats() {
                   </div>
                 ))}
               </div>
+            </section>
+          )}
+
+          {data!.personal_bests_parcours && data!.personal_bests_parcours.length > 0 && (
+            <section className="card">
+              <h2 className="font-display text-lg font-semibold mb-3 flex items-center gap-2">
+                <Trophy size={18} className="text-cherry-500" />
+                Bestleistungen pro Parcours
+              </h2>
+              <ul className="divide-y divide-hairline">
+                {data!.personal_bests_parcours.map((pb, i) => (
+                  <li key={i} className="flex items-center gap-3 py-2">
+                    <a
+                      href={`/parcours/${pb.parcours_id}`}
+                      className="font-semibold text-sm flex-1 min-w-0 truncate text-primary hover:text-cherry-500"
+                    >
+                      {pb.parcours_name ?? `Parcours #${pb.parcours_id}`}
+                    </a>
+                    <span className="text-xs text-muted shrink-0">
+                      {DISCIPLINE_LABELS[pb.discipline as Discipline] ?? pb.discipline} ·{" "}
+                      {BOW_LABELS[pb.bow_type as BowType] ?? pb.bow_type}
+                    </span>
+                    <span className="score text-base tabular-nums shrink-0 w-12 text-right">{pb.best}</span>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 

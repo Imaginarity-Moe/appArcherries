@@ -1,54 +1,67 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import { Icon, LatLng } from "leaflet";
-import { ArrowLeft, Upload as UploadIcon, X } from "lucide-react";
-import { createParcours, uploadParcoursImage } from "../api/parcours";
+import { ArrowLeft, Upload as UploadIcon, X, Check, Copy } from "lucide-react";
+import { cloneParcours, createParcours, listParcours, uploadParcoursImage, type Parcours } from "../api/parcours";
+import ParcoursForm, { initialFormState, formStateToBody, type ParcoursFormState } from "../components/ParcoursForm";
+import { usePageFooter } from "../components/FooterContext";
 
-const customIcon = new Icon({
-  iconUrl:
-    "data:image/svg+xml;utf8," +
-    encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40" width="32" height="40"><path d="M16 0 C 7 0 0 7 0 16 C 0 26 16 40 16 40 C 16 40 32 26 32 16 C 32 7 25 0 16 0 Z" fill="#C97B4B"/><circle cx="16" cy="16" r="6" fill="white"/></svg>'
-    ),
-  iconSize: [32, 40],
-  iconAnchor: [16, 40],
-});
-
-function ClickToSetMarker({ onPick }: { onPick: (latlng: LatLng) => void }) {
-  useMapEvents({
-    click(e) {
-      onPick(e.latlng);
-    },
-  });
-  return null;
-}
+const FORM_ID = "parcours-new-form";
 
 export default function NewParcours() {
-  const { t } = useTranslation(["parcours", "common"]);
   const nav = useNavigate();
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [address, setAddress] = useState("");
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [isPublic, setIsPublic] = useState(false);
+  const [state, setState] = useState<ParcoursFormState>(initialFormState());
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [center, setCenter] = useState<[number, number]>([51.1657, 10.4515]); // Deutschland-Mitte
+
+  // Vorlage übernehmen — Liste eigener + öffentlicher Parcours zur Auswahl
+  const [templates, setTemplates] = useState<Parcours[]>([]);
+  const [cloneFrom, setCloneFrom] = useState<number | "">("");
+  const [cloning, setCloning] = useState(false);
 
   useEffect(() => {
-    // Versuche, den User-Standort als Start zu nehmen
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setCenter([pos.coords.latitude, pos.coords.longitude]),
-        () => {}
-      );
-    }
+    listParcours(true)
+      .then((r) => setTemplates(r.parcours))
+      .catch(() => {});
   }, []);
+
+  async function handleCloneSelect(srcId: number) {
+    if (!srcId) return;
+    setCloning(true);
+    setError(null);
+    try {
+      const r = await cloneParcours(srcId);
+      // Zum frisch geklonten Parcours navigieren — User kann dort weiter editieren
+      nav(`/parcours/${r.parcours.id}/edit`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Klonen fehlgeschlagen");
+      setCloneFrom("");
+    } finally {
+      setCloning(false);
+    }
+  }
+
+  // Context-aware Footer: nur Abbrechen + Speichern
+  const footerActions = useMemo(
+    () => [
+      { kind: "button" as const, icon: <X size={20} strokeWidth={1.75} />, label: "Abbrechen", onClick: () => nav("/parcours") },
+      {
+        kind: "button" as const,
+        icon: <Check size={20} strokeWidth={2} />,
+        label: busy ? "Speichere…" : "Speichern",
+        primary: true,
+        disabled: busy || !state.name.trim(),
+        onClick: () => {
+          const f = document.getElementById(FORM_ID) as HTMLFormElement | null;
+          f?.requestSubmit();
+        },
+      },
+    ],
+    [busy, state.name, nav]
+  );
+  usePageFooter(footerActions);
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -62,26 +75,17 @@ export default function NewParcours() {
     setError(null);
   }
 
-  async function onSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!state.name.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      const r = await createParcours({
-        name,
-        description: description || null,
-        address: address || null,
-        lat: coords?.lat ?? null,
-        lng: coords?.lng ?? null,
-        is_public: isPublic,
-      });
+      const r = await createParcours(formStateToBody(state));
       if (file) {
         try {
           await uploadParcoursImage(r.parcours.id, file);
-        } catch {
-          // Bild-Upload-Fehler nicht kritisch — Parcours ist ja angelegt
-        }
+        } catch { /* nicht kritisch */ }
       }
       nav(`/parcours/${r.parcours.id}`);
     } catch (err) {
@@ -91,129 +95,83 @@ export default function NewParcours() {
     }
   }
 
+  const imageBlock = (
+    <section className="space-y-3">
+      <h2 className="eyebrow">Hauptbild</h2>
+      {filePreview ? (
+        <div className="relative">
+          <img src={filePreview} alt="" className="w-full rounded-2xl border border-hairline" />
+          <button
+            type="button"
+            onClick={() => {
+              setFile(null);
+              setFilePreview(null);
+            }}
+            className="absolute top-2 right-2 btn-icon bg-elevated/95 shadow-card"
+            aria-label="Entfernen"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      ) : (
+        <label className="card-sunken flex flex-col items-center justify-center gap-2 py-8 cursor-pointer hover:bg-surface transition">
+          <UploadIcon size={22} strokeWidth={1.75} className="text-muted" />
+          <span className="text-sm text-secondary">Bild hinzufügen — JPEG, PNG, WebP (max 5 MB)</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onFileChange} />
+        </label>
+      )}
+    </section>
+  );
+
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => nav("/parcours")} className="btn-icon" aria-label="Back">
-          <ArrowLeft size={22} />
+      <div className="flex items-center gap-2 mb-5">
+        <button onClick={() => nav("/parcours")} className="btn-icon" aria-label="Zurück">
+          <ArrowLeft size={22} strokeWidth={1.75} />
         </button>
-        <h1 className="font-display text-xl font-semibold">{t("parcours:new")}</h1>
-        <div className="w-10" />
+        <h1 className="display text-h2">Neuer Parcours</h1>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <label className="text-sm font-medium text-forest-700 mb-1 block">
-            {t("parcours:form.name")}
+      {/* Vorlage übernehmen — optional. Spart Zeit wenn ein ähnlicher Parcours schon existiert. */}
+      {templates.length > 0 && (
+        <section className="card-sunken mb-5">
+          <label className="flex items-center gap-2 text-sm font-medium text-secondary mb-2">
+            <Copy size={14} strokeWidth={1.75} /> Aus Vorlage übernehmen (optional)
           </label>
-          <input
+          <select
             className="input"
-            placeholder={t("parcours:form.name_placeholder")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
+            value={cloneFrom}
+            onChange={(e) => {
+              const val = e.target.value === "" ? "" : Number(e.target.value);
+              setCloneFrom(val);
+              if (val) handleCloneSelect(val);
+            }}
+            disabled={cloning}
+          >
+            <option value="">— Leer starten —</option>
+            {templates.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}{p.is_public ? " (öffentlich)" : ""}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted mt-1.5">
+            Stammdaten + Bahnen werden kopiert (Foto nicht — lade ein eigenes hoch).
+          </p>
+        </section>
+      )}
 
-        <div>
-          <label className="text-sm font-medium text-forest-700 mb-1 block">
-            {t("parcours:form.description")}
-          </label>
-          <textarea
-            className="input"
-            rows={3}
-            placeholder={t("parcours:form.description_placeholder")}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-forest-700 mb-1 block">
-            {t("parcours:form.address")}
-          </label>
-          <input
-            className="input"
-            placeholder={t("parcours:form.address_placeholder")}
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-          />
-        </div>
-
-        {/* Karte */}
-        <div>
-          <label className="text-sm font-medium text-forest-700 mb-2 block">
-            {t("parcours:form.coordinates")}
-          </label>
-          <div className="rounded-2xl overflow-hidden border border-forest-100" style={{ height: 280 }}>
-            <MapContainer center={center} zoom={6} style={{ height: "100%", width: "100%" }}>
-              <TileLayer
-                attribution='&copy; OpenStreetMap'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <ClickToSetMarker onPick={(ll) => setCoords({ lat: ll.lat, lng: ll.lng })} />
-              {coords && <Marker position={[coords.lat, coords.lng]} icon={customIcon} />}
-            </MapContainer>
-          </div>
-          {coords && (
-            <p className="text-xs text-forest-700 mt-1 font-mono">
-              {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-            </p>
-          )}
-        </div>
-
-        {/* Bild */}
-        <div>
-          <label className="text-sm font-medium text-forest-700 mb-1 block">
-            {t("parcours:form.image")}
-          </label>
-          {filePreview ? (
-            <div className="relative">
-              <img src={filePreview} className="w-full rounded-2xl border border-forest-100" />
-              <button
-                type="button"
-                onClick={() => {
-                  setFile(null);
-                  setFilePreview(null);
-                }}
-                className="absolute top-2 right-2 btn-icon bg-elevated/95"
-                aria-label="Remove"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          ) : (
-            <label className="card-sunken flex flex-col items-center justify-center gap-2 py-8 cursor-pointer hover:bg-sunken">
-              <UploadIcon size={24} className="text-forest-700" />
-              <span className="text-sm text-forest-700">{t("parcours:form.drop_image")}</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={onFileChange}
-              />
-            </label>
-          )}
-        </div>
-
-        <label className="flex items-start gap-2 text-sm cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isPublic}
-            onChange={(e) => setIsPublic(e.target.checked)}
-            className="w-5 h-5 rounded text-copper-500 focus:ring-copper-500 mt-0.5"
-          />
-          <span className="text-forest-700">{t("parcours:form.is_public")}</span>
-        </label>
-
-        {error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm">{error}</div>
-        )}
-
-        <button className="btn w-full tap-large" disabled={busy || !name.trim()}>
-          {busy ? t("parcours:form.submitting") : t("parcours:form.submit")}
-        </button>
-      </form>
+      <ParcoursForm
+        formId={FORM_ID}
+        hideSubmitButton
+        state={state}
+        setState={setState}
+        onSubmit={handleSubmit}
+        submitLabel="Parcours speichern"
+        busy={busy}
+        error={error}
+        extraFields={imageBlock}
+      />
     </div>
   );
 }

@@ -1,26 +1,58 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, BarChart3 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BarChart3, Plus, Trophy } from "lucide-react";
 import { getTrainingStats, type TrainingStats } from "../api/stats";
 import { StationSparkline, ZoneDistributionBars, ArrowConsistencyBars } from "../components/charts";
-import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
+import { BOW_LABELS, DISCIPLINE_LABELS, getTraining, updateTraining, type BowType, type Discipline, type Training } from "../api/trainings";
 import { fmtDate } from "../lib/format";
+import { usePageFooter } from "../components/FooterContext";
 
 /**
  * End-of-Training-Auswertung. Wird nach „Training beenden" angesteuert.
  */
 export default function TrainingSummary() {
   const { id } = useParams();
+  const nav = useNavigate();
   const { t } = useTranslation(["stats", "common"]);
   const [data, setData] = useState<TrainingStats | null>(null);
+  const [training, setTraining] = useState<Training | null>(null);
   const [loading, setLoading] = useState(true);
+  const [publishing, setPublishing] = useState(false);
+
+  // Footer-Actions: Zurück | Training-Details | Neues Training
+  const footerActions = useMemo(
+    () => [
+      { kind: "link" as const, to: `/trainings/${id}`, icon: <ArrowLeft size={20} strokeWidth={1.75} />, label: "Training" },
+      { kind: "link" as const, to: "/stats", icon: <BarChart3 size={20} strokeWidth={1.75} />, label: "Statistik" },
+      { kind: "button" as const, onClick: () => nav("/trainings/new"), icon: <Plus size={20} strokeWidth={2} />, label: "Neu", primary: true },
+    ],
+    [id, nav]
+  );
+  usePageFooter(footerActions);
 
   useEffect(() => {
-    getTrainingStats(Number(id))
-      .then(setData)
+    const tid = Number(id);
+    Promise.all([getTrainingStats(tid), getTraining(tid)])
+      .then(([stats, tr]) => {
+        setData(stats);
+        setTraining(tr.training);
+      })
       .finally(() => setLoading(false));
   }, [id]);
+
+  async function togglePublish() {
+    if (!training) return;
+    setPublishing(true);
+    try {
+      const r = await updateTraining(training.id, {
+        published_to_highscore: !training.published_to_highscore,
+      });
+      setTraining(r.training);
+    } finally {
+      setPublishing(false);
+    }
+  }
 
   if (loading || !data) return <p className="text-forest-700">{t("common:actions.loading")}</p>;
 
@@ -81,6 +113,31 @@ export default function TrainingSummary() {
           <ArrowConsistencyBars
             data={data.arrow_consistency.map((a) => ({ arrow: `${t("common:shot")} ${a.arrow_seq}`, avg: a.avg }))}
           />
+        </div>
+      )}
+
+      {/* Highscore-Veröffentlichung — nur für Trainings auf einem Parcours mit Score > 0 */}
+      {training && training.parcours_id && data.total_score > 0 && (
+        <div className="card">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!training.published_to_highscore}
+              onChange={togglePublish}
+              disabled={publishing}
+              className="w-5 h-5 mt-0.5 accent-cherry-500 shrink-0"
+            />
+            <div className="flex-1">
+              <div className="font-semibold text-sm flex items-center gap-1.5">
+                <Trophy size={14} strokeWidth={1.75} /> In den öffentlichen Highscore aufnehmen
+              </div>
+              <div className="text-xs text-secondary mt-0.5">
+                Dein Score, Anzeigename und Bogenklasse werden anderen Usern auf der Parcours-Seite
+                gezeigt (Top 3 pro Disziplin × Bogen). Standort, Notizen und einzelne Pfeile
+                bleiben privat. Du kannst die Veröffentlichung jederzeit zurücknehmen.
+              </div>
+            </div>
+          </label>
         </div>
       )}
 

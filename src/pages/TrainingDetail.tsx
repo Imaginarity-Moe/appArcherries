@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, Check, Grid3x3, MoreHorizontal, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BarChart3, Check, Grid3x3, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
 import {
   BOW_LABELS,
   DISCIPLINE_LABELS,
@@ -21,52 +21,118 @@ import StationPhoto from "../components/StationPhoto";
 import PhotoMarkers from "../components/PhotoMarkers";
 import { fmtDateTime } from "../lib/format";
 import { useLivePolling } from "../lib/useLivePolling";
+import { useSyncListener } from "../lib/useSyncListener";
+import { useConfirm } from "../components/ConfirmDialog";
+import { usePageFooter } from "../components/FooterContext";
 
 // Lazy: qrcode.react wird nur beim Öffnen des Einladen-Modals geladen
 const InviteModal = lazy(() => import("../components/InviteModal"));
 
 // Anzahl Pfeil-Slots je Disziplin
 const SLOTS_BY_DISCIPLINE: Record<Discipline, number> = {
-  "3d_wa": 2,
-  "3d_ifaa": 3,
-  "3d_bowhunter": 3, // IFAA-Standard: 3 Pfeile, nur erster treffender zählt
-  "field_wa": 3,
-  simple: 0,
+  "3d_wa":          2,
+  "3d_ifaa":        3,
+  "3d_ifaa_hunter": 1,
+  "3d_ifaa_animal": 3,
+  "3d_bowhunter":   3,
+  "field_wa":       4, // WA-Standard: 4 Pfeile pro Auflage
+  "field_ifaa":     4,
+  simple:           0,
 };
 
-/** Lokale Wertungs-Vorschau (Server berechnet beim Speichern autoritativ neu) */
-function previewArrowPoints(discipline: Discipline, zone: string | null, slot: number, allZones: (string | null)[]): number {
+/** Disziplinen mit „nur erster treffender Pfeil zählt"-Logik */
+const FIRST_HIT_DISCIPLINES: Discipline[] = ["3d_ifaa", "3d_ifaa_animal", "3d_bowhunter"];
+
+/**
+ * Lokale Wertungs-Vorschau. Muss synchron bleiben mit `api/lib/Scoring.php` und
+ * `src/lib/scoringPreview.ts`. Slot ist 0-indexed, arrow_seq ist (slot + 1).
+ */
+function previewArrowPoints(
+  discipline: Discipline,
+  zone: string | null,
+  slot: number,
+  allZones: (string | null)[],
+  nfaa: boolean = false
+): number {
   if (!zone || zone === "miss") return 0;
 
-  if (discipline === "3d_ifaa") {
+  const isInnerKill = ["inner_kill", "kill_inner", "X", "inner"].includes(zone);
+  const isOuterKill = ["outer_kill", "kill_outer", "outer"].includes(zone);
+  const isKillAny   = isInnerKill || isOuterKill || ["vital", "kill"].includes(zone);
+  const isWound     = ["wound", "body"].includes(zone);
+
+  // Disziplinen mit "nur erster treffender Pfeil zählt"-Logik
+  if (FIRST_HIT_DISCIPLINES.includes(discipline)) {
     const firstHit = allZones.findIndex((z) => z && z !== "miss");
     if (firstHit !== slot) return 0;
-    const isVital = ["X", "kill", "inner", "vital"].includes(zone);
-    if (slot === 0) return isVital ? 20 : 18;
-    if (slot === 1) return isVital ? 16 : 14;
-    if (slot === 2) return isVital ? 12 : 10;
+  }
+
+  if (discipline === "3d_ifaa") {
+    // 1: 20/18/16  2: 14/12/10  3: 8/6/4
+    const t = [
+      { inner: 20, outer: 18, wound: 16 },
+      { inner: 14, outer: 12, wound: 10 },
+      { inner: 8,  outer: 6,  wound: 4 },
+    ];
+    if (slot < 0 || slot > 2) return 0;
+    if (isInnerKill) return t[slot].inner;
+    if (isOuterKill) return t[slot].outer;
+    if (isWound)     return t[slot].wound;
     return 0;
   }
+
+  if (discipline === "3d_ifaa_hunter") {
+    if (slot !== 0) return 0;
+    if (isInnerKill) return 20;
+    if (isOuterKill) return 17;
+    if (isWound)     return 10;
+    return 0;
+  }
+
+  if (discipline === "3d_ifaa_animal") {
+    // 1: 20/18  2: 16/14  3: 12/10  | NFAA: +1
+    const t = [
+      { kill: 20, wound: 18 },
+      { kill: 16, wound: 14 },
+      { kill: 12, wound: 10 },
+    ];
+    if (slot < 0 || slot > 2) return 0;
+    let base = 0;
+    if (isKillAny)     base = t[slot].kill;
+    else if (isWound)  base = t[slot].wound;
+    return base > 0 && nfaa ? base + 1 : base;
+  }
+
   if (discipline === "3d_bowhunter") {
-    // IFAA Bowhunter Round: 3 Pfeile, nur erster treffender zählt. Vital 5/4/3, Wound 3/2/1.
-    const firstHit = allZones.findIndex((z) => z && z !== "miss");
-    if (firstHit !== slot) return 0;
-    const isVital = ["X", "kill", "inner", "vital"].includes(zone);
-    if (slot === 0) return isVital ? 5 : 3;
-    if (slot === 1) return isVital ? 4 : 2;
-    if (slot === 2) return isVital ? 3 : 1;
+    const t = [
+      { kill: 5, wound: 3 },
+      { kill: 4, wound: 2 },
+      { kill: 3, wound: 1 },
+    ];
+    if (slot < 0 || slot > 2) return 0;
+    if (isKillAny) return t[slot].kill;
+    if (isWound)   return t[slot].wound;
     return 0;
   }
 
   if (discipline === "3d_wa") {
-    const m: Record<string, number> = { X: 11, kill: 11, inner: 10, outer: 8, body: 5 };
+    if (zone === "X") return 11;
+    const m: Record<string, number> = { kill_inner: 11, inner_kill: 11, inner: 10, kill_outer: 10, outer_kill: 10, outer: 8, body: 5, wound: 5 };
     return m[zone] ?? 0;
   }
+
   if (discipline === "field_wa") {
     if (zone === "X") return 6;
     const n = parseInt(zone, 10);
     return n >= 1 && n <= 6 ? n : 0;
   }
+
+  if (discipline === "field_ifaa") {
+    const n = parseInt(zone, 10);
+    if (n === 5 || n === 4 || n === 3) return n;
+    return 0;
+  }
+
   return 0;
 }
 
@@ -103,6 +169,9 @@ export default function TrainingDetail() {
   const isShared = (training?.participants?.length ?? 0) > 1;
   const isOpenPoll = training !== null && !training.ended_at;
   const { isPolling } = useLivePolling(refresh, isOpenPoll && isShared, 5000);
+
+  // Nach erfolgreichem Outbox-Drain: frische Server-Daten holen
+  useSyncListener(refresh);
 
   if (loading) return <p className="text-forest-700">{t("common:actions.loading")}</p>;
   if (error || !training) return <p className="text-red-700">{error ?? "Not found"}</p>;
@@ -149,9 +218,54 @@ function TrainingOverview({
   );
   const isOpen = !training.ended_at;
   const nextIndex = (myTargets[myTargets.length - 1]?.target_index ?? 0) + 1;
+  const confirm = useConfirm();
+
+  // Page-spezifischer Footer: Zurück + Hauptaktionen je nach Status
+  const footerActions = useMemo(() => {
+    const actions: Array<
+      | { kind: "link"; to: string; icon: React.ReactNode; label: string; primary?: boolean }
+      | { kind: "button"; onClick: () => void; icon: React.ReactNode; label: string; primary?: boolean; danger?: boolean }
+    > = [
+      { kind: "link", to: "/", icon: <ArrowLeft size={20} strokeWidth={1.75} />, label: "Zurück" },
+    ];
+    if (isOpen && !isSimple) {
+      actions.push({
+        kind: "button",
+        onClick: () => setSearchParams({ station: String(nextIndex) }),
+        icon: <Plus size={20} strokeWidth={2} />,
+        label: `Station ${nextIndex}`,
+        primary: true,
+      });
+    }
+    if (isOpen) {
+      actions.push({
+        kind: "button",
+        onClick: handleEnd,
+        icon: <Check size={20} strokeWidth={1.75} />,
+        label: "Beenden",
+      });
+    }
+    if (!isOpen) {
+      actions.push({
+        kind: "link",
+        to: `/trainings/${training.id}/summary`,
+        icon: <BarChart3 size={20} strokeWidth={1.75} />,
+        label: "Auswertung",
+      });
+    }
+    return actions;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isSimple, nextIndex, training.id]);
+  usePageFooter(footerActions);
 
   async function handleDelete() {
-    if (!confirm(t("training:detail.delete_confirm"))) return;
+    const ok = await confirm({
+      title: "Training löschen?",
+      message: "Dieses Training und alle erfassten Pfeile werden endgültig entfernt.",
+      confirmLabel: "Löschen",
+      variant: "danger",
+    });
+    if (!ok) return;
     await deleteTraining(training.id);
     nav("/");
   }
@@ -397,6 +511,11 @@ function StationLiveEntry({
 }) {
   const { t } = useTranslation(["training", "common"]);
   const slots = SLOTS_BY_DISCIPLINE[training.discipline];
+  const confirm = useConfirm();
+
+  // Live-Eingabe ist ein Vollbild-Modus — die globale Bottom-Nav (Home/Stats/+…)
+  // hat hier keinen Sinn und überlappt sich mit dem "Speichern & weiter"-Button.
+  usePageFooter([]);
 
   const myTargets = (training.targets ?? []).filter(
     (t) => !t.participant_id || t.participant_id === training.my_participant_id
@@ -444,8 +563,9 @@ function StationLiveEntry({
 
   // Lokale Vorschau-Summe
   const previewTotal = useMemo(() => {
-    return zonesPicked.reduce((sum, z, i) => sum + previewArrowPoints(training.discipline, z, i, zonesPicked), 0);
-  }, [zonesPicked, training.discipline]);
+    const nfaa = !!training.nfaa_mode;
+    return zonesPicked.reduce((sum, z, i) => sum + previewArrowPoints(training.discipline, z, i, zonesPicked, nfaa), 0);
+  }, [zonesPicked, training.discipline, training.nfaa_mode]);
 
   async function save() {
     setBusy(true);
@@ -476,7 +596,14 @@ function StationLiveEntry({
   }
 
   async function deleteStation() {
-    if (!existing || !confirm(t("training:live.delete_station_confirm"))) return;
+    if (!existing) return;
+    const ok = await confirm({
+      title: `Station ${stationIndex} löschen?`,
+      message: "Alle Pfeile dieser Station werden entfernt.",
+      confirmLabel: "Löschen",
+      variant: "danger",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await deleteTarget(training.id, existing.id);
@@ -487,66 +614,73 @@ function StationLiveEntry({
     }
   }
 
-  // Falls IFAA und schon Treffer dokumentiert: weitere Slots ausgrauen
-  const ifaaFirstHit = training.discipline === "3d_ifaa"
+  // Bei „Erstpfeil zählt"-Disziplinen die Slots nach dem ersten Treffer ausgrauen
+  const firstHitDisableIdx = FIRST_HIT_DISCIPLINES.includes(training.discipline)
     ? zonesPicked.findIndex((z) => z && z !== "miss")
     : -1;
 
+  const hasPhoto = !!existing?.image_path;
+
   return (
     <div className="fixed inset-0 z-30 bg-canvas dark:bg-canvas-dark overflow-y-auto animate-fade-in">
-      {/* Top-Bar */}
-      <header className="sticky top-0 z-10 bg-canvas/95 dark:bg-canvas-dark/95 backdrop-blur border-b border-forest-100 dark:border-forest-800">
-        <div className="flex items-center justify-between px-4 py-3">
+      {/* Top-Bar: kompakt, mit Live-Score rechts */}
+      <header className="sticky top-0 z-10 bg-canvas/95 dark:bg-canvas-dark/95 backdrop-blur border-b border-hairline">
+        <div className="flex items-center justify-between px-3 py-2 pt-safe">
           <button onClick={onClose} className="btn-icon" aria-label="Close">
-            <X size={22} />
+            <X size={20} strokeWidth={1.75} />
           </button>
           <button
             onClick={() => setShowStationGrid(true)}
-            className="flex items-center gap-2 font-display text-base font-semibold"
+            className="flex items-center gap-1.5 font-display text-base font-semibold no-tap-highlight"
           >
-            <Grid3x3 size={18} />
+            <Grid3x3 size={16} strokeWidth={1.75} />
             {t("training:live.station_of_total", { current: stationIndex, total: totalStations })}
           </button>
-          <button onClick={() => setShowMenu(true)} className="btn-icon" aria-label="Menu">
-            <MoreHorizontal size={22} />
-          </button>
+          <div className="flex items-center gap-1">
+            <div className="score text-lg leading-none tabular-nums pr-2 text-cherry-600 dark:text-cherry-400" key={previewTotal}>
+              {previewTotal}
+            </div>
+            <button onClick={() => setShowMenu(true)} className="btn-icon" aria-label="Menu">
+              <MoreHorizontal size={20} strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="container-app py-4 space-y-4">
-        {/* Inline-Edit für Tier/Distanz */}
-        <div className="grid grid-cols-2 gap-2">
+      <div className="container-app py-2 space-y-2.5">
+        {/* Zeile 1: Tier + Distanz + Foto-Trigger als kompakte Reihe */}
+        <div className="flex items-center gap-2">
           <input
-            className="input"
+            className="input flex-1 min-w-0"
             placeholder={t("training:live.animal_or_face")}
             value={animal}
             onChange={(e) => setAnimal(e.target.value)}
           />
           <input
-            className="input"
+            className="input w-20 shrink-0"
             type="number"
             inputMode="decimal"
             step="0.5"
-            placeholder={t("training:live.distance_m")}
+            placeholder="m"
             value={distance}
             onChange={(e) => setDistance(e.target.value)}
           />
+          {existing && (
+            <div className="shrink-0">
+              <StationPhoto
+                trainingId={training.id}
+                targetId={existing.id}
+                imagePath={existing.image_path}
+                onChange={() => onChange()}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Foto */}
-        {existing && (
-          <StationPhoto
-            trainingId={training.id}
-            targetId={existing.id}
-            imagePath={existing.image_path}
-            onChange={() => onChange()}
-          />
-        )}
-
-        {/* Interaktive Marker auf dem Foto */}
-        {existing?.image_path && (
+        {/* Interaktive Marker auf dem Foto — nur einblenden wenn Foto vorhanden */}
+        {hasPhoto && (
           <PhotoMarkers
-            imagePath={existing.image_path}
+            imagePath={existing!.image_path!}
             markers={markers}
             activeSlot={activeSlot}
             onMarkerSet={(slot, x, y) => {
@@ -562,83 +696,61 @@ function StationLiveEntry({
           />
         )}
 
-        {/* Stations-Total */}
-        <div className="text-center py-3">
-          <div className="score text-display leading-none animate-count-up" key={previewTotal}>
-            {previewTotal}
-          </div>
-          <div className="text-xs uppercase tracking-wider text-forest-300 mt-1">Punkte</div>
-        </div>
-
-        {/* Pfeil-Slots */}
-        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${slots}, 1fr)` }}>
+        {/* Pfeil-Slots — kompakter ohne große Punkte-Anzeige (Live-Score steht oben rechts) */}
+        <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${slots}, 1fr)` }}>
           {Array.from({ length: slots }).map((_, i) => {
             const z = zonesPicked[i];
             const isActive = activeSlot === i;
-            const points = previewArrowPoints(training.discipline, z, i, zonesPicked);
-            const isIfaaDisabled = ifaaFirstHit !== -1 && i > ifaaFirstHit;
+            const points = previewArrowPoints(training.discipline, z, i, zonesPicked, !!training.nfaa_mode);
+            const isIfaaDisabled = firstHitDisableIdx !== -1 && i > firstHitDisableIdx;
             return (
               <button
                 key={i}
                 onClick={() => setActiveSlot(i)}
-                className={`tap-large rounded-2xl flex flex-col items-center justify-center transition active:scale-[0.98] ${
+                className={`py-2 rounded-xl flex flex-col items-center justify-center transition active:scale-[0.98] ${
                   isActive
-                    ? "bg-copper-50 border-2 border-copper-500"
+                    ? "bg-cherry-50 dark:bg-cherry-900/30 border-2 border-cherry-500"
                     : z
-                    ? "bg-sunken dark:bg-sunken-dark border-2 border-transparent"
-                    : "bg-canvas dark:bg-canvas-dark border-2 border-dashed border-forest-200 dark:border-forest-700"
-                } ${isIfaaDisabled ? "opacity-50" : ""}`}
+                    ? "bg-elevated border-2 border-transparent"
+                    : "bg-surface border-2 border-dashed border-hairline"
+                } ${isIfaaDisabled ? "opacity-40" : ""}`}
               >
-                <div className="text-[10px] uppercase tracking-wider text-forest-300">
+                <div className="text-[9px] uppercase tracking-wider text-muted leading-none">
                   {t("training:live.shot_n", { n: i + 1 })}
                 </div>
-                <div className={z ? "score text-2xl" : "text-2xl text-forest-300 font-bold"}>
+                <div className={`leading-tight mt-0.5 ${z ? "score text-lg" : "text-base text-muted font-bold"}`}>
                   {z ?? "·"}
                 </div>
                 {z && points > 0 && (
-                  <div className="text-[10px] text-copper-700 font-mono tabular-nums">+{points}</div>
+                  <div className="text-[9px] text-cherry-600 dark:text-cherry-400 font-mono tabular-nums leading-none">+{points}</div>
                 )}
               </button>
             );
           })}
         </div>
 
-        {/* IFAA-Hinweis */}
-        {training.discipline === "3d_ifaa" && (
-          <div className="text-xs text-forest-700 dark:text-forest-300 italic px-1 text-center">
-            {t("training:live.ifaa_hint")}
-          </div>
-        )}
-
         {/* Bullseye-Pad */}
         <BullseyePad
           discipline={training.discipline}
           selectedZone={zonesPicked[activeSlot] ?? null}
           onZoneSelect={(code) => handleZoneSelect(code)}
-          disabled={ifaaFirstHit !== -1 && activeSlot > ifaaFirstHit}
+          disabled={firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx}
         />
 
-        {/* Speichern */}
-        <div className="space-y-2 pt-4">
-          <button onClick={saveAndNext} className="btn w-full tap-large" disabled={busy}>
-            {busy ? t("training:live.saving") : t("training:live.save_station")} <ArrowRight size={18} />
-          </button>
-          <button onClick={save} className="btn-secondary w-full" disabled={busy}>
-            {t("training:live.save_station")}
-          </button>
-        </div>
-
-        {/* Bottom-Nav: prev/next */}
-        <div className="flex items-center justify-between pt-2">
-          <button
-            onClick={() => onNavigate(Math.max(1, stationIndex - 1))}
-            disabled={stationIndex <= 1}
-            className="btn-ghost"
-          >
-            <ArrowLeft size={18} /> {t("common:actions.previous")} {stationIndex - 1}
-          </button>
-          <button onClick={() => onNavigate(stationIndex + 1)} className="btn-ghost">
-            {t("common:actions.next")} {stationIndex + 1} <ArrowRight size={18} />
+        {/* Aktionen: Speichern + (optional) Vorherige */}
+        <div className="flex items-center gap-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+          {stationIndex > 1 && (
+            <button
+              onClick={() => onNavigate(stationIndex - 1)}
+              className="btn-icon shrink-0"
+              aria-label="Vorherige Station"
+              title="Vorherige Station"
+            >
+              <ArrowLeft size={20} strokeWidth={1.75} />
+            </button>
+          )}
+          <button onClick={saveAndNext} className="btn-accent flex-1" disabled={busy}>
+            {busy ? t("training:live.saving") : "Speichern & weiter"} <ArrowRight size={18} strokeWidth={2} />
           </button>
         </div>
       </div>

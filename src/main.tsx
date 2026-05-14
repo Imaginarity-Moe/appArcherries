@@ -4,6 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthContext";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
+import { ConfirmProvider } from "./components/ConfirmDialog";
+import { FooterProvider } from "./components/FooterContext";
 import { startSync } from "./lib/sync";
 import "./i18n";
 import "./styles/index.css";
@@ -26,8 +28,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
-        <PWAUpdatePrompt />
+        <FooterProvider>
+          <ConfirmProvider>
+            <App />
+            <PWAUpdatePrompt />
+          </ConfirmProvider>
+        </FooterProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

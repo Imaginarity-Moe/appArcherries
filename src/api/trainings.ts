@@ -5,7 +5,15 @@ import { isNetworkError } from "../lib/sync";
 import { db } from "../lib/db";
 import { scoreTarget } from "../lib/scoringPreview";
 
-export type Discipline = "3d_wa" | "3d_ifaa" | "3d_bowhunter" | "field_wa" | "simple";
+export type Discipline =
+  | "3d_wa"
+  | "3d_ifaa"
+  | "3d_ifaa_hunter"
+  | "3d_ifaa_animal"
+  | "3d_bowhunter"
+  | "field_wa"
+  | "field_ifaa"
+  | "simple";
 export type BowType = "recurve" | "compound" | "barebow" | "traditional";
 export type PegColor = "blue" | "red" | "yellow" | "white";
 
@@ -47,6 +55,7 @@ export type Training = {
   started_at: string;
   ended_at: string | null;
   discipline: Discipline;
+  nfaa_mode?: boolean;
   bow_type: BowType;
   peg_color: PegColor | null;
   distance_marked: boolean | null;
@@ -54,6 +63,7 @@ export type Training = {
   weather: string | null;
   notes: string | null;
   summary_score: number | null;
+  published_to_highscore?: boolean;
   total_score: number;
   parcours_id: number | null;
   parcours_name?: string | null;
@@ -69,11 +79,14 @@ export type TrainingListItem = Omit<Training, "targets"> & {
 };
 
 export const DISCIPLINE_LABELS: Record<Discipline, string> = {
-  "3d_wa": "3D · WA / DSB",
-  "3d_ifaa": "3D · IFAA",
-  "3d_bowhunter": "3D · Bowhunter",
-  "field_wa": "Feldbogen · WA",
-  "simple": "Einfach (nur Score)",
+  "3d_wa":          "3D · WA / DSB",
+  "3d_ifaa":        "3D · IFAA Standard",
+  "3d_ifaa_hunter": "3D · IFAA Hunter",
+  "3d_ifaa_animal": "3D · IFAA Animal",
+  "3d_bowhunter":   "3D · Bowhunter (Liga)",
+  "field_wa":       "Feldbogen · WA",
+  "field_ifaa":     "Feldbogen · IFAA",
+  "simple":         "Einfach (nur Score)",
 };
 
 export const BOW_LABELS: Record<BowType, string> = {
@@ -95,29 +108,51 @@ export type ZoneDef = { code: string; label: string; hint?: string };
 
 export const ZONES_BY_DISCIPLINE: Record<Discipline, ZoneDef[]> = {
   "3d_wa": [
-    { code: "X", label: "X", hint: "Center 11" },
+    { code: "X",     label: "X",  hint: "Center 11" },
     { code: "inner", label: "10" },
     { code: "outer", label: "8" },
-    { code: "body", label: "5", hint: "Körper" },
-    { code: "miss", label: "M", hint: "Fehl" },
+    { code: "body",  label: "5",  hint: "Körper" },
+    { code: "miss",  label: "M",  hint: "Fehl" },
   ],
+  // IFAA Standard 3D — drei Trefferzonen
   "3d_ifaa": [
-    { code: "vital", label: "Vital", hint: "Kill" },
-    { code: "body", label: "Wound", hint: "Körper" },
-    { code: "miss", label: "M", hint: "Fehl" },
+    { code: "inner_kill", label: "Inner Kill", hint: "Innerstes Kill" },
+    { code: "outer_kill", label: "Outer Kill", hint: "Äußerer Kill" },
+    { code: "wound",      label: "Wound",      hint: "Körper" },
+    { code: "miss",       label: "M",          hint: "Fehl" },
+  ],
+  // IFAA Hunter — 1 Pfeil, drei Trefferzonen
+  "3d_ifaa_hunter": [
+    { code: "inner_kill", label: "Inner Kill", hint: "20" },
+    { code: "outer_kill", label: "Outer Kill", hint: "17" },
+    { code: "wound",      label: "Wound",      hint: "10" },
+    { code: "miss",       label: "M",          hint: "Fehl" },
+  ],
+  // IFAA Animal — Kill / Wound (NFAA-Toggle gibt +1)
+  "3d_ifaa_animal": [
+    { code: "vital", label: "Kill",  hint: "Vital" },
+    { code: "wound", label: "Wound", hint: "Körper" },
+    { code: "miss",  label: "M",     hint: "Fehl" },
   ],
   "3d_bowhunter": [
-    { code: "vital", label: "Vital" },
-    { code: "body", label: "Wound" },
-    { code: "miss", label: "M" },
+    { code: "vital", label: "Kill" },
+    { code: "wound", label: "Wound" },
+    { code: "miss",  label: "M" },
   ],
   "field_wa": [
-    { code: "X", label: "X", hint: "Center 6" },
-    { code: "5", label: "5" },
-    { code: "4", label: "4" },
-    { code: "3", label: "3" },
-    { code: "2", label: "2" },
-    { code: "1", label: "1" },
+    { code: "X",    label: "X", hint: "Tie-Break" },
+    { code: "6",    label: "6" },
+    { code: "5",    label: "5" },
+    { code: "4",    label: "4" },
+    { code: "3",    label: "3" },
+    { code: "2",    label: "2" },
+    { code: "1",    label: "1" },
+    { code: "miss", label: "M" },
+  ],
+  "field_ifaa": [
+    { code: "5",    label: "5", hint: "Zentrum" },
+    { code: "4",    label: "4" },
+    { code: "3",    label: "3" },
     { code: "miss", label: "M" },
   ],
   simple: [],
@@ -260,7 +295,8 @@ export async function upsertTarget(
   // Offline-Pfad: optimistisches Update + queue
   const cached = await getCached<{ training: Training }>(trainingPath(resolved));
   const discipline = cached?.training.discipline ?? "3d_wa";
-  const scored = scoreTarget(discipline, body.shots ?? []);
+  const nfaa = !!cached?.training.nfaa_mode;
+  const scored = scoreTarget(discipline, body.shots ?? [], nfaa);
   const targetTotal = scored.reduce((s, sh) => s + sh.points, 0);
 
   if (cached) {

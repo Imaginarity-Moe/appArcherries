@@ -5,6 +5,13 @@ export type StatsOverview = {
   zone_distribution: Array<{ zone: string; count: number; pct: number }>;
   arrow_consistency: Array<{ arrow_seq: number; avg: number; count: number }>;
   personal_bests: Array<{ discipline: string; bow_type: string; best: number }>;
+  personal_bests_parcours: Array<{
+    parcours_id: number;
+    parcours_name: string;
+    discipline: string;
+    bow_type: string;
+    best: number;
+  }>;
 };
 
 export type TrainingStats = {

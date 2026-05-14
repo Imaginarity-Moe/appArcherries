@@ -65,7 +65,7 @@ export default function PhotoMarkers({ imagePath, markers, activeSlot, onMarkerS
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                if (confirm(`Marker für Pfeil ${i + 1} entfernen?`)) onMarkerClear(i);
+                onMarkerClear(i);
               }}
               style={{
                 position: "absolute",

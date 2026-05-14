@@ -28,3 +28,10 @@ Thumbs.db
 # User-Uploads (Server-State, nicht ins Repo)
 uploads/**
 !uploads/.htaccess
+
+# Playwright (Browser-Cache — lokal, nicht ins Repo)
+.playwright/
+
+# E2E-Test-Outputs (Screenshots + Reports — lokal generiert, nicht versioniert)
+screenshots/
+test-report/

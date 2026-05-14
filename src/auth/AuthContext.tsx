@@ -17,6 +17,7 @@ export type User = {
   display_name: string | null;
   status: "pending" | "active";
   role: Role;
+  avatar_url?: string | null;
 };
 
 type AuthState = {

@@ -11,6 +11,24 @@ import {
 let draining = false;
 let scheduledTimer: number | null = null;
 
+/** Listener die feuern wenn ein Drain-Zyklus mit mindestens einem gesendeten Entry endet. */
+const drainListeners = new Set<() => void>();
+
+export function subscribeDrained(fn: () => void): () => void {
+  drainListeners.add(fn);
+  return () => drainListeners.delete(fn);
+}
+
+function notifyDrained() {
+  for (const fn of drainListeners) {
+    try {
+      fn();
+    } catch (e) {
+      console.warn("[sync] drain listener failed", e);
+    }
+  }
+}
+
 /**
  * Versucht alle ausstehenden Outbox-Einträge an den Server zu senden.
  * Wird automatisch bei `online`-Event aufgerufen + alle 30s wenn online.
@@ -65,6 +83,7 @@ export async function drain(): Promise<{ sent: number; failed: number }> {
   } finally {
     draining = false;
     notifyOutboxChanged();
+    if (sent > 0) notifyDrained();
   }
 
   return { sent, failed };

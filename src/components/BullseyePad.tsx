@@ -3,202 +3,139 @@ import type { Discipline } from "../api/trainings";
 
 type Props = {
   discipline: Discipline;
-  /** Aktueller Pfeil-Slot (1-basiert), wird im Header gehighlightet */
-  currentArrow?: number;
-  /** Welche Zone ist aktuell für den aktiven Slot gewählt */
   selectedZone?: string | null;
-  /** Callback wenn eine Zone angetippt wird */
   onZoneSelect: (zoneCode: string) => void;
-  /** Falls IFAA und bereits ein Treffer dokumentiert wurde, Slot wird visuell ausgegraut */
   disabled?: boolean;
 };
 
+type Ring = {
+  code: string;
+  label: string;
+  fill: string;       // CSS color (hex)
+  textFill?: string;  // override for label color
+};
+
 /**
- * Bullseye-Pad — das Herzstück der Live-Eingabe.
- *
- * Statt Button-Reihen ein abstrahiertes Bullseye als SVG mit anklickbaren Ringen.
- * Tap-Targets sind proportional zur tatsächlichen Zone (Body-Treffer ist visuell
- * groß, X-Ring ist klein — entspricht der Schwierigkeit).
- *
- * Für Field-Wertung haben wir 6 Ringe mit WA-Farben (Gold/Rot/Blau/Schwarz/Weiß).
- * Für 3D haben wir die DSB/IFAA-typischen Killzonen.
+ * Ringe pro Disziplin von INNEN nach AUSSEN. Der äußerste Ring ist immer „M" (Miss).
+ * Konsistent: höchster Wert in der Mitte, jeder Ring eine andere Farbe.
  */
-export default function BullseyePad({
-  discipline,
-  selectedZone,
-  onZoneSelect,
-  disabled,
-}: Props) {
+const PAD_RINGS: Record<Discipline, Ring[]> = {
+  "3d_wa": [
+    { code: "X",     label: "X",  fill: "#D4A547" },  // gold
+    { code: "inner", label: "10", fill: "#E8B894" },  // dusty rose
+    { code: "outer", label: "8",  fill: "#7A8B7A" },  // sage
+    { code: "body",  label: "5",  fill: "#A89980" },  // muted khaki
+    { code: "miss",  label: "M",  fill: "#3D3933", textFill: "#FAF8F4" }, // dunkel
+  ],
+  "3d_ifaa": [
+    { code: "inner_kill", label: "20/14/8", fill: "#D4A547" },              // gold
+    { code: "outer_kill", label: "18/12/6", fill: "#B46A76" },              // dusty rose tieferer Ton
+    { code: "wound",      label: "16/10/4", fill: "#7A8B7A" },              // sage
+    { code: "miss",       label: "M",       fill: "#3D3933", textFill: "#FAF8F4" },
+  ],
+  "3d_ifaa_hunter": [
+    { code: "inner_kill", label: "20", fill: "#D4A547" },
+    { code: "outer_kill", label: "17", fill: "#B46A76" },
+    { code: "wound",      label: "10", fill: "#7A8B7A" },
+    { code: "miss",       label: "M",  fill: "#3D3933", textFill: "#FAF8F4" },
+  ],
+  "3d_ifaa_animal": [
+    { code: "vital", label: "Kill",  fill: "#D4A547" },
+    { code: "wound", label: "Wound", fill: "#7A8B7A" },
+    { code: "miss",  label: "M",     fill: "#3D3933", textFill: "#FAF8F4" },
+  ],
+  "3d_bowhunter": [
+    { code: "vital", label: "Kill",  fill: "#D4A547" },
+    { code: "wound", label: "Wound", fill: "#7A8B7A" },
+    { code: "miss",  label: "M",     fill: "#3D3933", textFill: "#FAF8F4" },
+  ],
+  "field_wa": [
+    { code: "X",    label: "X", fill: "#D4A547" },                            // Center Gold (Tie-Break)
+    { code: "6",    label: "6", fill: "#E0B868" },                            // Inner Gold
+    { code: "5",    label: "5", fill: "#F0CB85" },                            // Outer Gold
+    { code: "4",    label: "4", fill: "#1F2418", textFill: "#FAF8F4" },       // Black inner
+    { code: "3",    label: "3", fill: "#3D3933", textFill: "#FAF8F4" },       // Black outer
+    { code: "2",    label: "2", fill: "#E8E0CB" },                            // White inner
+    { code: "1",    label: "1", fill: "#F5F2EB" },                            // White outer
+    { code: "miss", label: "M", fill: "#A89980", textFill: "#FAF8F4" },       // dunkler Rand
+  ],
+  "field_ifaa": [
+    { code: "5",    label: "5", fill: "#D4A547" },
+    { code: "4",    label: "4", fill: "#B46A76" },
+    { code: "3",    label: "3", fill: "#7A8B7A" },
+    { code: "miss", label: "M", fill: "#3D3933", textFill: "#FAF8F4" },
+  ],
+  simple: [],
+};
+
+export default function BullseyePad({ discipline, selectedZone, onZoneSelect, disabled }: Props) {
   const { t } = useTranslation("training");
+  const rings = PAD_RINGS[discipline] ?? [];
+  if (rings.length === 0) return null;
 
-  if (discipline === "field_wa") {
-    return (
-      <FieldBullseye onZoneSelect={onZoneSelect} selected={selectedZone} disabled={disabled} />
-    );
-  }
-
-  // 3D — alle drei Varianten haben Vital/Body/Miss
-  return <ThreeDBullseye onZoneSelect={onZoneSelect} selected={selectedZone} disabled={disabled} t={t} />;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3D Bullseye
-
-function ThreeDBullseye({
-  onZoneSelect,
-  selected,
-  disabled,
-  t,
-}: {
-  onZoneSelect: (z: string) => void;
-  selected?: string | null;
-  disabled?: boolean;
-  t: (k: string) => string;
-}) {
-  const ringClass = (zone: string, color: string) => {
-    const isSel = selected === zone;
-    return `cursor-pointer transition ${
-      disabled ? "opacity-40 pointer-events-none" : ""
-    } ${color} ${isSel ? "stroke-copper-500 stroke-[4]" : "stroke-forest-900/20 stroke-[1.5]"}`;
-  };
+  // Radien: rings[0] ist der INNERSTE (höchster Wert / Bullseye), letzter Ring ist außen (Miss)
+  const maxR = 96;
+  const minR = 18;
+  const step = (maxR - minR) / Math.max(rings.length - 1, 1);
 
   return (
-    <div className="flex flex-col gap-4 select-none">
-      <div className="relative aspect-square max-w-[400px] mx-auto w-full">
+    <div className="flex flex-col gap-2 select-none">
+      <div className="relative aspect-square max-w-[300px] mx-auto w-full">
         <svg viewBox="0 0 200 200" className="w-full h-full no-tap-highlight">
-          {/* Body / 5 — größter Ring */}
-          <circle
-            cx="100"
-            cy="100"
-            r="95"
-            className={ringClass("body", "fill-zone-body")}
-            onClick={() => !disabled && onZoneSelect("body")}
-          />
-          {/* Outer / 8 */}
-          <circle
-            cx="100"
-            cy="100"
-            r="70"
-            className={ringClass("outer", "fill-zone-outer")}
-            onClick={() => !disabled && onZoneSelect("outer")}
-          />
-          {/* Inner / 10 */}
-          <circle
-            cx="100"
-            cy="100"
-            r="45"
-            className={ringClass("inner", "fill-zone-inner")}
-            onClick={() => !disabled && onZoneSelect("inner")}
-          />
-          {/* Kill / X / 11 */}
-          <circle
-            cx="100"
-            cy="100"
-            r="22"
-            className={ringClass("X", "fill-zone-x")}
-            onClick={() => !disabled && onZoneSelect("X")}
-          />
-
-          {/* Zonen-Labels mittig in jedem Ring */}
-          <text x="100" y="103" textAnchor="middle" className="fill-forest-900 font-bold text-[14px] pointer-events-none" style={{ fontFamily: "JetBrains Mono, monospace" }}>X</text>
-          <text x="100" y="62" textAnchor="middle" className="fill-forest-900 font-bold text-[12px] pointer-events-none" style={{ fontFamily: "JetBrains Mono, monospace" }}>10</text>
-          <text x="100" y="38" textAnchor="middle" className="fill-forest-900 font-bold text-[12px] pointer-events-none" style={{ fontFamily: "JetBrains Mono, monospace" }}>8</text>
-          <text x="100" y="14" textAnchor="middle" className="fill-forest-900/70 font-bold text-[10px] pointer-events-none" style={{ fontFamily: "JetBrains Mono, monospace" }}>BODY 5</text>
-        </svg>
-      </div>
-
-      {/* Miss-Button bewusst räumlich getrennt unten */}
-      <button
-        type="button"
-        onClick={() => !disabled && onZoneSelect("miss")}
-        disabled={disabled}
-        className={`tap-large w-full rounded-2xl border-2 border-dashed border-zone-miss/40 bg-canvas dark:bg-sunken-dark text-forest-700 dark:text-forest-300 font-semibold transition active:scale-[0.98] ${
-          selected === "miss"
-            ? "border-copper-500 bg-copper-50 text-copper-700"
-            : "hover:bg-sunken"
-        } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
-      >
-        {t("zone.miss")}
-      </button>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Field-Bullseye — WA-Feldbogen-Farben + Ringe
-
-function FieldBullseye({
-  onZoneSelect,
-  selected,
-  disabled,
-}: {
-  onZoneSelect: (z: string) => void;
-  selected?: string | null;
-  disabled?: boolean;
-}) {
-  // WA-Feldbogen-Farben offiziell (vereinfacht):
-  // Center X/6 = Gold, 5 = Gold, 4/3 = Schwarz, 2/1 = Weiß
-  const rings = [
-    { zone: "1", r: 95, fill: "#FFFFFF", stroke: "#1F2418", label: "1", labelY: 14 },
-    { zone: "2", r: 80, fill: "#FFFFFF", stroke: "#1F2418", label: "2", labelY: 26 },
-    { zone: "3", r: 65, fill: "#1F2418", stroke: "#1F2418", label: "3", labelY: 41, textFill: "#FFFFFF" },
-    { zone: "4", r: 50, fill: "#1F2418", stroke: "#1F2418", label: "4", labelY: 55, textFill: "#FFFFFF" },
-    { zone: "5", r: 35, fill: "#D4A547", stroke: "#9A5530", label: "5", labelY: 70 },
-    { zone: "X", r: 18, fill: "#D4A547", stroke: "#9A5530", label: "X", labelY: 104 },
-  ];
-
-  return (
-    <div className="flex flex-col gap-4 select-none">
-      <div className="relative aspect-square max-w-[400px] mx-auto w-full">
-        <svg viewBox="0 0 200 200" className="w-full h-full no-tap-highlight">
-          {rings.map((ring) => {
-            const isSel = selected === ring.zone;
-            return (
-              <g key={ring.zone}>
+          {/* Außen nach innen rendern: größerer Ring zuerst, damit kleinere darüber liegen und Klick-Treffer auf den richtigen Ring geht */}
+          {rings
+            .map((ring, idx) => ({ ring, idx, r: minR + idx * step }))
+            .slice()
+            .reverse()
+            .map(({ ring, r }) => {
+              const isSel = selectedZone === ring.code;
+              return (
                 <circle
+                  key={ring.code}
                   cx="100"
                   cy="100"
-                  r={ring.r}
+                  r={r}
                   fill={ring.fill}
-                  className={`cursor-pointer transition ${
-                    disabled ? "opacity-40 pointer-events-none" : ""
-                  }`}
-                  stroke={isSel ? "#C97B4B" : ring.stroke}
-                  strokeWidth={isSel ? 4 : 1.5}
-                  onClick={() => !disabled && onZoneSelect(ring.zone)}
+                  stroke={isSel ? "#8E2C3A" : "rgba(28,28,30,0.18)"}
+                  strokeWidth={isSel ? 4 : 1}
+                  className={`cursor-pointer transition ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+                  onClick={() => !disabled && onZoneSelect(ring.code)}
+                  aria-label={ring.label}
                 />
-              </g>
+              );
+            })}
+
+          {/* Labels: innerstes Label im Zentrum, äußere Labels OBEN im Ringbereich */}
+          {rings.map((ring, idx) => {
+            const rOuter = minR + idx * step;
+            const rInner = idx === 0 ? 0 : minR + (idx - 1) * step;
+            const isInnermost = idx === 0;
+            // Innerstes: zentriert. Andere: in der oberen Mitte des jeweiligen Rings.
+            const labelY = isInnermost ? 103 : 100 - (rOuter + rInner) / 2;
+            return (
+              <text
+                key={`l-${ring.code}`}
+                x="100"
+                y={labelY}
+                textAnchor="middle"
+                className="pointer-events-none font-bold"
+                fill={ring.textFill ?? "#1F2418"}
+                style={{
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: isInnermost ? 11 : Math.max(8, 11 - idx),
+                }}
+              >
+                {ring.label}
+              </text>
             );
           })}
-          {/* Labels separat darüber */}
-          {rings.map((ring) => (
-            <text
-              key={`l-${ring.zone}`}
-              x="100"
-              y={ring.labelY}
-              textAnchor="middle"
-              className="pointer-events-none font-bold text-[11px]"
-              fill={ring.textFill ?? "#1F2418"}
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-            >
-              {ring.label}
-            </text>
-          ))}
         </svg>
       </div>
 
-      <button
-        type="button"
-        onClick={() => !disabled && onZoneSelect("miss")}
-        disabled={disabled}
-        className={`tap-large w-full rounded-2xl border-2 border-dashed border-zone-miss/40 bg-canvas dark:bg-sunken-dark text-forest-700 dark:text-forest-300 font-semibold transition active:scale-[0.98] ${
-          selected === "miss"
-            ? "border-copper-500 bg-copper-50 text-copper-700"
-            : "hover:bg-sunken"
-        }`}
-      >
-        Daneben / M
-      </button>
+      {/* Hint-Text statt separatem Miss-Button — Miss ist jetzt ein Ring */}
+      <p className="text-xs text-muted text-center">
+        {t("zone.hint", "Tippe einen Ring — Punkte werden berechnet")}
+      </p>
     </div>
   );
 }

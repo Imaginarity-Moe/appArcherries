@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, MailCheck } from "lucide-react";
 import { api } from "../api/client";
-import { LogoMark } from "../components/Logo";
 import { AuthLayout } from "../components/Layout";
 
 export default function Register() {
@@ -49,11 +48,6 @@ export default function Register() {
 
   return (
     <AuthLayout>
-      <div className="text-center mb-8">
-        <LogoMark size={56} className="text-copper-500 mx-auto mb-3" />
-        <h1 className="font-display text-3xl font-semibold">Archerries</h1>
-        <p className="text-forest-700 dark:text-forest-300 mt-2">{t("register.subtitle")}</p>
-      </div>
 
       <div className="card animate-fade-in">
         <h2 className="font-display text-xl font-semibold mb-5">{t("register.title")}</h2>
