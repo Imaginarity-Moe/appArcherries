@@ -1,0 +1,138 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/../lib/Auth.php';
+
+/**
+ * Öffentliche Highscores: Top-3 (oder N) Scores pro
+ *   (parcours_id, discipline, bow_type)
+ * Nur Trainings mit published_to_highscore=1 + summary_score IS NOT NULL ODER
+ * computed total > 0 (=mindestens ein gescorter Treffer).
+ *
+ *  GET /highscore?parcours_id=<id>&discipline=<d>[&bow_type=<b>][&limit=3]
+ *
+ * Optional: GET /highscore?parcours_id=<id> (alle Disziplinen, alle Bow-Types)
+ *   liefert Aggregat-Liste (gruppiert).
+ */
+function handle_highscore(string $method, string $path): void
+{
+    require_auth(); // jeder eingeloggte User darf den Highscore sehen
+    if ($method !== 'GET') res_error('Method not allowed', 405);
+
+    $parcours_id = (int)(req_query('parcours_id', '0') ?? '0');
+    if ($parcours_id < 1) res_error('parcours_id erforderlich');
+
+    $discipline = req_query('discipline');
+    $bow_type   = req_query('bow_type');
+    $limit      = max(1, min(20, (int)(req_query('limit', '3') ?? '3')));
+
+    if ($discipline !== null && $discipline !== '') {
+        $rows = highscore_query($parcours_id, $discipline, $bow_type, $limit);
+        res_json(['scores' => $rows]);
+        return;
+    }
+
+    // Aggregate: gruppiert nach (discipline, bow_type)
+    $s = db()->prepare(
+        'SELECT discipline, bow_type FROM trainings
+         WHERE parcours_id = ? AND published_to_highscore = 1
+         GROUP BY discipline, bow_type'
+    );
+    $s->execute([$parcours_id]);
+    $groups = $s->fetchAll();
+    $out = [];
+    foreach ($groups as $g) {
+        $rows = highscore_query($parcours_id, $g['discipline'], $g['bow_type'], $limit);
+        if (count($rows) > 0) {
+            $out[] = [
+                'discipline' => $g['discipline'],
+                'bow_type'   => $g['bow_type'],
+                'scores'     => $rows,
+            ];
+        }
+    }
+    res_json(['groups' => $out]);
+}
+
+function highscore_query(int $parcours_id, string $discipline, ?string $bow_type, int $limit): array
+{
+    require_once __DIR__ . '/../lib/Scoring.php';
+
+    // Schritt 1: alle veröffentlichten Trainings im Filter laden
+    $sql = 'SELECT t.id, t.user_id, t.bow_type, t.summary_score, t.started_at, t.ended_at,
+                   u.display_name, u.avatar_path
+            FROM trainings t
+            JOIN users u ON u.id = t.user_id
+            WHERE t.parcours_id = ?
+              AND t.discipline = ?
+              AND t.published_to_highscore = 1';
+    $params = [$parcours_id, $discipline];
+    if ($bow_type !== null && $bow_type !== '') {
+        $sql .= ' AND t.bow_type = ?';
+        $params[] = $bow_type;
+    }
+    $sql .= ' ORDER BY t.started_at DESC';
+    $s = db()->prepare($sql);
+    $s->execute($params);
+    $candidates = $s->fetchAll();
+    if (!$candidates) return [];
+
+    // Schritt 2: pro Training Score berechnen (über alle Owner-Targets gerechnet)
+    $scored = [];
+    foreach ($candidates as $t) {
+        $score = (int)($t['summary_score'] ?? 0);
+        if ($t['summary_score'] === null) {
+            $score = highscore_compute_score((int)$t['id'], (int)$t['user_id'], $discipline);
+        }
+        if ($score > 0) {
+            $scored[] = [
+                'training_id' => (int)$t['id'],
+                'user_id'     => (int)$t['user_id'],
+                'display_name'=> $t['display_name'],
+                'avatar_url'  => $t['avatar_path'] ?: null,
+                'bow_type'    => $t['bow_type'],
+                'score'       => $score,
+                'started_at'  => $t['started_at'],
+            ];
+        }
+    }
+
+    // Sortiere nach Score absteigend
+    usort($scored, fn($a, $b) => $b['score'] <=> $a['score']);
+    return array_slice($scored, 0, $limit);
+}
+
+function highscore_compute_score(int $training_id, int $owner_user_id, string $discipline): int
+{
+    // Owner-Participant rausholen
+    $s = db()->prepare('SELECT id FROM training_participants WHERE training_id = ? AND user_id = ? AND role = ?');
+    $s->execute([$training_id, $owner_user_id, 'owner']);
+    $owner_pid = (int)($s->fetchColumn() ?: 0);
+    if ($owner_pid === 0) return 0;
+
+    $stmt = db()->prepare(
+        'SELECT tt.id AS tid,
+                s.arrow_seq, s.zone
+         FROM training_targets tt
+         LEFT JOIN shots s ON s.target_id = tt.id
+         WHERE tt.training_id = ? AND tt.participant_id = ?
+         ORDER BY tt.target_index, s.arrow_seq'
+    );
+    $stmt->execute([$training_id, $owner_pid]);
+    $rows = $stmt->fetchAll();
+    if (!$rows) return 0;
+
+    // Group by target → shots[]
+    $targets = [];
+    foreach ($rows as $r) {
+        $tid = (int)$r['tid'];
+        if (!isset($targets[$tid])) $targets[$tid] = ['shots' => []];
+        if ($r['arrow_seq'] !== null) {
+            $targets[$tid]['shots'][] = [
+                'arrow_seq' => (int)$r['arrow_seq'],
+                'zone'      => $r['zone'],
+            ];
+        }
+    }
+    return compute_training_total($discipline, array_values($targets), false);
+}

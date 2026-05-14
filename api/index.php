@@ -30,9 +30,9 @@ try {
     if (str_starts_with($path, '/auth/')) {
         require __DIR__ . '/routes/auth.php';
         handle_auth($method, $path);
-    } elseif ($path === '/me') {
+    } elseif ($path === '/me' || str_starts_with($path, '/me/')) {
         require __DIR__ . '/routes/me.php';
-        handle_me($method);
+        handle_me($method, $path);
     } elseif (str_starts_with($path, '/trainings')) {
         require __DIR__ . '/routes/trainings.php';
         handle_trainings($method, $path);
@@ -45,6 +45,12 @@ try {
     } elseif (str_starts_with($path, '/bows')) {
         require __DIR__ . '/routes/bows.php';
         handle_bows($method, $path);
+    } elseif (str_starts_with($path, '/favorites')) {
+        require __DIR__ . '/routes/favorites.php';
+        handle_favorites($method, $path);
+    } elseif (str_starts_with($path, '/highscore')) {
+        require __DIR__ . '/routes/highscore.php';
+        handle_highscore($method, $path);
     } elseif (str_starts_with($path, '/join/')) {
         require __DIR__ . '/routes/join.php';
         handle_join($method, $path);

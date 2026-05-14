@@ -105,7 +105,7 @@ function auth_login(): void
 
     if (!$email || !$pass) res_error('E-Mail und Passwort erforderlich', 400);
 
-    $stmt = db()->prepare('SELECT id, email, password_hash, display_name, status, role FROM users WHERE email = ?');
+    $stmt = db()->prepare('SELECT id, email, password_hash, display_name, status, role, avatar_path FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $u = $stmt->fetch();
 
@@ -125,6 +125,7 @@ function auth_login(): void
             'display_name' => $u['display_name'],
             'status'       => $u['status'],
             'role'         => $u['role'],
+            'avatar_url'   => isset($u['avatar_path']) && $u['avatar_path'] ? (string)$u['avatar_path'] : null,
         ],
     ]);
 }

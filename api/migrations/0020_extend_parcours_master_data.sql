@@ -1,0 +1,17 @@
+ALTER TABLE parcours
+  ADD COLUMN lanes_count       SMALLINT UNSIGNED NULL AFTER is_public,
+  ADD COLUMN price_info        TEXT NULL,
+  ADD COLUMN opening_hours     TEXT NULL,
+  ADD COLUMN website           VARCHAR(255) NULL,
+  ADD COLUMN contact_email     VARCHAR(191) NULL,
+  ADD COLUMN contact_phone     VARCHAR(64) NULL,
+  ADD COLUMN difficulty        TINYINT UNSIGNED NULL,
+  ADD COLUMN terrain           VARCHAR(255) NULL,
+  ADD COLUMN peg_blue          TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN peg_red           TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN peg_yellow        TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN peg_white         TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN duration_min      SMALLINT UNSIGNED NULL,
+  ADD COLUMN season_note       VARCHAR(255) NULL,
+  ADD COLUMN access_note       TEXT NULL,
+  ADD COLUMN last_refresh_date DATE NULL;

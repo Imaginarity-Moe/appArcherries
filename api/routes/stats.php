@@ -87,13 +87,14 @@ function stats_overview(int $user_id): void
         ];
     }, $stmt->fetchAll());
 
-    // PBs pro Discipline+Bow
+    // PBs pro Discipline+Bow (gesamt, über alle Parcours)
     $stmt = db()->prepare(
         "SELECT t.discipline, t.bow_type, MAX(
             COALESCE(t.summary_score, COALESCE((SELECT SUM(s.points) FROM shots s JOIN training_targets tt ON tt.id = s.target_id WHERE tt.training_id = t.id), 0))
          ) AS best
          FROM trainings t WHERE t.user_id = ?
-         GROUP BY t.discipline, t.bow_type"
+         GROUP BY t.discipline, t.bow_type
+         ORDER BY t.discipline, t.bow_type"
     );
     $stmt->execute([$user_id]);
     $pbs = array_map(function ($r) {
@@ -104,11 +105,35 @@ function stats_overview(int $user_id): void
         ];
     }, $stmt->fetchAll());
 
+    // PBs pro Parcours+Discipline+Bow (eigene Bestleistung je Parcours)
+    $stmt = db()->prepare(
+        "SELECT t.parcours_id, p.name AS parcours_name, t.discipline, t.bow_type,
+                MAX(COALESCE(t.summary_score, COALESCE((SELECT SUM(s.points) FROM shots s JOIN training_targets tt ON tt.id = s.target_id WHERE tt.training_id = t.id), 0))) AS best
+         FROM trainings t
+         LEFT JOIN parcours p ON p.id = t.parcours_id
+         WHERE t.user_id = ? AND t.parcours_id IS NOT NULL
+         GROUP BY t.parcours_id, t.discipline, t.bow_type
+         HAVING best > 0
+         ORDER BY best DESC
+         LIMIT 30"
+    );
+    $stmt->execute([$user_id]);
+    $pbs_parcours = array_map(function ($r) {
+        return [
+            'parcours_id'   => (int)$r['parcours_id'],
+            'parcours_name' => $r['parcours_name'],
+            'discipline'    => $r['discipline'],
+            'bow_type'      => $r['bow_type'],
+            'best'          => (int)$r['best'],
+        ];
+    }, $stmt->fetchAll());
+
     res_json([
-        'trend'             => $trend,
-        'zone_distribution' => $zone_dist,
-        'arrow_consistency' => $arrow_consistency,
-        'personal_bests'    => $pbs,
+        'trend'                  => $trend,
+        'zone_distribution'      => $zone_dist,
+        'arrow_consistency'      => $arrow_consistency,
+        'personal_bests'         => $pbs,
+        'personal_bests_parcours'=> $pbs_parcours,
     ]);
 }
 

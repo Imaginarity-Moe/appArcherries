@@ -8,7 +8,10 @@ require_once __DIR__ . '/invitations.php';
 
 const STATIONS_UPLOAD_DIR = '/uploads/stations';
 
-const VALID_DISCIPLINES = ['3d_wa', '3d_ifaa', '3d_bowhunter', 'field_wa', 'simple'];
+const VALID_DISCIPLINES = [
+    '3d_wa', '3d_ifaa', '3d_ifaa_hunter', '3d_ifaa_animal', '3d_bowhunter',
+    'field_wa', 'field_ifaa', 'simple',
+];
 const VALID_BOW_TYPES   = ['recurve', 'compound', 'barebow', 'traditional'];
 const VALID_PEG_COLORS  = ['blue', 'red', 'yellow', 'white'];
 
@@ -150,7 +153,7 @@ function trainings_list(int $user_id): void
 
     // Trainings, in denen User Owner ODER Participant ist
     $stmt = db()->prepare(
-        'SELECT DISTINCT t.id, t.started_at, t.ended_at, t.discipline, t.bow_type, t.peg_color,
+        'SELECT DISTINCT t.id, t.started_at, t.ended_at, t.discipline, t.nfaa_mode, t.bow_type, t.peg_color,
                 t.distance_marked, t.location, t.summary_score, t.parcours_id, p.name AS parcours_name,
                 t.user_id AS owner_user_id
          FROM trainings t
@@ -170,6 +173,7 @@ function trainings_list(int $user_id): void
         $it['id']            = (int)$it['id'];
         $it['owner_user_id'] = (int)$it['owner_user_id'];
         $it['is_shared']     = $it['owner_user_id'] !== $user_id;
+        $it['nfaa_mode']     = (bool)(int)($it['nfaa_mode'] ?? 0);
         if ($it['summary_score'] !== null) $it['summary_score'] = (int)$it['summary_score'];
         if ($it['summary_score'] === null) {
             $it['total_score'] = participant_total($user_id, (int)$it['id']);
@@ -220,14 +224,15 @@ function trainings_create(int $user_id): void
     db()->beginTransaction();
     try {
         $stmt = db()->prepare(
-            'INSERT INTO trainings (user_id, parcours_id, started_at, discipline, bow_type, peg_color, distance_marked, location, weather, notes, summary_score)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO trainings (user_id, parcours_id, started_at, discipline, nfaa_mode, bow_type, peg_color, distance_marked, location, weather, notes, summary_score)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $user_id,
             $parcours_id,
             $started_at,
             $discipline,
+            !empty($in['nfaa_mode']) ? 1 : 0,
             $bow_type,
             $peg_color,
             isset($in['distance_marked']) ? ($in['distance_marked'] ? 1 : 0) : null,
@@ -332,6 +337,8 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
     $t['user_id']        = (int)$t['user_id'];
     $t['is_owner']       = $t['user_id'] === $user_id;
     $t['my_participant_id'] = $own_pid;
+    $t['nfaa_mode']              = (bool)(int)($t['nfaa_mode'] ?? 0);
+    $t['published_to_highscore'] = (bool)(int)($t['published_to_highscore'] ?? 0);
     if ($t['summary_score']   !== null) $t['summary_score']   = (int)$t['summary_score'];
     if ($t['distance_marked'] !== null) $t['distance_marked'] = (bool)$t['distance_marked'];
     $t['targets']      = $targets;
@@ -350,13 +357,14 @@ function trainings_update(int $user_id, int $id): void
     $sets = [];
     $vals = [];
     foreach ([
-        'ended_at'        => 'datetime',
-        'location'        => 'string',
-        'weather'         => 'string',
-        'notes'           => 'string',
-        'summary_score'   => 'int',
-        'distance_marked' => 'bool',
-        'peg_color'       => 'peg',
+        'ended_at'                => 'datetime',
+        'location'                => 'string',
+        'weather'                 => 'string',
+        'notes'                   => 'string',
+        'summary_score'           => 'int',
+        'distance_marked'         => 'bool',
+        'peg_color'               => 'peg',
+        'published_to_highscore'  => 'bool',
     ] as $key => $type) {
         if (!array_key_exists($key, $in)) continue;
         $v = $in[$key];
@@ -440,7 +448,7 @@ function targets_create(int $user_id, int $training_id): void
         }
 
         if (isset($in['shots']) && is_array($in['shots'])) {
-            replace_shots($tid, $disc, $in['shots']);
+            replace_shots($tid, $disc, $in['shots'], training_nfaa($training_id));
         }
 
         db()->commit();
@@ -477,7 +485,7 @@ function targets_update(int $user_id, int $training_id, int $tid): void
             db()->prepare("UPDATE training_targets SET " . implode(', ', $sets) . " WHERE id = ?")->execute($vals);
         }
         if (isset($in['shots']) && is_array($in['shots'])) {
-            replace_shots($tid, $disc, $in['shots']);
+            replace_shots($tid, $disc, $in['shots'], training_nfaa($training_id));
         }
         db()->commit();
     } catch (Throwable $e) {
@@ -533,6 +541,13 @@ function training_discipline(int $training_id): string
     return (string)$s->fetchColumn();
 }
 
+function training_nfaa(int $training_id): bool
+{
+    $s = db()->prepare('SELECT nfaa_mode FROM trainings WHERE id = ?');
+    $s->execute([$training_id]);
+    return (bool)(int)$s->fetchColumn();
+}
+
 function participant_total(int $user_id, int $training_id): int
 {
     $s = db()->prepare(
@@ -546,7 +561,7 @@ function participant_total(int $user_id, int $training_id): int
     return (int)$s->fetchColumn();
 }
 
-function replace_shots(int $target_id, string $discipline, array $shots): void
+function replace_shots(int $target_id, string $discipline, array $shots, bool $nfaa = false): void
 {
     $clean = [];
     foreach ($shots as $s) {
@@ -560,7 +575,7 @@ function replace_shots(int $target_id, string $discipline, array $shots): void
             'y_norm'    => isset($s['y_norm']) && $s['y_norm'] !== null ? (float)$s['y_norm'] : null,
         ];
     }
-    $scored = score_target($discipline, $clean);
+    $scored = score_target($discipline, $clean, $nfaa);
 
     db()->prepare('DELETE FROM shots WHERE target_id = ?')->execute([$target_id]);
     if (!$scored) return;
