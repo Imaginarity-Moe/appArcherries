@@ -1,14 +1,22 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { RefreshCw, X, CheckCircle2 } from "lucide-react";
 
+const REV_KEY = "archerries.app_rev";
+const CURRENT_REV = typeof __APP_REV__ !== "undefined" ? __APP_REV__ : "dev";
+
 /**
- * Update- und Offline-Ready-Prompt.
+ * Update-Notification + automatischer Reload.
  *
- * - needRefresh: prominenter Cherry-Banner oben (klare Handlungs-Aufforderung)
- * - offlineReady: dezenter Toast unten (informativ, kann ignoriert werden)
- *
- * Cherry statt rot — bewusst aufmerksam aber nicht alarmistisch.
+ * Strategie:
+ * 1. SW läuft in autoUpdate + skipWaiting + clientsClaim → übernimmt sofort.
+ * 2. Beim Mount: Vergleich localStorage.archerries.app_rev vs __APP_REV__.
+ *    Wenn sich die Revision geändert hat → kurzer "Aktualisiert"-Toast,
+ *    dann localStorage aktualisieren.
+ * 3. controllerchange-Event (neuer SW übernimmt): window.location.reload().
+ *    Das passiert NUR EINMAL pro Page-Load (eigene Flag verhindert reload-loop).
+ * 4. needRefresh-Fallback aus useRegisterSW: Banner als Notfall-UI für den
+ *    seltenen Fall, dass die SW nicht greift.
  */
 export default function PWAUpdatePrompt() {
   const {
@@ -21,7 +29,34 @@ export default function PWAUpdatePrompt() {
     },
   });
 
-  // Offline-Ready-Toast verschwindet nach 5 Sekunden automatisch
+  const [justUpdated, setJustUpdated] = useState(false);
+
+  // (a) Bei Mount Revision vergleichen — Toast bei Mismatch
+  useEffect(() => {
+    const last = localStorage.getItem(REV_KEY);
+    if (last && last !== CURRENT_REV) {
+      console.log(`[pwa] App-Revision Update: ${last} → ${CURRENT_REV}`);
+      setJustUpdated(true);
+      setTimeout(() => setJustUpdated(false), 4000);
+    }
+    localStorage.setItem(REV_KEY, CURRENT_REV);
+  }, []);
+
+  // (b) controllerchange: neuer SW hat übernommen → HARD-Reload für frische Bundles
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    let reloadedOnce = false;
+    const onCtrlChange = () => {
+      if (reloadedOnce) return; // verhindere reload-loop
+      reloadedOnce = true;
+      console.log("[pwa] SW controllerchange — reloading");
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onCtrlChange);
+    return () => navigator.serviceWorker.removeEventListener("controllerchange", onCtrlChange);
+  }, []);
+
+  // (c) Offline-Ready-Toast verschwindet nach 5 Sekunden automatisch
   useEffect(() => {
     if (!offlineReady) return;
     const id = setTimeout(() => setOfflineReady(false), 5000);
@@ -77,6 +112,16 @@ export default function PWAUpdatePrompt() {
             >
               <X size={16} strokeWidth={1.75} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-Reload Bestätigung: kurz sichtbar nach App-Update */}
+      {justUpdated && (
+        <div className="fixed inset-x-4 bottom-24 lg:bottom-4 lg:left-auto lg:right-4 lg:w-80 z-40 animate-slide-up">
+          <div className="rounded-2xl bg-cherry-500 text-cream shadow-cherry p-3 flex items-center gap-2">
+            <RefreshCw size={16} strokeWidth={2} />
+            <p className="text-sm font-medium">Auf Version <span className="font-mono">v{CURRENT_REV}</span> aktualisiert</p>
           </div>
         </div>
       )}

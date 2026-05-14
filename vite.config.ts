@@ -19,14 +19,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // prompt: zeigt dem User ein sichtbares "Neue Version verfügbar"-Signal
-      // (siehe PWAUpdatePrompt.tsx). Das alte autoUpdate-Verhalten war zu
-      // lautlos — User merkte nicht, dass eine neue Version da ist.
-      //
-      // Wichtig: index.html + sw.js + manifest haben no-cache-Header
-      // (public/.htaccess), damit Browser bei Reload immer frisch lädt.
-      // Vite-hashed Assets bleiben immutable.
-      registerType: "prompt",
+      // autoUpdate + skipWaiting + clientsClaim:
+      //  - Neuer SW wird im Hintergrund installiert
+      //  - skipWaiting: kein "waiting"-Zustand, neuer SW übernimmt sofort
+      //  - clientsClaim: alle offenen Tabs werden vom neuen SW kontrolliert
+      //  - PWAUpdatePrompt.tsx fängt das controllerchange-Event ab und reloaded
+      //    die Seite automatisch + zeigt einen kurzen Toast.
+      // Plus: client-side Version-Mismatch-Detection (siehe main.tsx) als Fallback,
+      // falls SW nicht greift (z.B. bei iOS Safari quirks).
+      registerType: "autoUpdate",
       includeAssets: ["favicon-32x32.png", "apple-touch-icon.png"],
       manifest: {
         name: "Archerries",
@@ -47,10 +48,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
-        // KEIN skipWaiting + KEIN clientsClaim: der neue SW geht in "waiting",
-        // useRegisterSW.needRefresh wird true → der User sieht den
-        // "Neue Version verfügbar"-Banner und klickt selbst auf "Jetzt"
-        // (→ updateServiceWorker(true) macht skipWaiting + reload).
+        clientsClaim: true,
+        skipWaiting: true,
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api/, /^\/uploads/],
         runtimeCaching: [

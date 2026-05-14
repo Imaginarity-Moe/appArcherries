@@ -131,9 +131,9 @@ export default function Layout() {
       </header>
 
       {/* ─── Content ─────────────────────────────────────────────────── */}
-      {/* pb-32 sorgt dafür, dass der letzte Inhalt nicht von der schwebenden
-          Mobile-Nav (h-14 + safe-area + pb-3 ≈ 100px) verdeckt wird. */}
-      <main className={`lg:pl-64 ${hideMobileNav ? "lg:pb-8" : "pb-32 lg:pb-8"}`}>
+      {/* pb-32: für die schwebende Mobile-Nav (h-14 + safe-area ≈ 100px)
+          lg:pb-24: für die Desktop-Custom-Action-Bar (h-16 fixed bottom) */}
+      <main className={`lg:pl-64 ${hideMobileNav ? "lg:pb-8" : "pb-32"} ${customActions ? "lg:pb-24" : "lg:pb-8"}`}>
         <div className="container-app py-5 sm:py-7">
           <Outlet />
         </div>
@@ -152,7 +152,43 @@ export default function Layout() {
           </div>
         </nav>
       )}
+
+      {/* ─── Desktop Action-Bar: rendert nur Custom-Actions (nicht die Default-5er-Nav)
+            Sichtbar wenn eine Page eigene Actions gesetzt hat. Bottom-sticky, links
+            an der Sidebar vorbei (lg:pl-64). ─ */}
+      {customActions && customActions.length > 0 && (
+        <div
+          className="hidden lg:block fixed inset-x-0 bottom-0 z-30 bg-canvas/85 backdrop-blur-xl supports-[backdrop-filter]:bg-canvas/75 border-t border-hairline"
+          aria-label="Page-Aktionen"
+        >
+          <div className="lg:pl-64">
+            <div className="container-app flex items-center justify-end gap-2 py-3">
+              {customActions.map((a, i) => renderDesktopAction(a, i))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function renderDesktopAction(a: FooterAction, i: number) {
+  const cls = a.primary
+    ? "btn-accent"
+    : a.danger
+    ? "btn-ghost danger"
+    : "btn-secondary";
+  if (a.kind === "link") {
+    return (
+      <Link key={i} to={a.to} className={cls}>
+        {a.icon} {a.label}
+      </Link>
+    );
+  }
+  return (
+    <button key={i} onClick={a.onClick} disabled={a.disabled} className={cls}>
+      {a.icon} {a.label}
+    </button>
   );
 }
 
