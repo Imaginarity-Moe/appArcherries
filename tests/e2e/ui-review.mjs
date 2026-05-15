@@ -48,7 +48,7 @@ async function shot(page, vp, name) {
 const browser = await chromium.launch({ headless: true });
 
 // Setup: User A erzeugt Parcours mit Bahn, Public, Review, published Training
-const ctxA = await browser.newContext({ ...devices['iPhone 14 Pro'] });
+const ctxA = await browser.newContext({ ...devices['iPhone 14 Pro'] , serviceWorkers: "block" });
 const pa = await ctxA.newPage();
 await login(pa, USER_A);
 
@@ -102,7 +102,7 @@ console.log(`Setup OK: parcours #${parcoursId}, training #${trainingId}`);
 await pa.close();
 
 // User B reviewt + favorisiert
-const ctxB = await browser.newContext({ ...devices['iPhone 14 Pro'] });
+const ctxB = await browser.newContext({ ...devices['iPhone 14 Pro'] , serviceWorkers: "block" });
 const pb = await ctxB.newPage();
 await login(pb, USER_B);
 await api(pb, `/parcours/${parcoursId}/reviews`, {
@@ -112,7 +112,7 @@ await api(pb, '/favorites', { method: 'POST', body: JSON.stringify({ kind: 'parc
 await pb.close();
 
 // ─── Screenshots: Mobile (User B view auf den Parcours von A) ────────────
-const ctxM = await browser.newContext({ ...devices['iPhone 14 Pro'], locale: 'de-DE' });
+const ctxM = await browser.newContext({ ...devices['iPhone 14 Pro'], locale: 'de-DE' , serviceWorkers: "block" });
 const pm = await ctxM.newPage();
 await login(pm, USER_B);
 
@@ -152,7 +152,7 @@ await shot(pm, 'mobile', '07-help-community');
 await pm.close();
 
 // ─── Screenshots: Desktop ────────────────────────────────────────────────
-const ctxD = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'de-DE' });
+const ctxD = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'de-DE', serviceWorkers: 'block' });
 const pd = await ctxD.newPage();
 await login(pd, USER_B);
 
@@ -172,7 +172,7 @@ await shot(pd, 'desktop', '03-parcours-list');
 await pd.close();
 
 // Cleanup
-const ctxC = await browser.newContext({ ...devices['iPhone 14 Pro'] });
+const ctxC = await browser.newContext({ ...devices['iPhone 14 Pro'] , serviceWorkers: "block" });
 const pc = await ctxC.newPage();
 await login(pc, USER_A);
 await api(pc, `/parcours/${parcoursId}`, { method: 'DELETE' });

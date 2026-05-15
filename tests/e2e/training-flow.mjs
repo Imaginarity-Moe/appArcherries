@@ -178,7 +178,7 @@ async function runDiscipline(page, discipline) {
 async function main() {
   console.log(`Training-Flow gegen ${BASE_URL}`);
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ ...devices['iPhone 14 Pro'], locale: 'de-DE' });
+  const context = await browser.newContext({ ...devices['iPhone 14 Pro'], locale: 'de-DE' , serviceWorkers: "block" });
   const page = await context.newPage();
 
   page.on('pageerror', (e) => console.log('PAGE-ERROR:', e.message));

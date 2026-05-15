@@ -54,7 +54,7 @@ async function api(page, path, opts = {}) {
 const browser = await chromium.launch({ headless: true });
 
 // ─── User A: anlegen, public, review, training, publish-to-highscore ─────────
-const ctxA  = await browser.newContext({ ...devices['iPhone 14 Pro'] });
+const ctxA  = await browser.newContext({ ...devices['iPhone 14 Pro'] , serviceWorkers: "block" });
 const pageA = await ctxA.newPage();
 pageA.on('pageerror', (e) => console.log('A page-error:', e.message));
 
@@ -146,7 +146,7 @@ if (!hsRes.body?.scores || hsRes.body.scores.length === 0) {
 await pageA.screenshot({ path: join(SHOT_DIR, 'A-after-publish.png') });
 
 // ─── User B: sieht öffentlichen Parcours, reviewen, klonen, Highscore sehen ──
-const ctxB  = await browser.newContext({ ...devices['iPhone 14 Pro'] });
+const ctxB  = await browser.newContext({ ...devices['iPhone 14 Pro'] , serviceWorkers: "block" });
 const pageB = await ctxB.newPage();
 pageB.on('pageerror', (e) => console.log('B page-error:', e.message));
 

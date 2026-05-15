@@ -5,7 +5,7 @@ const TEST_EMAIL = 'claude-test@archerries.local';
 const TEST_PASS  = 'ClaudeTest_2026!';
 
 const browser = await chromium.launch({ headless: true });
-const ctx = await browser.newContext({ ...devices['iPhone 14 Pro'], locale: 'de-DE' });
+const ctx = await browser.newContext({ ...devices['iPhone 14 Pro'], locale: 'de-DE' , serviceWorkers: "block" });
 const page = await ctx.newPage();
 
 page.on('pageerror', (e) => console.log('PAGE-ERROR:', e.message));

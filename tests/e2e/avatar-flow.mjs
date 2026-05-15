@@ -30,7 +30,7 @@ const pngBuffer = readFileSync(join(REPO_ROOT, 'public', 'pwa-192x192.png'));
 const RED_PNG_B64 = pngBuffer.toString('base64');
 
 const browser = await chromium.launch({ headless: true });
-const ctx = await browser.newContext({ ...devices['iPhone 14 Pro'], locale: 'de-DE' });
+const ctx = await browser.newContext({ ...devices['iPhone 14 Pro'], locale: 'de-DE' , serviceWorkers: "block" });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => console.log('PAGE-ERROR:', e.message));
 page.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE-ERROR:', m.text()); });

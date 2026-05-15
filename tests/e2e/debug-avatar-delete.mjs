@@ -10,7 +10,7 @@ const USER = { email: 'claude-test@archerries.local', pass: 'ClaudeTest_2026!' }
 const PNG = readFileSync(join(REPO_ROOT, 'public', 'pwa-192x192.png')).toString('base64');
 
 const browser = await chromium.launch({ headless: true });
-const ctx = await browser.newContext({ ...devices['iPhone 14 Pro'] });
+const ctx = await browser.newContext({ ...devices['iPhone 14 Pro'] , serviceWorkers: "block" });
 const page = await ctx.newPage();
 
 await page.goto(`${BASE_URL}/login`);

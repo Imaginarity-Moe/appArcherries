@@ -16,7 +16,7 @@ const BASE_URL = process.env.E2E_BASE_URL ?? 'https://archerries.mossig.de';
 const USER = { email: 'claude-test@archerries.local', pass: 'ClaudeTest_2026!' };
 
 const browser = await chromium.launch({ headless: true });
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'de-DE' });
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'de-DE', serviceWorkers: 'block' });
 const page = await ctx.newPage();
 
 // Login

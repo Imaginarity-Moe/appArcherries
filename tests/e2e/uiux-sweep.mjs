@@ -165,7 +165,7 @@ async function runViewport(vp, ctxOpts) {
     console.log(`\n══════ ${dir.toUpperCase()} ══════════════════════`);
 
     const browser = await chromium.launch({ headless: true });
-    const ctx = await browser.newContext({ ...ctxOpts, locale: 'de-DE' });
+    const ctx = await browser.newContext({ ...ctxOpts, locale: 'de-DE' , serviceWorkers: "block" });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => FINDINGS.push({ dir, kind: 'pageerror', msg: e.message }));
     page.on('console', (m) => {

@@ -31,7 +31,7 @@ async function main() {
   const context = await browser.newContext({
     ...devices['iPhone 14 Pro'],
     locale: 'de-DE',
-  });
+  , serviceWorkers: "block" });
   const page = await context.newPage();
 
   const errors = [];

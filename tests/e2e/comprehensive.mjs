@@ -127,7 +127,7 @@ async function login(page) {
 async function runViewport(viewport, contextOptions) {
   console.log(`\n══════ ${viewport.toUpperCase()} ══════════════════════════════════`);
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ ...contextOptions, locale: 'de-DE' });
+  const context = await browser.newContext({ ...contextOptions, locale: 'de-DE' , serviceWorkers: "block" });
   const page = await context.newPage();
   await attachListeners(page, viewport);
 
