@@ -131,14 +131,25 @@ export default function ParcoursLanes() {
         notes: edit.notes.trim() || null,
         sort_order: num,
       };
+      let savedLaneId: number | null = null;
       if (editingId === "new") {
-        await upsertParcoursLane(parcours.id, body);
+        const r = await upsertParcoursLane(parcours.id, body);
+        savedLaneId = r.lane?.id ?? null;
       } else {
         await updateParcoursLane(parcours.id, editingId, body);
+        savedLaneId = editingId;
       }
       const refreshed = await listParcoursLanes(parcours.id);
       setLanes(refreshed.lanes);
-      setEditingId(null);
+      // Nach Neuanlage im Editor BLEIBEN — der User kann jetzt noch ein Foto
+      // hochladen (das setzt eine existierende lane.id voraus). Bei Edit-Save
+      // dagegen schließt der Editor.
+      if (editingId === "new" && savedLaneId) {
+        setEditingId(savedLaneId);
+        setEdit(laneToEdit(refreshed.lanes.find((l) => l.id === savedLaneId)!));
+      } else {
+        setEditingId(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
     } finally {
@@ -428,7 +439,12 @@ function LaneEditor({
         />
       </label>
 
-      {/* Foto — nur für existierende Bahnen (neue haben noch keine ID) */}
+      {/* Foto: bei neuer Bahn (noch keine ID) erst nach erstem Speichern verfügbar */}
+      {!existingLane && (
+        <div className="text-xs text-muted italic">
+          Foto-Upload erscheint nach dem ersten Speichern (eine Bahn-Nr braucht erst eine ID).
+        </div>
+      )}
       {existingLane && (
         <div>
           <div className="text-xs text-muted mb-1.5">Foto der Bahn</div>
