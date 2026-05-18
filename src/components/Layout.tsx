@@ -12,7 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
-import { LogoWordmark, Wordmark } from "./Logo";
+import { LogoMark, Wordmark, _logoFullLightUrl, _logoFullDarkUrl } from "./Logo";
 import NetworkStatusIcon from "./NetworkStatusIcon";
 import NotificationBell from "./NotificationBell";
 import { useConfirm } from "./ConfirmDialog";
@@ -71,8 +71,9 @@ export default function Layout() {
       {/* ─── Desktop-Sidebar ─────────────────────────────────────────── */}
       <aside className="hidden lg:flex fixed top-0 left-0 h-screen w-64 flex-col bg-surface border-r border-hairline z-20">
         <div className="flex items-center justify-between px-6 pt-6 pb-2">
-          <Link to="/" className="block py-2" aria-label="Archerries">
-            <LogoWordmark className="h-8" />
+          <Link to="/" className="block py-2 flex items-center gap-2" aria-label="Archerries">
+            <LogoMark size={36} />
+            <Wordmark className="h-5" />
           </Link>
           <div className="flex items-center gap-1">
             <NetworkStatusIcon />
@@ -370,13 +371,19 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           (max-w-sm minus card-Innenpadding p-5 = 20px je Seite) */}
       <div className="flex-1 min-h-0 pt-[calc(env(safe-area-inset-top)+0.5rem)] px-6 pb-2 flex items-center justify-center">
         <div className="w-full max-w-sm h-full px-5">
-          {/* Logo: leicht abgedimmt — nicht pures Schwarz im Light, nicht pures Weiß im Dark.
-              opacity statt invert verhindert harten Bildschirm-Kontrast. */}
+          {/* Logo: zwei Asset-Varianten (light/dark) — sauberer als invert,
+              weil die Cherry-Farbe der Kirschen unangetastet bleibt. */}
           <img
-            src={new URL("../assets/log_schriftzug.svg", import.meta.url).href}
+            src={_logoFullLightUrl}
             alt="Archerries"
             draggable={false}
-            className="block w-full h-full object-contain opacity-80 dark:opacity-70 dark:invert"
+            className="block w-full h-full object-contain dark:hidden"
+          />
+          <img
+            src={_logoFullDarkUrl}
+            alt=""
+            draggable={false}
+            className="hidden w-full h-full object-contain dark:block"
           />
         </div>
       </div>
