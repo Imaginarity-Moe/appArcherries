@@ -102,6 +102,12 @@ export function scoreArrowSeq(
     return 0;
   }
 
+  if (discipline === "target_practice") {
+    if (zone === "X") return 10;
+    const n = parseInt(zone, 10);
+    return n >= 1 && n <= 12 ? n : 0;
+  }
+
   return 0;
 }
 

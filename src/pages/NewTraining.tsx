@@ -32,6 +32,7 @@ const DISCIPLINE_BLURBS: Record<Discipline, string> = {
   "field_wa":       "6-5-4-3-2-1, 4 Pfeile pro Auflage, X separat (Tie-Break)",
   "field_ifaa":     "5-4-3, 4 Pfeile pro Scheibe",
   simple:           "Nur Gesamt-Score, keine Pfeile",
+  target_practice:  "Frei konfigurierbares Scheibenschießen mit Pfeile/Durchgänge/Distanz/Wertung",
 };
 
 const DISCIPLINE_ICONS: Record<Discipline, ReactNode> = {
@@ -43,6 +44,7 @@ const DISCIPLINE_ICONS: Record<Discipline, ReactNode> = {
   "field_wa":       <Target size={20} />,
   "field_ifaa":     <Target size={20} />,
   simple:           <Hash size={20} />,
+  target_practice:  <Target size={20} />,
 };
 
 const PEG_COLORS_HEX: Record<PegColor, string> = {
@@ -65,6 +67,14 @@ export default function NewTraining() {
   const [startLane, setStartLane] = useState<number>(1);
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
+  // target_practice-Konfiguration
+  const [tpArrowsPerEnd, setTpArrowsPerEnd] = useState<number>(3);
+  const [tpNumEnds, setTpNumEnds] = useState<number>(10);
+  const [tpDistance, setTpDistance] = useState<number>(18);
+  const [tpRings, setTpRings] = useState<number>(10);
+  const [tpScoringMode, setTpScoringMode] = useState<"points" | "legs" | "sets">("points");
+  const [tpLegsToWin, setTpLegsToWin] = useState<number>(3);
+  const [tpSetsToWin, setTpSetsToWin] = useState<number>(2);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parcoursOptions, setParcoursOptions] = useState<Parcours[]>([]);
@@ -157,6 +167,7 @@ export default function NewTraining() {
     setBusy(true);
     setError(null);
     try {
+      const isTargetPractice = discipline === "target_practice";
       const r = await createTraining({
         discipline,
         nfaa_mode: isAnimal ? nfaaMode : false,
@@ -164,10 +175,20 @@ export default function NewTraining() {
         bow_id: selectedBowId,
         peg_color: is3d && pegColor ? (pegColor as PegColor) : null,
         distance_marked: distanceMode === "" ? null : distanceMode === "marked",
-        parcours_id: parcoursId,
-        start_lane: parcoursId && startLane > 1 ? startLane : undefined,
+        parcours_id: isTargetPractice ? null : parcoursId,
+        start_lane: parcoursId && startLane > 1 && !isTargetPractice ? startLane : undefined,
         location: location || null,
         notes: notes || null,
+        // target_practice-Felder (Backend ignoriert sie bei anderen Disziplinen)
+        ...(isTargetPractice ? {
+          arrows_per_end: tpArrowsPerEnd,
+          num_ends: tpNumEnds,
+          target_distance_m: tpDistance,
+          target_rings: tpRings,
+          scoring_mode: tpScoringMode,
+          ...(tpScoringMode !== "points" ? { legs_to_win: tpLegsToWin } : {}),
+          ...(tpScoringMode === "sets"   ? { sets_to_win: tpSetsToWin } : {}),
+        } : {}),
       });
       nav(`/trainings/${r.training.id}`);
     } catch (err) {
@@ -348,6 +369,73 @@ export default function NewTraining() {
           )}
 
           {/* Peg + Distance only for 3D */}
+          {/* target_practice: Konfigurations-Sektion statt Pflock/Parcours */}
+          {discipline === "target_practice" && (
+            <div className="space-y-4 card-sunken">
+              <h2 className="eyebrow flex items-center gap-1.5">Scheiben-Setup</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-secondary mb-1 block">Pfeile pro Durchgang</label>
+                  <input type="number" min={1} max={20} className="input" value={tpArrowsPerEnd}
+                    onChange={(e) => setTpArrowsPerEnd(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} />
+                </div>
+                <div>
+                  <label className="text-xs text-secondary mb-1 block">Anzahl Durchgänge</label>
+                  <input type="number" min={1} max={50} className="input" value={tpNumEnds}
+                    onChange={(e) => setTpNumEnds(Math.max(1, Math.min(50, Number(e.target.value) || 1)))} />
+                </div>
+                <div>
+                  <label className="text-xs text-secondary mb-1 block">Distanz (m)</label>
+                  <input type="number" min={1} max={200} className="input" value={tpDistance}
+                    onChange={(e) => setTpDistance(Math.max(1, Math.min(200, Number(e.target.value) || 1)))} />
+                </div>
+                <div>
+                  <label className="text-xs text-secondary mb-1 block">Ringe der Scheibe</label>
+                  <input type="number" min={3} max={12} className="input" value={tpRings}
+                    onChange={(e) => setTpRings(Math.max(3, Math.min(12, Number(e.target.value) || 10)))} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-secondary mb-1.5 block">Wertung</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["points", "legs", "sets"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setTpScoringMode(m)}
+                      className={`py-2 rounded-lg text-xs font-medium tap-target transition ${
+                        tpScoringMode === m
+                          ? "bg-cherry-500 text-cream"
+                          : "bg-surface text-secondary border border-hairline"
+                      }`}
+                    >
+                      {m === "points" ? "Gesamtsumme" : m === "legs" ? "Best of Legs" : "Sets & Legs"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {tpScoringMode !== "points" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-secondary mb-1 block">Legs zum Sieg</label>
+                    <input type="number" min={1} max={20} className="input" value={tpLegsToWin}
+                      onChange={(e) => setTpLegsToWin(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} />
+                  </div>
+                  {tpScoringMode === "sets" && (
+                    <div>
+                      <label className="text-xs text-secondary mb-1 block">Sets zum Sieg</label>
+                      <input type="number" min={1} max={10} className="input" value={tpSetsToWin}
+                        onChange={(e) => setTpSetsToWin(Math.max(1, Math.min(10, Number(e.target.value) || 1)))} />
+                    </div>
+                  )}
+                </div>
+              )}
+              <p className="text-xs text-muted">
+                Multi-Player über Freund hinzufügen oder QR-Code im Training-Detail.
+              </p>
+            </div>
+          )}
+
           {is3d && (
             <>
               <div>

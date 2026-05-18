@@ -87,6 +87,13 @@ function score_arrow_independent(string $discipline, string $zone): int
             if ($zone === '3' || $zone === 'outer')                                         return 3;
             return 0;
 
+        case 'target_practice':
+            // WA-Standard: zone ist der Ring-Wert als String ('1'..'10' oder 'X' für inner-10).
+            // Punkte = numerischer Wert; X zählt wie 10 (Tiebreaker später separat tracken).
+            if ($zone === 'x') return 10;
+            $n = (int)$zone;
+            return ($n >= 1 && $n <= 12) ? $n : 0;
+
         default:
             return 0;
     }

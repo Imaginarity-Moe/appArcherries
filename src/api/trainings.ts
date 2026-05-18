@@ -13,7 +13,9 @@ export type Discipline =
   | "3d_bowhunter"
   | "field_wa"
   | "field_ifaa"
-  | "simple";
+  | "simple"
+  | "target_practice";
+export type ScoringMode = "points" | "legs" | "sets";
 export type BowType = "recurve" | "compound" | "barebow" | "traditional";
 export type PegColor = "blue" | "red" | "yellow" | "white";
 
@@ -71,6 +73,14 @@ export type Training = {
   parcours_name?: string | null;
   /** Geplante Gesamt-Bahnenzahl des verknüpften Parcours, für Grid/Counter im TrainingDetail */
   parcours_lanes_count?: number | null;
+  // target_practice-Konfiguration (nur bei discipline="target_practice" gesetzt)
+  arrows_per_end?: number | null;
+  num_ends?: number | null;
+  target_distance_m?: number | null;
+  target_rings?: number | null;
+  scoring_mode?: ScoringMode | null;
+  legs_to_win?: number | null;
+  sets_to_win?: number | null;
   targets?: Target[];
   participants?: Participant[];
   is_owner?: boolean;
@@ -92,6 +102,7 @@ export const DISCIPLINE_LABELS: Record<Discipline, string> = {
   "field_wa":       "Feldbogen · WA",
   "field_ifaa":     "Feldbogen · IFAA",
   "simple":         "Einfach (nur Score)",
+  "target_practice": "Scheibenschießen",
 };
 
 export const BOW_LABELS: Record<BowType, string> = {
@@ -161,6 +172,7 @@ export const ZONES_BY_DISCIPLINE: Record<Discipline, ZoneDef[]> = {
     { code: "miss", label: "M" },
   ],
   simple: [],
+  target_practice: [], // Pad rendert dynamische Ringe — keine festen Zonen-Buttons
 };
 
 const trainingPath = (id: number | string) => `/trainings/${id}`;
@@ -195,7 +207,16 @@ export async function getTraining(id: number | string): Promise<{ training: Trai
 // WRITES
 // ============================================================
 
-export async function createTraining(body: Partial<Training> & { start_lane?: number }): Promise<{ training: Training }> {
+export async function createTraining(body: Partial<Training> & {
+  start_lane?: number;
+  arrows_per_end?: number;
+  num_ends?: number;
+  target_distance_m?: number;
+  target_rings?: number;
+  scoring_mode?: ScoringMode;
+  legs_to_win?: number;
+  sets_to_win?: number;
+}): Promise<{ training: Training }> {
   if (navigator.onLine) {
     try {
       const r = await api<{ training: Training }>(`/trainings`, { method: "POST", body: JSON.stringify(body) });

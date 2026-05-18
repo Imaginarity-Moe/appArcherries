@@ -16,6 +16,7 @@ import {
   type Training,
 } from "../api/trainings";
 import BullseyePad from "../components/BullseyePad";
+import TargetPad from "../components/TargetPad";
 import ParticipantsBar from "../components/ParticipantsBar";
 import StationPhoto from "../components/StationPhoto";
 import PhotoMarkers from "../components/PhotoMarkers";
@@ -39,6 +40,7 @@ const SLOTS_BY_DISCIPLINE: Record<Discipline, number> = {
   "field_wa":       4, // WA-Standard: 4 Pfeile pro Auflage
   "field_ifaa":     4,
   simple:           0,
+  target_practice:  3, // Default — Training überschreibt via arrows_per_end
 };
 
 /** Disziplinen mit „nur erster treffender Pfeil zählt"-Logik */
@@ -132,6 +134,12 @@ function previewArrowPoints(
     const n = parseInt(zone, 10);
     if (n === 5 || n === 4 || n === 3) return n;
     return 0;
+  }
+
+  if (discipline === "target_practice") {
+    if (zone === "X") return 10;
+    const n = parseInt(zone, 10);
+    return n >= 1 && n <= 12 ? n : 0;
   }
 
   return 0;
@@ -327,7 +335,11 @@ function TrainingOverview({
             <StationStatusGrid
               targets={myTargets}
               onPick={(idx) => setSearchParams({ station: String(idx) })}
-              totalLanes={training.parcours_lanes_count}
+              totalLanes={
+                training.discipline === "target_practice"
+                  ? training.num_ends
+                  : training.parcours_lanes_count
+              }
             />
           </div>
         )}
@@ -532,7 +544,10 @@ function StationLiveEntry({
   onNavigate: (n: number) => void;
 }) {
   const { t } = useTranslation(["training", "common"]);
-  const slots = SLOTS_BY_DISCIPLINE[training.discipline];
+  // Bei target_practice kommt die Pfeil-Anzahl aus der Training-Konfiguration
+  const slots = training.discipline === "target_practice" && training.arrows_per_end
+    ? training.arrows_per_end
+    : SLOTS_BY_DISCIPLINE[training.discipline];
   const confirm = useConfirm();
 
   // Live-Eingabe ist ein Vollbild-Modus — die globale Bottom-Nav (Home/Stats/+…)
@@ -543,9 +558,13 @@ function StationLiveEntry({
     (t) => !t.participant_id || t.participant_id === training.my_participant_id
   );
   const existing = myTargets.find((t) => t.target_index === stationIndex);
-  const fallbackTotal = training.parcours_lanes_count && training.parcours_lanes_count > 0
-    ? training.parcours_lanes_count
-    : 28;
+  // Fallback-Total für Stations-Grid: target_practice nutzt num_ends, Parcours-Training
+  // nutzt parcours.lanes_count, sonst Default 28.
+  const fallbackTotal = training.discipline === "target_practice" && training.num_ends
+    ? training.num_ends
+    : training.parcours_lanes_count && training.parcours_lanes_count > 0
+      ? training.parcours_lanes_count
+      : 28;
   const totalStations = Math.max(fallbackTotal, ...myTargets.map((t) => t.target_index));
 
   const [animal, setAnimal] = useState(existing?.animal_or_face ?? "");
@@ -754,13 +773,40 @@ function StationLiveEntry({
           })}
         </div>
 
-        {/* Bullseye-Pad */}
-        <BullseyePad
-          discipline={training.discipline}
-          selectedZone={zonesPicked[activeSlot] ?? null}
-          onZoneSelect={(code) => handleZoneSelect(code)}
-          disabled={firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx}
-        />
+        {/* Pad: TargetPad für target_practice (Custom-Ringe + Long-Press-Zoom),
+            sonst BullseyePad mit Disziplin-spezifischen Zonen */}
+        {training.discipline === "target_practice" ? (
+          <TargetPad
+            rings={training.target_rings ?? 10}
+            activeSlot={activeSlot}
+            markers={zonesPicked.map((z, i) => {
+              const m = markers[i];
+              if (!m || !z) return null;
+              const pts = parseInt(z, 10) || 0;
+              return { x: m.x, y: m.y, points: pts };
+            })}
+            onShot={(points, x, y) => {
+              // Zone = Punkte als String. Marker mit x/y separat.
+              const zone = points === 0 ? "miss" : String(points);
+              const nextZ = [...zonesPicked]; nextZ[activeSlot] = zone; setZonesPicked(nextZ);
+              const nextM = [...markers]; nextM[activeSlot] = { x, y }; setMarkers(nextM);
+              const empty = nextZ.findIndex((z, i) => i > activeSlot && z === null);
+              if (empty !== -1) setActiveSlot(empty);
+              else if (activeSlot < slots - 1) setActiveSlot(activeSlot + 1);
+            }}
+            onClearSlot={(s) => {
+              const nextZ = [...zonesPicked]; nextZ[s] = null; setZonesPicked(nextZ);
+              const nextM = [...markers]; nextM[s] = null; setMarkers(nextM);
+            }}
+          />
+        ) : (
+          <BullseyePad
+            discipline={training.discipline}
+            selectedZone={zonesPicked[activeSlot] ?? null}
+            onZoneSelect={(code) => handleZoneSelect(code)}
+            disabled={firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx}
+          />
+        )}
 
         {/* Aktionen: Speichern + (optional) Vorherige */}
         <div className="flex items-center gap-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">

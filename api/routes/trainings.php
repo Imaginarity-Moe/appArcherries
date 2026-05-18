@@ -11,7 +11,9 @@ const STATIONS_UPLOAD_DIR = '/uploads/stations';
 const VALID_DISCIPLINES = [
     '3d_wa', '3d_ifaa', '3d_ifaa_hunter', '3d_ifaa_animal', '3d_bowhunter',
     'field_wa', 'field_ifaa', 'simple',
+    'target_practice',
 ];
+const VALID_SCORING_MODES = ['points', 'legs', 'sets'];
 const VALID_BOW_TYPES   = ['recurve', 'compound', 'barebow', 'traditional'];
 const VALID_PEG_COLORS  = ['blue', 'red', 'yellow', 'white'];
 
@@ -240,11 +242,40 @@ function trainings_create(int $user_id): void
         if ($s->fetch()) $bow_id = $bid;
     }
 
+    // target_practice-Konfiguration validieren + extrahieren
+    $tp_arrows_per_end = null;
+    $tp_num_ends       = null;
+    $tp_distance       = null;
+    $tp_rings          = null;
+    $tp_scoring_mode   = null;
+    $tp_legs_to_win    = null;
+    $tp_sets_to_win    = null;
+    if ($discipline === 'target_practice') {
+        $tp_arrows_per_end = max(1, min(20, (int)($in['arrows_per_end'] ?? 3)));
+        $tp_num_ends       = max(1, min(50, (int)($in['num_ends'] ?? 10)));
+        $tp_distance       = isset($in['target_distance_m']) && $in['target_distance_m'] !== null
+            ? max(1, min(200, (int)$in['target_distance_m'])) : null;
+        $tp_rings          = max(3, min(12, (int)($in['target_rings'] ?? 10)));
+        $sm = (string)($in['scoring_mode'] ?? 'points');
+        if (!in_array($sm, VALID_SCORING_MODES, true)) res_error('Ungültiger scoring_mode');
+        $tp_scoring_mode = $sm;
+        if ($sm === 'legs') {
+            $tp_legs_to_win = max(1, min(20, (int)($in['legs_to_win'] ?? 3)));
+        } elseif ($sm === 'sets') {
+            $tp_legs_to_win = max(1, min(20, (int)($in['legs_to_win'] ?? 3)));
+            $tp_sets_to_win = max(1, min(10, (int)($in['sets_to_win'] ?? 2)));
+        }
+    }
+
     db()->beginTransaction();
     try {
         $stmt = db()->prepare(
-            'INSERT INTO trainings (user_id, parcours_id, started_at, discipline, nfaa_mode, bow_type, bow_id, peg_color, distance_marked, location, weather, notes, summary_score)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO trainings
+               (user_id, parcours_id, started_at, discipline, nfaa_mode, bow_type, bow_id,
+                peg_color, distance_marked, location, weather, notes, summary_score,
+                arrows_per_end, num_ends, target_distance_m, target_rings, scoring_mode,
+                legs_to_win, sets_to_win)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $user_id,
@@ -260,6 +291,13 @@ function trainings_create(int $user_id): void
             isset($in['weather'])  ? (string)$in['weather']  : null,
             isset($in['notes'])    ? (string)$in['notes']    : null,
             isset($in['summary_score']) ? (int)$in['summary_score'] : null,
+            $tp_arrows_per_end,
+            $tp_num_ends,
+            $tp_distance,
+            $tp_rings,
+            $tp_scoring_mode,
+            $tp_legs_to_win,
+            $tp_sets_to_win,
         ]);
         $id = (int)db()->lastInsertId();
 
@@ -416,6 +454,10 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
         ? (int)$t['parcours_lanes_count'] : null;
     if ($t['summary_score']   !== null) $t['summary_score']   = (int)$t['summary_score'];
     if ($t['distance_marked'] !== null) $t['distance_marked'] = (bool)$t['distance_marked'];
+    // target_practice-Felder als int casten (sonst kommen sie als String aus PDO)
+    foreach (['arrows_per_end','num_ends','target_distance_m','target_rings','legs_to_win','sets_to_win'] as $f) {
+        if (isset($t[$f]) && $t[$f] !== null) $t[$f] = (int)$t[$f];
+    }
     $t['targets']      = $targets;
     $t['participants'] = $participants;
     // total_score = own participant's total (UI kann das pro-Participant anzeigen)

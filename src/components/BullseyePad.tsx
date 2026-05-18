@@ -66,6 +66,7 @@ const PAD_RINGS: Record<Discipline, Ring[]> = {
     { code: "miss", label: "M", fill: "#3D3933", textFill: "#FAF8F4" },
   ],
   simple: [],
+  target_practice: [], // target_practice nutzt TargetPad statt BullseyePad
 };
 
 export default function BullseyePad({ discipline, selectedZone, onZoneSelect, disabled }: Props) {
