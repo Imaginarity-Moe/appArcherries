@@ -27,8 +27,8 @@
   "detail": {
     "back_to_overview": "← Back",
     "total_points": "Total",
-    "n_stations": "{{count}} target",
-    "n_stations_plural": "{{count}} targets",
+    "n_stations_one": "{{count}} target",
+    "n_stations_other": "{{count}} targets",
     "end_training": "End training",
     "delete_training": "Delete",
     "delete_confirm": "Really delete this training?",

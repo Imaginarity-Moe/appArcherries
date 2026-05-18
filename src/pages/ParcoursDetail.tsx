@@ -206,7 +206,15 @@ export default function ParcoursDetail() {
 
           <div className="grid grid-cols-2 gap-3 text-sm">
             {p.lanes_count !== null && (
-              <DetailItem icon={<MapIcon size={14} strokeWidth={1.75} />} label="Bahnen" value={`${p.lanes_count}`} />
+              <DetailItem
+                icon={<MapIcon size={14} strokeWidth={1.75} />}
+                label="Bahnen"
+                value={
+                  p.lanes_detailed_count > 0
+                    ? `${p.lanes_detailed_count} / ${p.lanes_count} detailliert`
+                    : `${p.lanes_count}`
+                }
+              />
             )}
             {p.duration_min !== null && (
               <DetailItem icon={<Clock size={14} strokeWidth={1.75} />} label="Dauer" value={formatDuration(p.duration_min)} />
