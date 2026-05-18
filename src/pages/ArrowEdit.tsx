@@ -28,6 +28,7 @@ import { listBows, type Bow } from "../api/bows";
 import { BOW_LABELS } from "../api/trainings";
 import { usePageFooter } from "../components/FooterContext";
 import { useConfirm } from "../components/ConfirmDialog";
+import { useAuth } from "../auth/AuthContext";
 
 const MATERIALS:  ArrowMaterial[] = ["carbon", "aluminium", "carbon_aluminium", "wood", "fiberglass"];
 const FLETCHINGS: FletchingType[] = ["natural", "vane", "spin_vane"];
@@ -42,6 +43,8 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const confirm = useConfirm();
+  const { user } = useAuth();
+  const proMode = user?.pro_mode ?? false;
 
   const [arrow, setArrow] = useState<Arrow | null>(null);
   const [allBows, setAllBows] = useState<Bow[]>([]);
@@ -76,6 +79,10 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
   const [purchasedAt, setPurchasedAt] = useState("");
   const [pricePerArrow, setPricePerArrow] = useState(""); // Euro mit Komma
   const [purchaseUrl, setPurchaseUrl] = useState("");
+  const [purchaseUrlShaft, setPurchaseUrlShaft] = useState("");
+  const [purchaseUrlFletching, setPurchaseUrlFletching] = useState("");
+  const [purchaseUrlNocks, setPurchaseUrlNocks] = useState("");
+  const [purchaseUrlTips, setPurchaseUrlTips] = useState("");
   const [notes, setNotes] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [bowIds, setBowIds] = useState<Set<number>>(new Set());
@@ -114,6 +121,10 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
         setPurchasedAt(a.purchased_at ?? "");
         setPricePerArrow(a.price_per_arrow_cents != null ? (a.price_per_arrow_cents / 100).toFixed(2).replace(".", ",") : "");
         setPurchaseUrl(a.purchase_url ?? "");
+        setPurchaseUrlShaft(a.purchase_url_shaft ?? "");
+        setPurchaseUrlFletching(a.purchase_url_fletching ?? "");
+        setPurchaseUrlNocks(a.purchase_url_nocks ?? "");
+        setPurchaseUrlTips(a.purchase_url_tips ?? "");
         setNotes(a.notes ?? "");
         setIsDefault(a.is_default);
         setBowIds(new Set((a.linked_bows ?? []).map((b) => b.id)));
@@ -240,6 +251,10 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
         purchased_at: purchasedAt || null,
         price_per_arrow_cents: priceCents(),
         purchase_url: purchaseUrl || null,
+        purchase_url_shaft: purchaseUrlShaft || null,
+        purchase_url_fletching: purchaseUrlFletching || null,
+        purchase_url_nocks: purchaseUrlNocks || null,
+        purchase_url_tips: purchaseUrlTips || null,
         notes: notes || null,
         is_default: isDefault,
         bow_ids: [...bowIds],
@@ -498,6 +513,20 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
               )}
             </div>
           </Field>
+
+          {proMode && (
+            <details className="rounded-xl bg-surface border border-hairline overflow-hidden">
+              <summary className="cursor-pointer select-none px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-secondary flex items-center gap-1.5">
+                <ExternalLink size={12} strokeWidth={1.75} /> Komponenten einzeln nachbestellen
+              </summary>
+              <div className="px-3 pb-3 space-y-2.5">
+                <ComponentUrlField label="Schaft" value={purchaseUrlShaft} onChange={setPurchaseUrlShaft} />
+                <ComponentUrlField label="Befiederung" value={purchaseUrlFletching} onChange={setPurchaseUrlFletching} />
+                <ComponentUrlField label="Nocken" value={purchaseUrlNocks} onChange={setPurchaseUrlNocks} />
+                <ComponentUrlField label="Spitzen" value={purchaseUrlTips} onChange={setPurchaseUrlTips} />
+              </div>
+            </details>
+          )}
         </section>
 
         {/* Ereignisse (nur im Edit-Modus) */}
@@ -559,6 +588,34 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
           </label>
         </section>
       </form>
+    </div>
+  );
+}
+
+function ComponentUrlField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <div className="text-[11px] text-muted mb-1">{label}</div>
+      <div className="flex items-stretch gap-2">
+        <input
+          type="url"
+          className="input flex-1 text-sm py-2"
+          placeholder={`https://shop.example.com/${label.toLowerCase()}`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {value && (
+          <a
+            href={value}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary inline-flex items-center gap-1 px-3"
+            aria-label={`${label}-Shop öffnen`}
+          >
+            <ExternalLink size={12} strokeWidth={1.75} />
+          </a>
+        )}
+      </div>
     </div>
   );
 }

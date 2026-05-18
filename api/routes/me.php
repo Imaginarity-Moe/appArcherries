@@ -35,7 +35,7 @@ function handle_me(string $method, string $path = '/me'): void
 function me_get(int $user_id): void
 {
     $stmt = db()->prepare(
-        'SELECT id, email, display_name, status, role, avatar_path FROM users WHERE id = ?'
+        'SELECT id, email, display_name, status, role, avatar_path, pro_mode FROM users WHERE id = ?'
     );
     $stmt->execute([$user_id]);
     $u = $stmt->fetch();
@@ -52,6 +52,9 @@ function me_update(int $user_id): void
         $v = trim((string)$in['display_name']);
         if ($v === '' || mb_strlen($v) > 120) res_error('Ungültiger display_name');
         $sets[] = 'display_name = ?'; $vals[] = $v;
+    }
+    if (array_key_exists('pro_mode', $in)) {
+        $sets[] = 'pro_mode = ?'; $vals[] = $in['pro_mode'] ? 1 : 0;
     }
     if (!$sets) {
         me_get($user_id);
@@ -104,5 +107,6 @@ function me_serialize(array $u): array
         'role'         => $u['role'],
         'avatar_path'  => $u['avatar_path'] ?? null,
         'avatar_url'   => isset($u['avatar_path']) && $u['avatar_path'] ? (string)$u['avatar_path'] : null,
+        'pro_mode'     => (bool)($u['pro_mode'] ?? 0),
     ];
 }

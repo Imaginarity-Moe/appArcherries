@@ -1,24 +1,37 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap } from "lucide-react";
+import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Wrench } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import AvatarUploader from "../components/AvatarUploader";
+import { updateMe } from "../api/me";
 
 type Theme = "light" | "dark" | "auto";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const { t, i18n } = useTranslation(["profile", "common"]);
 
   const [theme, setTheme] = useState<Theme>(
     (localStorage.getItem("archerries.theme") as Theme) || "auto"
   );
+  const [proBusy, setProBusy] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("archerries.theme", theme);
     applyTheme(theme);
   }, [theme]);
+
+  const toggleProMode = async () => {
+    if (proBusy) return;
+    setProBusy(true);
+    try {
+      await updateMe({ pro_mode: !(user?.pro_mode ?? false) });
+      await refresh();
+    } finally {
+      setProBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-5 animate-fade-in max-w-2xl mx-auto">
@@ -89,6 +102,39 @@ export default function Profile() {
         </div>
         <ChevronRight size={18} strokeWidth={1.75} className="text-muted" />
       </Link>
+
+      <section className="card">
+        <h2 className="eyebrow mb-3 flex items-center gap-1.5">
+          <Wrench size={13} strokeWidth={1.75} /> Profi-Modus
+        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <div className="font-semibold text-sm">Granulare Komponenten-Pflege</div>
+            <p className="text-xs text-secondary mt-1 leading-relaxed">
+              Wenn aktiv, kannst du in jedem Pfeil-Set separate Shop-Links für
+              Schaft, Befiederung, Nocken und Spitzen hinterlegen — praktisch wenn du
+              deine Pfeile selbst zusammenstellst.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={toggleProMode}
+            disabled={proBusy}
+            role="switch"
+            aria-checked={user?.pro_mode ?? false}
+            className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition disabled:opacity-50 ${
+              user?.pro_mode ? "bg-cherry-500" : "bg-surface border border-hairline"
+            }`}
+            aria-label="Profi-Modus umschalten"
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-cream transition ${
+                user?.pro_mode ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
+      </section>
 
       <section className="card">
         <h2 className="eyebrow mb-2 text-cherry-500">{t("profile:danger_zone")}</h2>

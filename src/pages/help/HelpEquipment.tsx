@@ -98,6 +98,18 @@ export default function HelpEquipment() {
         Compound: nutze den Easton- oder Gold-Tip-Selektor mit deinem dynamischen Spine.
       </p>
 
+      <h3>Profi-Modus: Komponenten einzeln nachbestellen</h3>
+      <p>
+        Im Profil unter <em>Profi-Modus</em> kannst du einen Toggle aktivieren. Wenn aktiv,
+        erscheint im Pfeil-Set-Edit ein zusätzlicher kollabierbarer Block
+        „Komponenten einzeln nachbestellen" mit vier separaten Shop-Links für
+        <strong> Schaft</strong>, <strong>Befiederung</strong>, <strong>Nocken</strong> und
+        <strong> Spitzen</strong>. Praktisch wenn du deine Pfeile selbst zusammenstellst
+        (Schaft separat, Federn separat, …). Bei deaktiviertem Profi-Modus bleibt nur der
+        einfache Haupt-Shop-Link für den fertigen Pfeil sichtbar. Die Einstellung wird
+        in deinem User-Profil gespeichert und gilt geräteübergreifend.
+      </p>
+
       <h3>Foto-Upload</h3>
       <p>
         Im Bogen-/Pfeil-Set-Edit ist der Foto-Block prominent am Anfang. Erst nach dem

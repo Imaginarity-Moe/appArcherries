@@ -64,6 +64,10 @@ export type Arrow = {
   purchased_at: string | null;
   price_per_arrow_cents: number | null;
   purchase_url: string | null;
+  purchase_url_shaft: string | null;
+  purchase_url_fletching: string | null;
+  purchase_url_nocks: string | null;
+  purchase_url_tips: string | null;
 
   notes: string | null;
   image_path: string | null;

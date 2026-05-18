@@ -306,7 +306,7 @@ function arrows_image_delete(int $user_id, int $id): void
 function arrow_writable_fields_with_values(array $in): array
 {
     $out = [];
-    $string_fields = ['manufacturer', 'model', 'spine', 'fletching_colors', 'nock_manufacturer', 'nock_color', 'tip_manufacturer', 'notes', 'purchase_url'];
+    $string_fields = ['manufacturer', 'model', 'spine', 'fletching_colors', 'nock_manufacturer', 'nock_color', 'tip_manufacturer', 'notes', 'purchase_url', 'purchase_url_shaft', 'purchase_url_fletching', 'purchase_url_nocks', 'purchase_url_tips'];
     foreach ($string_fields as $f) {
         if (array_key_exists($f, $in)) {
             $v = $in[$f];
@@ -436,6 +436,10 @@ function arrow_serialize(array $r, bool $include_bows): array
         'purchased_at'          => $r['purchased_at'],
         'price_per_arrow_cents' => $r['price_per_arrow_cents'] !== null ? (int)$r['price_per_arrow_cents'] : null,
         'purchase_url'          => $r['purchase_url'] ?? null,
+        'purchase_url_shaft'    => $r['purchase_url_shaft'] ?? null,
+        'purchase_url_fletching' => $r['purchase_url_fletching'] ?? null,
+        'purchase_url_nocks'    => $r['purchase_url_nocks'] ?? null,
+        'purchase_url_tips'     => $r['purchase_url_tips'] ?? null,
         'notes'                 => $r['notes'],
         'image_path'            => $r['image_path'],
         'image_url'             => $r['image_path'] ?: null,
