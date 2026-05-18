@@ -9,6 +9,24 @@ export default function HelpShared() {
         </p>
       </header>
 
+      <section className="space-y-3">
+        <h2 className="text-h3">Freundes-Liste (Phase 1)</h2>
+        <p className="text-sm">
+          Im Profil unter <em>Freunde</em> kannst du andere User per <strong>Exact-E-Mail-Anfrage</strong>
+          einladen. Der Empfänger sieht die Anfrage in seiner Freundes-Liste und kann sie
+          <strong> annehmen</strong>, <strong>ablehnen</strong> oder <strong>blockieren</strong>.
+        </p>
+        <ul className="list-disc pl-5 text-sm space-y-1">
+          <li><strong>Annehmen</strong> → ihr seid Freunde und seht euch gegenseitig in der Liste</li>
+          <li><strong>Ablehnen</strong> → Anfrage wird gelöscht, neue Anfrage später wieder möglich</li>
+          <li><strong>Blockieren</strong> → die andere Person kann keine neue Anfrage senden</li>
+        </ul>
+        <p className="text-sm text-secondary">
+          Keine Username-Fuzzy-Suche aus Datenschutz-Gründen — du brauchst die exakte E-Mail-Adresse
+          deines Freundes. Display-Name + Avatar werden erst nach Annahme sichtbar.
+        </p>
+      </section>
+
       <section>
         <h2 className="eyebrow mb-3">So lädst du jemanden ein</h2>
         <ol className="text-primary list-decimal pl-5 space-y-1.5">

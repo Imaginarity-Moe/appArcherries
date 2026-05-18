@@ -51,6 +51,9 @@ try {
     } elseif (str_starts_with($path, '/favorites')) {
         require __DIR__ . '/routes/favorites.php';
         handle_favorites($method, $path);
+    } elseif (str_starts_with($path, '/friends')) {
+        require __DIR__ . '/routes/friends.php';
+        handle_friends($method, $path);
     } elseif (str_starts_with($path, '/highscore')) {
         require __DIR__ . '/routes/highscore.php';
         handle_highscore($method, $path);

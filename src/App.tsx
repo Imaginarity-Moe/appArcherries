@@ -28,6 +28,7 @@ const Bows            = lazy(() => import("./pages/Bows"));               // Bow
 const BowEdit         = lazy(() => import("./pages/BowEdit"));            // Bow-Form (new + edit)
 const Arrows          = lazy(() => import("./pages/Arrows"));             // Pfeil-Set-Manager
 const ArrowEdit       = lazy(() => import("./pages/ArrowEdit"));          // Pfeil-Set-Form (new + edit)
+const Friends         = lazy(() => import("./pages/Friends"));            // Freundschafts-Verwaltung
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="/arrows" element={<RequireAuth><L><Arrows /></L></RequireAuth>} />
         <Route path="/arrows/new" element={<RequireAuth><L><ArrowEdit mode="new" /></L></RequireAuth>} />
         <Route path="/arrows/:id/edit" element={<RequireAuth><L><ArrowEdit mode="edit" /></L></RequireAuth>} />
+        <Route path="/friends" element={<RequireAuth><L><Friends /></L></RequireAuth>} />
 
         {/* Hilfe (Accordion + Suche auf einer Page; Deep-Links via #anchor) */}
         <Route path="/help" element={<RequireAuth><HelpHub /></RequireAuth>} />
