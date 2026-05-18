@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Moon, Sun, Globe, Trash2, Target, ChevronRight } from "lucide-react";
+import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import AvatarUploader from "../components/AvatarUploader";
 
@@ -72,6 +72,19 @@ export default function Profile() {
           <div>
             <div className="font-semibold">Meine Bögen</div>
             <div className="text-sm text-secondary">Bogen-Profile mit Setup-Daten verwalten</div>
+          </div>
+        </div>
+        <ChevronRight size={18} strokeWidth={1.75} className="text-muted" />
+      </Link>
+
+      <Link to="/arrows" className="card-interactive flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-9 rounded-full bg-surface flex items-center justify-center text-cherry-500">
+            <Zap size={18} strokeWidth={1.75} />
+          </span>
+          <div>
+            <div className="font-semibold">Meine Pfeile</div>
+            <div className="text-sm text-secondary">Pfeil-Sets mit Spine, Befiederung & Bestand verwalten</div>
           </div>
         </div>
         <ChevronRight size={18} strokeWidth={1.75} className="text-muted" />

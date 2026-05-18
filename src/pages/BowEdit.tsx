@@ -10,6 +10,7 @@ import {
   uploadBowImage,
   type Bow,
 } from "../api/bows";
+import { listArrows, type Arrow } from "../api/arrows";
 import { BOW_LABELS, type BowType } from "../api/trainings";
 import { usePageFooter } from "../components/FooterContext";
 import { useConfirm } from "../components/ConfirmDialog";
@@ -34,13 +35,19 @@ export default function BowEdit({ mode }: { mode: Mode }) {
   const [name, setName] = useState("");
   const [bowType, setBowType] = useState<BowType>("recurve");
   const [drawWeight, setDrawWeight] = useState("");
+  const [lengthInch, setLengthInch] = useState("");
+  const [braceHeight, setBraceHeight] = useState("");
+  const [letOff, setLetOff] = useState("");
   const [arrowSpine, setArrowSpine] = useState("");
   const [sightMarks, setSightMarks] = useState("");
   const [notes, setNotes] = useState("");
   const [isDefault, setIsDefault] = useState(false);
+  const [allArrows, setAllArrows] = useState<Arrow[]>([]);
+  const [arrowIds, setArrowIds] = useState<Set<number>>(new Set());
 
-  // Initial laden (Edit-Modus)
+  // Initial laden (Edit-Modus + Pfeil-Liste)
   useEffect(() => {
+    listArrows().then((r) => setAllArrows(r.arrows)).catch(() => {});
     if (mode !== "edit" || !id) return;
     getBow(Number(id))
       .then((r) => {
@@ -48,14 +55,27 @@ export default function BowEdit({ mode }: { mode: Mode }) {
         setName(r.bow.name);
         setBowType(r.bow.bow_type);
         setDrawWeight(r.bow.draw_weight_lbs?.toString() ?? "");
+        setLengthInch(r.bow.length_inch?.toString() ?? "");
+        setBraceHeight(r.bow.brace_height_inch?.toString() ?? "");
+        setLetOff(r.bow.let_off_percent?.toString() ?? "");
         setArrowSpine(r.bow.arrow_spine ?? "");
         setSightMarks(r.bow.sight_marks ?? "");
         setNotes(r.bow.notes ?? "");
         setIsDefault(r.bow.is_default);
+        setArrowIds(new Set((r.bow.linked_arrows ?? []).map((a) => a.id)));
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Konnte Bogen nicht laden"))
       .finally(() => setLoading(false));
   }, [mode, id]);
+
+  function toggleArrow(aid: number) {
+    setArrowIds((cur) => {
+      const next = new Set(cur);
+      if (next.has(aid)) next.delete(aid);
+      else next.add(aid);
+      return next;
+    });
+  }
 
   // Custom Footer: Abbrechen / Speichern, im Edit-Modus zusätzlich Löschen
   const footerActions = useMemo(
@@ -107,11 +127,15 @@ export default function BowEdit({ mode }: { mode: Mode }) {
       const body = {
         name: name.trim(),
         bow_type: bowType,
-        draw_weight_lbs: drawWeight ? Number(drawWeight) : null,
+        draw_weight_lbs: drawWeight ? Number(drawWeight.replace(",", ".")) : null,
+        length_inch: lengthInch ? Number(lengthInch.replace(",", ".")) : null,
+        brace_height_inch: braceHeight ? Number(braceHeight.replace(",", ".")) : null,
+        let_off_percent: letOff ? Number(letOff) : null,
         arrow_spine: arrowSpine || null,
         sight_marks: sightMarks || null,
         notes: notes || null,
         is_default: isDefault,
+        arrow_ids: [...arrowIds],
       };
       if (mode === "edit" && bow) {
         const r = await updateBow(bow.id, body);
@@ -245,45 +269,57 @@ export default function BowEdit({ mode }: { mode: Mode }) {
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Zuggewicht (lbs)">
-            <input
-              type="number"
-              step="0.5"
-              inputMode="decimal"
-              className="input"
-              placeholder="z.B. 38"
-              value={drawWeight}
-              onChange={(e) => setDrawWeight(e.target.value)}
-            />
+            <input type="number" step="0.5" inputMode="decimal" className="input" placeholder="z.B. 38" value={drawWeight} onChange={(e) => setDrawWeight(e.target.value)} />
           </Field>
           <Field label="Pfeil-Spine">
-            <input
-              className="input"
-              placeholder="z.B. 700"
-              value={arrowSpine}
-              onChange={(e) => setArrowSpine(e.target.value)}
-            />
+            <input className="input" placeholder="z.B. 700" value={arrowSpine} onChange={(e) => setArrowSpine(e.target.value)} />
           </Field>
+          <Field label="Länge (inch)">
+            <input type="number" step="0.1" inputMode="decimal" className="input" placeholder="z.B. 68" value={lengthInch} onChange={(e) => setLengthInch(e.target.value)} />
+          </Field>
+          <Field label="Standhöhe (inch)">
+            <input type="number" step="0.05" inputMode="decimal" className="input" placeholder="z.B. 8.75" value={braceHeight} onChange={(e) => setBraceHeight(e.target.value)} />
+          </Field>
+          {bowType === "compound" && (
+            <Field label="Let-Off (%)">
+              <input type="number" inputMode="numeric" className="input" placeholder="z.B. 75" value={letOff} onChange={(e) => setLetOff(e.target.value)} />
+            </Field>
+          )}
         </div>
 
         <Field label="Visiermarken">
-          <textarea
-            className="input"
-            rows={2}
-            placeholder="z.B. 18m: 4.2 · 30m: 5.1 · 50m: 6.8"
-            value={sightMarks}
-            onChange={(e) => setSightMarks(e.target.value)}
-          />
+          <textarea className="input" rows={2} placeholder="z.B. 18m: 4.2 · 30m: 5.1 · 50m: 6.8" value={sightMarks} onChange={(e) => setSightMarks(e.target.value)} />
         </Field>
 
         <Field label="Notizen">
-          <textarea
-            className="input"
-            rows={2}
-            placeholder="z.B. Sehne 2025 gewechselt"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
+          <textarea className="input" rows={2} placeholder="z.B. Sehne 2025 gewechselt" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
+
+        {/* Verknüpfte Pfeil-Sets */}
+        {allArrows.length > 0 && (
+          <div>
+            <label className="text-sm font-medium text-secondary mb-1.5 block">Genutzte Pfeil-Sets</label>
+            <div className="flex flex-wrap gap-2">
+              {allArrows.map((a) => {
+                const sel = arrowIds.has(a.id);
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => toggleArrow(a.id)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition active:scale-95 ${
+                      sel
+                        ? "bg-cherry-500 text-cream shadow-cherry"
+                        : "bg-surface text-secondary hover:text-primary border border-hairline"
+                    }`}
+                  >
+                    {a.name}{a.spine && <span className="opacity-70"> · {a.spine}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <label className="flex items-center gap-2.5 cursor-pointer">
           <input

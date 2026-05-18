@@ -19,6 +19,7 @@ mkdir /uploads/stations
 mkdir /uploads/avatars
 mkdir /uploads/lanes
 mkdir /uploads/bows
+mkdir /uploads/arrows
 option batch abort
 
 # Backend (api/) -> /api

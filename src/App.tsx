@@ -26,6 +26,8 @@ const ParcoursEdit    = lazy(() => import("./pages/ParcoursEdit"));       // Lea
 const ParcoursLanes   = lazy(() => import("./pages/ParcoursLanes"));      // Bahnen-Verwaltung
 const Bows            = lazy(() => import("./pages/Bows"));               // Bow-Profile-Manager
 const BowEdit         = lazy(() => import("./pages/BowEdit"));            // Bow-Form (new + edit)
+const Arrows          = lazy(() => import("./pages/Arrows"));             // Pfeil-Set-Manager
+const ArrowEdit       = lazy(() => import("./pages/ArrowEdit"));          // Pfeil-Set-Form (new + edit)
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -69,6 +71,9 @@ export default function App() {
         <Route path="/bows" element={<RequireAuth><L><Bows /></L></RequireAuth>} />
         <Route path="/bows/new" element={<RequireAuth><L><BowEdit mode="new" /></L></RequireAuth>} />
         <Route path="/bows/:id/edit" element={<RequireAuth><L><BowEdit mode="edit" /></L></RequireAuth>} />
+        <Route path="/arrows" element={<RequireAuth><L><Arrows /></L></RequireAuth>} />
+        <Route path="/arrows/new" element={<RequireAuth><L><ArrowEdit mode="new" /></L></RequireAuth>} />
+        <Route path="/arrows/:id/edit" element={<RequireAuth><L><ArrowEdit mode="edit" /></L></RequireAuth>} />
 
         {/* Hilfe (Accordion + Suche auf einer Page; Deep-Links via #anchor) */}
         <Route path="/help" element={<RequireAuth><HelpHub /></RequireAuth>} />

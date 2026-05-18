@@ -48,19 +48,28 @@ function handle_bows(string $method, string $path): void
 function bows_list(int $user_id): void
 {
     $stmt = db()->prepare(
-        'SELECT id, name, bow_type, draw_weight_lbs, arrow_spine, sight_marks, notes, image_path, is_default, created_at, updated_at
+        'SELECT id, name, bow_type, draw_weight_lbs, length_inch, brace_height_inch, let_off_percent, arrow_spine, sight_marks, notes, image_path, is_default, created_at, updated_at
          FROM bows WHERE user_id = ? ORDER BY is_default DESC, name ASC'
     );
     $stmt->execute([$user_id]);
     $rows = $stmt->fetchAll();
     foreach ($rows as &$r) {
-        $r['id']         = (int)$r['id'];
-        $r['is_default'] = (bool)$r['is_default'];
-        if ($r['draw_weight_lbs'] !== null) $r['draw_weight_lbs'] = (float)$r['draw_weight_lbs'];
-        $r['image_url']  = $r['image_path'] ?: null;
+        $r = bow_row_normalize($r);
     }
     unset($r);
     res_json(['bows' => $rows]);
+}
+
+function bow_row_normalize(array $r): array
+{
+    $r['id']         = (int)$r['id'];
+    $r['is_default'] = (bool)$r['is_default'];
+    if ($r['draw_weight_lbs']   !== null) $r['draw_weight_lbs']   = (float)$r['draw_weight_lbs'];
+    if ($r['length_inch']       !== null) $r['length_inch']       = (float)$r['length_inch'];
+    if ($r['brace_height_inch'] !== null) $r['brace_height_inch'] = (float)$r['brace_height_inch'];
+    if ($r['let_off_percent']   !== null) $r['let_off_percent']   = (int)$r['let_off_percent'];
+    $r['image_url']  = $r['image_path'] ?: null;
+    return $r;
 }
 
 function bows_create(int $user_id): void
@@ -85,19 +94,26 @@ function bows_create(int $user_id): void
         }
 
         db()->prepare(
-            'INSERT INTO bows (user_id, name, bow_type, draw_weight_lbs, arrow_spine, sight_marks, notes, is_default)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO bows (user_id, name, bow_type, draw_weight_lbs, length_inch, brace_height_inch, let_off_percent, arrow_spine, sight_marks, notes, is_default)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $user_id,
             $name,
             $bow_type,
-            isset($in['draw_weight_lbs']) && $in['draw_weight_lbs'] !== null && $in['draw_weight_lbs'] !== '' ? (float)$in['draw_weight_lbs'] : null,
+            bow_num($in, 'draw_weight_lbs'),
+            bow_num($in, 'length_inch'),
+            bow_num($in, 'brace_height_inch'),
+            bow_num_int($in, 'let_off_percent'),
             isset($in['arrow_spine']) ? (string)$in['arrow_spine'] : null,
             isset($in['sight_marks']) ? (string)$in['sight_marks'] : null,
             isset($in['notes']) ? (string)$in['notes'] : null,
             $is_default,
         ]);
         $id = (int)db()->lastInsertId();
+
+        if (array_key_exists('arrow_ids', $in)) {
+            bow_set_arrow_links($user_id, $id, bow_extract_arrow_ids($in));
+        }
         db()->commit();
     } catch (Throwable $e) {
         db()->rollBack();
@@ -105,6 +121,19 @@ function bows_create(int $user_id): void
     }
 
     bow_detail($user_id, $id, 201);
+}
+
+function bow_num(array $in, string $k): ?float
+{
+    if (!array_key_exists($k, $in)) return null;
+    $v = $in[$k];
+    return ($v === null || $v === '') ? null : (float)$v;
+}
+function bow_num_int(array $in, string $k): ?int
+{
+    if (!array_key_exists($k, $in)) return null;
+    $v = $in[$k];
+    return ($v === null || $v === '') ? null : (int)$v;
 }
 
 function bows_update(int $user_id, int $id): void
@@ -126,14 +155,19 @@ function bows_update(int $user_id, int $id): void
         if (!in_array($in['bow_type'], VALID_BOW_TYPES_BOW, true)) res_error('Ungültiger bow_type');
         $sets[] = 'bow_type = ?'; $vals[] = $in['bow_type'];
     }
-    foreach (['draw_weight_lbs','arrow_spine','sight_marks','notes'] as $f) {
+    foreach (['draw_weight_lbs','length_inch','brace_height_inch','arrow_spine','sight_marks','notes'] as $f) {
         if (!array_key_exists($f, $in)) continue;
         $v = $in[$f];
-        if ($f === 'draw_weight_lbs') {
+        if (in_array($f, ['draw_weight_lbs','length_inch','brace_height_inch'], true)) {
             $sets[] = "$f = ?"; $vals[] = ($v === null || $v === '') ? null : (float)$v;
         } else {
             $sets[] = "$f = ?"; $vals[] = ($v === null || $v === '') ? null : (string)$v;
         }
+    }
+    if (array_key_exists('let_off_percent', $in)) {
+        $v = $in['let_off_percent'];
+        $sets[] = 'let_off_percent = ?';
+        $vals[] = ($v === null || $v === '') ? null : (int)$v;
     }
 
     db()->beginTransaction();
@@ -147,6 +181,10 @@ function bows_update(int $user_id, int $id): void
             $vals[] = $id;
             db()->prepare("UPDATE bows SET " . implode(', ', $sets) . " WHERE id = ?")->execute($vals);
         }
+
+        if (array_key_exists('arrow_ids', $in)) {
+            bow_set_arrow_links($user_id, $id, bow_extract_arrow_ids($in));
+        }
         db()->commit();
     } catch (Throwable $e) {
         db()->rollBack();
@@ -154,6 +192,32 @@ function bows_update(int $user_id, int $id): void
     }
 
     bow_detail($user_id, $id);
+}
+
+function bow_extract_arrow_ids(array $in): array
+{
+    if (!is_array($in['arrow_ids'] ?? null)) return [];
+    $ids = [];
+    foreach ($in['arrow_ids'] as $v) {
+        $id = (int)$v;
+        if ($id > 0) $ids[] = $id;
+    }
+    return array_values(array_unique($ids));
+}
+
+function bow_set_arrow_links(int $user_id, int $bow_id, array $arrow_ids): void
+{
+    db()->prepare('DELETE FROM bow_arrows WHERE bow_id = ?')->execute([$bow_id]);
+    if (empty($arrow_ids)) return;
+
+    $marks = implode(',', array_fill(0, count($arrow_ids), '?'));
+    $stmt  = db()->prepare("SELECT id FROM arrows WHERE id IN ($marks) AND user_id = ?");
+    $stmt->execute([...$arrow_ids, $user_id]);
+    $allowed = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+
+    if (!$allowed) return;
+    $ins = db()->prepare('INSERT IGNORE INTO bow_arrows (bow_id, arrow_id) VALUES (?, ?)');
+    foreach ($allowed as $aid) $ins->execute([$bow_id, $aid]);
 }
 
 function bows_delete(int $user_id, int $id): void
@@ -165,16 +229,29 @@ function bows_delete(int $user_id, int $id): void
 function bow_detail(int $user_id, int $id, int $status = 200): void
 {
     $stmt = db()->prepare(
-        'SELECT id, name, bow_type, draw_weight_lbs, arrow_spine, sight_marks, notes, image_path, is_default, created_at, updated_at
+        'SELECT id, name, bow_type, draw_weight_lbs, length_inch, brace_height_inch, let_off_percent, arrow_spine, sight_marks, notes, image_path, is_default, created_at, updated_at
          FROM bows WHERE id = ? AND user_id = ?'
     );
     $stmt->execute([$id, $user_id]);
     $r = $stmt->fetch();
     if (!$r) res_error('Not found', 404);
-    $r['id']         = (int)$r['id'];
-    $r['is_default'] = (bool)$r['is_default'];
-    if ($r['draw_weight_lbs'] !== null) $r['draw_weight_lbs'] = (float)$r['draw_weight_lbs'];
-    $r['image_url']  = $r['image_path'] ?: null;
+    $r = bow_row_normalize($r);
+
+    // Verknüpfte Pfeil-Sets mit ausliefern
+    $arr = db()->prepare(
+        'SELECT a.id, a.name, a.manufacturer, a.model, a.spine
+         FROM bow_arrows ba JOIN arrows a ON a.id = ba.arrow_id
+         WHERE ba.bow_id = ? ORDER BY a.name ASC'
+    );
+    $arr->execute([$id]);
+    $r['linked_arrows'] = array_map(fn ($a) => [
+        'id'           => (int)$a['id'],
+        'name'         => $a['name'],
+        'manufacturer' => $a['manufacturer'],
+        'model'        => $a['model'],
+        'spine'        => $a['spine'],
+    ], $arr->fetchAll());
+
     res_json(['bow' => $r], $status);
 }
 

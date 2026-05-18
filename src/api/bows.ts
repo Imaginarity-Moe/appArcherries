@@ -1,11 +1,22 @@
 import { api, apiCached, getToken } from "./client";
 import type { BowType } from "./trainings";
 
+export type LinkedArrow = {
+  id: number;
+  name: string;
+  manufacturer: string | null;
+  model: string | null;
+  spine: string | null;
+};
+
 export type Bow = {
   id: number;
   name: string;
   bow_type: BowType;
   draw_weight_lbs: number | null;
+  length_inch: number | null;
+  brace_height_inch: number | null;
+  let_off_percent: number | null;
   arrow_spine: string | null;
   sight_marks: string | null;
   notes: string | null;
@@ -14,6 +25,8 @@ export type Bow = {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  /** Verknüpfte Pfeil-Sets — nur in bow_detail enthalten */
+  linked_arrows?: LinkedArrow[];
 };
 
 export async function listBows(): Promise<{ bows: Bow[] }> {
@@ -24,11 +37,11 @@ export async function getBow(id: number): Promise<{ bow: Bow }> {
   return apiCached(`/bows/${id}`);
 }
 
-export async function createBow(body: Partial<Bow>): Promise<{ bow: Bow }> {
+export async function createBow(body: Partial<Bow> & { arrow_ids?: number[] }): Promise<{ bow: Bow }> {
   return api(`/bows`, { method: "POST", body: JSON.stringify(body) });
 }
 
-export async function updateBow(id: number, body: Partial<Bow>): Promise<{ bow: Bow }> {
+export async function updateBow(id: number, body: Partial<Bow> & { arrow_ids?: number[] }): Promise<{ bow: Bow }> {
   return api(`/bows/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 }
 

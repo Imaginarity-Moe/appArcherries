@@ -45,6 +45,9 @@ try {
     } elseif (str_starts_with($path, '/bows')) {
         require __DIR__ . '/routes/bows.php';
         handle_bows($method, $path);
+    } elseif (str_starts_with($path, '/arrows')) {
+        require __DIR__ . '/routes/arrows.php';
+        handle_arrows($method, $path);
     } elseif (str_starts_with($path, '/favorites')) {
         require __DIR__ . '/routes/favorites.php';
         handle_favorites($method, $path);
