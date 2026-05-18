@@ -54,17 +54,47 @@ export default function Friends() {
     }
   }
 
-  async function respond(id: number, action: "accept" | "reject" | "block") {
+  async function respond(f: Friendship, action: "accept" | "reject" | "block") {
+    if (action !== "accept") {
+      const who = f.user.display_name ?? f.user.email;
+      const opts =
+        action === "reject"
+          ? {
+              title: "Anfrage ablehnen?",
+              message: `Die Anfrage von ${who} wird gelöscht. Sie können dir später eine neue Anfrage senden.`,
+              confirmLabel: "Ablehnen",
+              variant: "danger" as const,
+            }
+          : {
+              title: "User blockieren?",
+              message: `${who} kann dir keine weiteren Anfragen mehr senden. Du erhältst keine Benachrichtigung mehr von dieser Person.`,
+              confirmLabel: "Blockieren",
+              variant: "danger" as const,
+            };
+      const want = await confirm(opts);
+      if (!want) return;
+    }
     setBusy(true);
     try {
-      setState(await respondFriendRequest(id, action));
+      setState(await respondFriendRequest(f.id, action));
     } finally {
       setBusy(false);
     }
   }
 
   async function remove(f: Friendship, label: string) {
-    const want = await confirm({ title: label, message: `Wirklich ${label.toLowerCase()}?`, confirmLabel: label, variant: "danger" });
+    const who = f.user.display_name ?? f.user.email;
+    const messages: Record<string, string> = {
+      "Entfernen": `${who} wird aus deiner Freundes-Liste entfernt. Ihr könnt euch jederzeit wieder gegenseitig anfragen.`,
+      "Zurückziehen": `Du ziehst deine Anfrage an ${who} zurück. Du kannst später erneut anfragen.`,
+      "Aufheben": `Du hebst die Blockierung von ${who} auf. Diese Person kann dir wieder Freundes-Anfragen senden.`,
+    };
+    const want = await confirm({
+      title: label,
+      message: messages[label] ?? `Wirklich ${label.toLowerCase()}?`,
+      confirmLabel: label,
+      variant: "danger",
+    });
     if (!want) return;
     setBusy(true);
     try {
@@ -98,13 +128,13 @@ export default function Friends() {
                   <div className="text-xs text-muted truncate">{f.user.email}</div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <button onClick={() => respond(f.id, "accept")} disabled={busy} className="btn-icon text-cherry-500" aria-label="Annehmen">
+                  <button onClick={() => respond(f, "accept")} disabled={busy} className="btn-icon text-cherry-500" aria-label="Annehmen">
                     <Check size={18} strokeWidth={2} />
                   </button>
-                  <button onClick={() => respond(f.id, "reject")} disabled={busy} className="btn-icon" aria-label="Ablehnen">
+                  <button onClick={() => respond(f, "reject")} disabled={busy} className="btn-icon" aria-label="Ablehnen">
                     <X size={18} strokeWidth={2} />
                   </button>
-                  <button onClick={() => respond(f.id, "block")} disabled={busy} className="btn-icon text-muted" aria-label="Blockieren">
+                  <button onClick={() => respond(f, "block")} disabled={busy} className="btn-icon text-muted" aria-label="Blockieren">
                     <Ban size={16} strokeWidth={1.75} />
                   </button>
                 </div>
