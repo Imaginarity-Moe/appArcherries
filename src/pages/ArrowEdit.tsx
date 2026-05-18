@@ -28,7 +28,6 @@ import { listBows, type Bow } from "../api/bows";
 import { BOW_LABELS } from "../api/trainings";
 import { usePageFooter } from "../components/FooterContext";
 import { useConfirm } from "../components/ConfirmDialog";
-import { useAuth } from "../auth/AuthContext";
 
 const MATERIALS:  ArrowMaterial[] = ["carbon", "aluminium", "carbon_aluminium", "wood", "fiberglass"];
 const FLETCHINGS: FletchingType[] = ["natural", "vane", "spin_vane"];
@@ -43,10 +42,9 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const confirm = useConfirm();
-  const { user } = useAuth();
-  const proMode = user?.pro_mode ?? false;
 
   const [arrow, setArrow] = useState<Arrow | null>(null);
+  const [proMode, setProMode] = useState(false);
   const [allBows, setAllBows] = useState<Bow[]>([]);
   const [loading, setLoading] = useState(mode === "edit");
   const [busy, setBusy] = useState(false);
@@ -127,6 +125,7 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
         setPurchaseUrlTips(a.purchase_url_tips ?? "");
         setNotes(a.notes ?? "");
         setIsDefault(a.is_default);
+        setProMode(a.pro_mode);
         setBowIds(new Set((a.linked_bows ?? []).map((b) => b.id)));
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Konnte Pfeil-Set nicht laden"))
@@ -257,6 +256,7 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
         purchase_url_tips: purchaseUrlTips || null,
         notes: notes || null,
         is_default: isDefault,
+        pro_mode: proMode,
         bow_ids: [...bowIds],
       };
       if (mode === "edit" && arrow) {
@@ -363,10 +363,49 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
             <Field label="Modell">
               <input className="input" placeholder="X10, Pierce, Spider 4MM, …" value={model} onChange={(e) => setModel(e.target.value)} />
             </Field>
+            <Field label="Spine">
+              <input className="input" placeholder="z.B. 700" value={spine} onChange={(e) => setSpine(e.target.value)} />
+            </Field>
+            <Field label="Länge (inch)">
+              <input type="number" step="0.1" inputMode="decimal" className="input" placeholder="z.B. 28.5" value={lengthInch} onChange={(e) => setLengthInch(e.target.value)} />
+            </Field>
           </div>
         </section>
 
-        {/* Schaft */}
+        {/* Pro-Modus-Toggle: schaltet Komponenten-Details (Schaft-Material,
+            Befiederung, Nocken, Spitzen, Komponenten-Shop-Links) sichtbar. */}
+        <section className="card flex items-start gap-3">
+          <div className="flex-1">
+            <div className="font-semibold text-sm flex items-center gap-1.5">
+              <Star size={14} strokeWidth={1.75} className="text-cherry-500" /> Profi-Modus für dieses Set
+            </div>
+            <p className="text-xs text-secondary mt-1 leading-relaxed">
+              Aktiviere, wenn du den Pfeil selbst zusammenstellst und Schaft, Befiederung,
+              Nocken und Spitzen einzeln pflegen willst (inkl. Komponenten-Shop-Links).
+              Für gekaufte „von-der-Stange"-Pfeile reichen die Basis-Felder oben.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setProMode((v) => !v)}
+            role="switch"
+            aria-checked={proMode}
+            className={`shrink-0 mt-0.5 relative inline-flex h-6 w-11 items-center rounded-full transition ${
+              proMode ? "bg-cherry-500" : "bg-surface border border-hairline"
+            }`}
+            aria-label="Profi-Modus umschalten"
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-cream transition ${
+                proMode ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </section>
+
+        {proMode && (
+        <>
+        {/* Schaft (Pro) */}
         <section className="card space-y-3">
           <h2 className="eyebrow">Schaft</h2>
           <div>
@@ -382,12 +421,6 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
           <div className="grid grid-cols-2 gap-3">
             <Field label="Durchmesser (mm)">
               <input type="number" step="0.01" inputMode="decimal" className="input" placeholder="z.B. 5.69" value={diameter} onChange={(e) => setDiameter(e.target.value)} />
-            </Field>
-            <Field label="Spine">
-              <input className="input" placeholder="z.B. 700" value={spine} onChange={(e) => setSpine(e.target.value)} />
-            </Field>
-            <Field label="Länge (inch)">
-              <input type="number" step="0.1" inputMode="decimal" className="input" placeholder="z.B. 28.5" value={lengthInch} onChange={(e) => setLengthInch(e.target.value)} />
             </Field>
             <Field label="GPI (grains/inch)">
               <input type="number" step="0.1" inputMode="decimal" className="input" placeholder="z.B. 8.7" value={gpi} onChange={(e) => setGpi(e.target.value)} />
@@ -468,6 +501,8 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
           </div>
           <TriCheck label="Spitzen austauschbar" value={tipReplaceable} onChange={setTipReplaceable} />
         </section>
+        </>
+        )}
 
         {/* Bestand */}
         <section className="card space-y-3">

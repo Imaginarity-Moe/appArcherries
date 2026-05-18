@@ -334,6 +334,9 @@ function arrow_writable_fields_with_values(array $in): array
             $out[$f] = $v === null ? null : ($v ? 1 : 0);
         }
     }
+    if (array_key_exists('pro_mode', $in)) {
+        $out['pro_mode'] = $in['pro_mode'] ? 1 : 0;
+    }
     if (array_key_exists('material', $in)) {
         $v = $in['material'];
         if ($v !== null && $v !== '' && !in_array($v, ARROW_MATERIALS, true)) res_error('Ungültiges material');
@@ -444,6 +447,7 @@ function arrow_serialize(array $r, bool $include_bows): array
         'image_path'            => $r['image_path'],
         'image_url'             => $r['image_path'] ?: null,
         'is_default'            => (bool)$r['is_default'],
+        'pro_mode'              => (bool)($r['pro_mode'] ?? 0),
         'created_at'            => $r['created_at'],
         'updated_at'            => $r['updated_at'],
     ];

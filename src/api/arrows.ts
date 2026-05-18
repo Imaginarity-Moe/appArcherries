@@ -73,6 +73,7 @@ export type Arrow = {
   image_path: string | null;
   image_url: string | null;
   is_default: boolean;
+  pro_mode: boolean;
 
   created_at: string;
   updated_at: string;

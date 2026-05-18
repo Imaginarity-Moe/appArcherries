@@ -9,7 +9,11 @@ const APP_REV = (() => {
   try { return execSync("git rev-parse --short HEAD").toString().trim(); }
   catch { return "dev"; }
 })();
-const APP_BUILT = new Date().toISOString().slice(0, 16).replace("T", " ");
+// Volle ISO-UTC inkl. Z — der Browser konvertiert beim Anzeigen via
+// Intl.DateTimeFormat in die Europe/Berlin-Zeitzone (siehe Layout.tsx).
+// Ohne Z würde der Browser den String als Local-Time interpretieren →
+// versetzte Anzeige um die UTC-Offset (in CEST = 2h).
+const APP_BUILT = new Date().toISOString();
 
 export default defineConfig({
   define: {

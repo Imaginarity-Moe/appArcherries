@@ -316,8 +316,10 @@ function BuildInfo({ compact = false }: { compact?: boolean }) {
 }
 
 /**
- * Formatiert einen ISO-UTC-Timestamp als "YYYY-MM-DD HH:mm Berlin".
- * Nutzt Intl.DateTimeFormat mit timeZone: Europe/Berlin → automatischer DST-Wechsel.
+ * Formatiert einen ISO-UTC-Timestamp als "YYYY-MM-DD HH:mm" in Europe/Berlin-Zeit.
+ * DST-Wechsel automatisch via Intl. __APP_BUILT__ muss ISO mit Z-Suffix sein,
+ * sonst interpretiert der Browser den String als Local-Time und die Konvertierung
+ * läuft falsch.
  */
 function formatBerlin(iso: string): string {
   if (!iso) return "";
@@ -330,7 +332,7 @@ function formatBerlin(iso: string): string {
     hour12: false,
   });
   const parts = Object.fromEntries(fmt.formatToParts(d).map((p) => [p.type, p.value]));
-  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute} Berlin`;
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
 function SidebarLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {

@@ -49,12 +49,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    overflow-x: hidden;  /* horizontalen Swipe global verhindern */
+    /* `overflow-x: clip` verhindert horizontalen Swipe OHNE einen Scroll-
+       Container zu erzeugen — wichtig, weil `overflow-x: hidden` auf html/body
+       in iOS Safari `position: sticky` (Mobile-Header) bricht und der Header
+       beim Scrollen verschwindet. */
+    overflow-x: clip;
   }
   body {
     @apply min-h-screen;
     background-color: rgb(var(--bg-canvas));
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* Leaflet-Map: alle Panes & Controls unterhalb der Floating-Nav (z-30) halten */
