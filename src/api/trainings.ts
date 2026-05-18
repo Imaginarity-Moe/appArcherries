@@ -83,6 +83,8 @@ export type Training = {
   scoring_mode?: ScoringMode | null;
   legs_to_win?: number | null;
   sets_to_win?: number | null;
+  /** Multi-Player: training_participant_id, der Leg 1 eröffnet. Rotation pro Leg. */
+  starting_participant_id?: number | null;
   targets?: Target[];
   participants?: Participant[];
   is_owner?: boolean;
@@ -306,7 +308,7 @@ type UpsertTargetBody = {
   distance_m?: number | null;
   notes?: string | null;
   shots?: Array<{ arrow_seq: number; zone: string | null; x_norm?: number | null; y_norm?: number | null }>;
-  /** Owner-only: scort für anderen Participant (z.B. Gast ohne Account) */
+  /** Owner-only: scorst für anderen Participant (z.B. Gast ohne Account) */
   for_participant_id?: number;
 };
 

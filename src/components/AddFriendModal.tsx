@@ -7,7 +7,7 @@ import Avatar from "./Avatar";
 /**
  * Picker für 1-Tap-Add zu Training. Zwei Tabs:
  *  - Freunde: akzeptierte Freundschaften, bereits anwesende disabled mit ✓
- *  - Gast: Name eingeben, Owner scort dann für den Gast mit
+ *  - Gast: Name eingeben, Owner scorst dann für den Gast mit
  */
 export default function AddFriendModal({
   trainingId,
@@ -91,14 +91,14 @@ export default function AddFriendModal({
             onClick={() => setTab("guest")}
             className={`flex-1 py-1.5 text-sm font-medium rounded ${tab === "guest" ? "bg-elevated text-primary" : "text-secondary"}`}
           >
-            Gast (du scort)
+            Gast (du scorst)
           </button>
         </div>
 
         {tab === "guest" ? (
           <form onSubmit={addGuest} className="space-y-3">
             <div className="text-xs text-muted">
-              Lege einen Gast-Teilnehmer an. Der Gast hat keinen Account — du scort für ihn mit.
+              Lege einen Gast-Teilnehmer an. Der Gast hat keinen Account — du scorst für ihn mit.
             </div>
             <div className="relative">
               <UserCircle2 size={16} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />

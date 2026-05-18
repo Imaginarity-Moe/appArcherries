@@ -44,7 +44,7 @@ export async function addFriendToTraining(
   });
 }
 
-/** Gast-Participant ohne Account anlegen — Owner scort für ihn mit. */
+/** Gast-Participant ohne Account anlegen — Owner scorst für ihn mit. */
 export async function addGuestToTraining(
   trainingId: number,
   guestName: string,

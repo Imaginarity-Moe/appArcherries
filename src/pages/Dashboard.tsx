@@ -163,12 +163,21 @@ export default function Dashboard() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display text-xl font-semibold">{t("dashboard:recent_trainings")}</h2>
-          <Link
-            to="/trainings/new"
-            className="hidden lg:inline-flex btn"
-          >
-            <Plus size={18} /> {t("dashboard:new_training")}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/trainings/archive"
+              className="inline-flex items-center gap-1 text-xs text-secondary hover:text-cherry-500"
+              aria-label="Archiv öffnen"
+            >
+              <Archive size={14} strokeWidth={1.75} /> Archiv
+            </Link>
+            <Link
+              to="/trainings/new"
+              className="hidden lg:inline-flex btn"
+            >
+              <Plus size={18} /> {t("dashboard:new_training")}
+            </Link>
+          </div>
         </div>
 
         {loading && <p className="text-forest-700">{t("common:actions.loading")}</p>}
@@ -197,6 +206,12 @@ export default function Dashboard() {
                     color: "#3F6D5E",
                     icon: <Archive size={18} strokeWidth={2} />,
                     onAction: async () => {
+                      const ok = await confirm({
+                        title: "Training archivieren?",
+                        message: "Verschwindet aus der Hauptliste, bleibt im Archiv aufrufbar.",
+                        confirmLabel: "Archivieren",
+                      });
+                      if (!ok) return;
                       await setTrainingArchived(it.id, true);
                       loadTrainings();
                     },

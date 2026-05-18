@@ -460,7 +460,7 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
     if ($t['summary_score']   !== null) $t['summary_score']   = (int)$t['summary_score'];
     if ($t['distance_marked'] !== null) $t['distance_marked'] = (bool)$t['distance_marked'];
     // target_practice-Felder als int casten (sonst kommen sie als String aus PDO)
-    foreach (['arrows_per_end','num_ends','target_distance_m','target_rings','legs_to_win','sets_to_win'] as $f) {
+    foreach (['arrows_per_end','num_ends','target_distance_m','target_rings','legs_to_win','sets_to_win','starting_participant_id'] as $f) {
         if (isset($t[$f]) && $t[$f] !== null) $t[$f] = (int)$t[$f];
     }
     $t['targets']      = $targets;
@@ -488,6 +488,7 @@ function trainings_update(int $user_id, int $id): void
         'distance_marked'         => 'bool',
         'peg_color'               => 'peg',
         'published_to_highscore'  => 'bool',
+        'starting_participant_id' => 'int',
     ] as $key => $type) {
         if (!array_key_exists($key, $in)) continue;
         $v = $in[$key];

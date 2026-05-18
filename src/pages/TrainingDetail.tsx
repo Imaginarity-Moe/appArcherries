@@ -337,6 +337,16 @@ function TrainingOverview({
           />
         )}
 
+        {/* Start-Spieler-Wahl: nur bei target_practice, Multi-Player, noch keine Targets,
+            User ist Owner. Wer hier gewählt wird, beginnt Leg 1 — Reihenfolge rotiert
+            danach pro Leg automatisch. */}
+        {training.discipline === "target_practice"
+          && training.is_owner
+          && (training.participants?.filter((p) => p.role !== "viewer").length ?? 0) >= 2
+          && (training.targets?.length ?? 0) === 0 && (
+          <StartPlayerPicker training={training} onChange={onChange} />
+        )}
+
         {!isSimple && myTargets.length > 0 && (
           <div className="mt-4">
             <StationStatusGrid
@@ -417,6 +427,58 @@ function TrainingOverview({
         </Suspense>
       )}
     </div>
+  );
+}
+
+/**
+ * UI für die Wahl des Start-Spielers bei Multi-Player target_practice.
+ * Speichert starting_participant_id im Training. Rotation pro Leg passiert
+ * dann im Live-Entry automatisch (siehe scoringParticipants useMemo).
+ */
+function StartPlayerPicker({
+  training,
+  onChange,
+}: {
+  training: Training;
+  onChange: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const scoringPs = (training.participants ?? []).filter((p) => p.role !== "viewer");
+  const currentStart = training.starting_participant_id ?? scoringPs[0]?.id;
+  async function pick(pid: number) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await updateTraining(training.id, { starting_participant_id: pid } as Partial<Training>);
+      await onChange();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="card mt-3 space-y-2">
+      <div className="text-xs uppercase tracking-wider text-muted">Wer beginnt Leg 1?</div>
+      <div className="flex flex-wrap gap-1.5">
+        {scoringPs.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => pick(p.id)}
+            disabled={busy}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${
+              currentStart === p.id
+                ? "bg-cherry-500 text-cream"
+                : "bg-surface text-secondary border border-hairline"
+            }`}
+          >
+            {p.is_self ? "Ich" : p.display_name ?? "—"}
+            {p.user_role === "guest" && " · Gast"}
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted">
+        Die Reihenfolge rotiert pro Leg — Spieler 1 startet Leg 1, Spieler 2 startet Leg 2, usw.
+      </p>
+    </section>
   );
 }
 
@@ -576,9 +638,23 @@ function StationLiveEntry({
   }, [myPid, scoringForPid]);
   // Andere scoring-bare Participants (Owner darf für alle scoren — sonst nur self)
   const isOwner = !!training.is_owner;
-  const scoringParticipants = isOwner
+  const baseScoringParticipants = isOwner
     ? allParticipants.filter((p) => p.role !== "viewer")
     : allParticipants.filter((p) => p.id === myPid);
+
+  // Start-Player-Rotation pro Leg/Set: bei target_practice mit Multi-Player
+  // bestimmt starting_participant_id, wer Leg 1 startet. Leg N (1-indexed)
+  // wird vom Spieler an Position ((startIdx + (N-1)) mod n) gestartet.
+  // scoringParticipants ist also pro Station eine ROTIERTE Liste.
+  const scoringParticipants = useMemo(() => {
+    if (baseScoringParticipants.length <= 1) return baseScoringParticipants;
+    const startPid = training.starting_participant_id ?? baseScoringParticipants[0].id;
+    const startIdx = Math.max(0, baseScoringParticipants.findIndex((p) => p.id === startPid));
+    const n = baseScoringParticipants.length;
+    const offset = (startIdx + (stationIndex - 1)) % n;
+    return [...baseScoringParticipants.slice(offset), ...baseScoringParticipants.slice(0, offset)];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseScoringParticipants, training.starting_participant_id, stationIndex]);
 
   // Live-Eingabe ist ein Vollbild-Modus — die globale Bottom-Nav (Home/Stats/+…)
   // hat hier keinen Sinn und überlappt sich mit dem "Speichern & weiter"-Button.
@@ -694,27 +770,39 @@ function StationLiveEntry({
 
   async function saveAndNext() {
     await save();
-    // Auto-Cycle bei mehreren Schützen:
-    // wenn noch andere scoring-Participants existieren UND aktueller scoringForPid
-    // war für den letzten in der Liste → nächste Station + erster Participant.
-    // Sonst: gleicher Station, nächster Participant.
+    // Auto-Cycle bei mehreren Schützen mit Leg-Start-Rotation:
+    // Innerhalb des aktuellen Ends: nächster Spieler in der rotierten Liste.
+    // Wenn alle durch sind: nächste Station — DORT wird die rotierte Liste
+    // neu berechnet (Spieler rotiert um 1 weiter).
     if (scoringParticipants.length > 1) {
       const idx = scoringParticipants.findIndex((p) => p.id === scoringForPid);
       const nextIdx = idx + 1;
       if (nextIdx < scoringParticipants.length) {
-        // Nächster Schütze, gleiche Station
         setScoringForPid(scoringParticipants[nextIdx].id);
         return;
       }
-      // Letzter war an der Reihe → nächste Station, erster Schütze
-      setScoringForPid(scoringParticipants[0].id);
+      // Alle durch in diesem End → zur nächsten Station. Beim Re-Render mit
+      // neuem stationIndex wird scoringParticipants rotiert. Wir setzen
+      // scoringForPid auf das erste Element der ROTIERTEN Liste — das wird
+      // im useEffect unten erledigt (siehe stationIndex-Dependency).
+      setScoringForPid(null); // signalisiert "neu setzen"
     }
-    // Bei target_practice Schluss am letzten End — kein "Speichern&weiter" mehr
     const maxEnd = training.discipline === "target_practice" && training.num_ends
       ? training.num_ends : 99;
     if (stationIndex < maxEnd) onNavigate(stationIndex + 1);
-    else onClose(); // alle Stations durch → zurück zur Übersicht
+    else onClose();
   }
+
+  // Bei Station-Wechsel: scoringForPid auf den ersten Spieler der ROTIERTEN
+  // Liste setzen (=Spieler, der das End beginnt). Nur wenn aktuell null
+  // (Signal aus saveAndNext) oder beim ersten Mount.
+  useEffect(() => {
+    if (scoringParticipants.length === 0) return;
+    if (scoringForPid === null) {
+      setScoringForPid(scoringParticipants[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stationIndex, scoringParticipants]);
 
   async function deleteStation() {
     if (!existing) return;
