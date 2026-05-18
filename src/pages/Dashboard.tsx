@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Target, TrendingUp, Calendar, Plus, Users, Play, UserPlus } from "lucide-react";
+import { Target, TrendingUp, Calendar, Plus, Users, Play, UserPlus, Archive, Trash2 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import {
   BOW_LABELS,
   DISCIPLINE_LABELS,
   listTrainings,
+  deleteTraining,
+  setTrainingArchived,
   type TrainingListItem,
 } from "../api/trainings";
 import { listFriends } from "../api/friends";
+import SwipeableCard from "../components/SwipeableCard";
+import { useConfirm } from "../components/ConfirmDialog";
 import Sparkline from "../components/Sparkline";
 import { LogoMark } from "../components/Logo";
 import { fmtDate } from "../lib/format";
@@ -22,6 +26,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [incomingCount, setIncomingCount] = useState(0);
+  const confirm = useConfirm();
 
   const loadTrainings = () => {
     listTrainings(1, 50)
@@ -175,7 +180,30 @@ export default function Dashboard() {
           <ul className="space-y-3">
             {items.slice(0, 10).map((it) => (
               <li key={it.id}>
-                <TrainingCard item={it} />
+                <SwipeableCard
+                  leftAction={{
+                    label: "Löschen",
+                    color: "#9b3340",
+                    icon: <Trash2 size={18} strokeWidth={2} />,
+                    onAction: async () => {
+                      const ok = await confirm({ title: "Training löschen?", message: "Das Training und alle Pfeile werden unwiderruflich entfernt.", confirmLabel: "Löschen", variant: "danger" });
+                      if (!ok) return;
+                      await deleteTraining(it.id);
+                      loadTrainings();
+                    },
+                  }}
+                  rightAction={{
+                    label: "Archivieren",
+                    color: "#3F6D5E",
+                    icon: <Archive size={18} strokeWidth={2} />,
+                    onAction: async () => {
+                      await setTrainingArchived(it.id, true);
+                      loadTrainings();
+                    },
+                  }}
+                >
+                  <TrainingCard item={it} />
+                </SwipeableCard>
               </li>
             ))}
           </ul>

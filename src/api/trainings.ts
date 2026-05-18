@@ -73,6 +73,8 @@ export type Training = {
   parcours_name?: string | null;
   /** Geplante Gesamt-Bahnenzahl des verknüpften Parcours, für Grid/Counter im TrainingDetail */
   parcours_lanes_count?: number | null;
+  /** ISO-Timestamp wenn archiviert, null = aktiv in der Hauptliste */
+  archived_at?: string | null;
   // target_practice-Konfiguration (nur bei discipline="target_practice" gesetzt)
   arrows_per_end?: number | null;
   num_ends?: number | null;
@@ -194,8 +196,14 @@ export async function resolveId(id: number | string): Promise<number | string> {
 // READS
 // ============================================================
 
-export async function listTrainings(page = 1, limit = 20): Promise<{ trainings: TrainingListItem[]; total: number }> {
-  return apiCached(`/trainings?page=${page}&limit=${limit}`);
+export async function listTrainings(page = 1, limit = 20, archived = false): Promise<{ trainings: TrainingListItem[]; total: number }> {
+  const suffix = archived ? "&archived=1" : "";
+  return apiCached(`/trainings?page=${page}&limit=${limit}${suffix}`);
+}
+
+/** Training archivieren (archived_at = NOW()) oder Archiv aufheben (=null). */
+export async function setTrainingArchived(id: number | string, archived: boolean): Promise<{ training: Training }> {
+  return updateTraining(id, { archived_at: archived ? new Date().toISOString() as unknown as null : null } as Partial<Training>);
 }
 
 export async function getTraining(id: number | string): Promise<{ training: Training }> {

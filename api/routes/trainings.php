@@ -160,18 +160,23 @@ function trainings_list(int $user_id): void
     $limit = min(100, max(1, (int)(req_query('limit', '20') ?? '20')));
     $off   = ($page - 1) * $limit;
 
+    // ?archived=1 → nur archivierte. Default: nur aktive (archived_at IS NULL).
+    $archived_filter = (req_query('archived', '0') ?? '0') === '1'
+        ? 'AND t.archived_at IS NOT NULL'
+        : 'AND t.archived_at IS NULL';
+
     // Trainings, in denen User Owner ODER Participant ist
     $stmt = db()->prepare(
-        'SELECT DISTINCT t.id, t.started_at, t.ended_at, t.discipline, t.nfaa_mode, t.bow_type, t.bow_id, t.peg_color,
-                t.distance_marked, t.location, t.summary_score, t.parcours_id, p.name AS parcours_name,
+        "SELECT DISTINCT t.id, t.started_at, t.ended_at, t.discipline, t.nfaa_mode, t.bow_type, t.bow_id, t.peg_color,
+                t.distance_marked, t.location, t.summary_score, t.archived_at, t.parcours_id, p.name AS parcours_name,
                 b.name AS bow_name,
                 t.user_id AS owner_user_id
          FROM trainings t
          LEFT JOIN parcours p ON p.id = t.parcours_id
          LEFT JOIN bows b ON b.id = t.bow_id
          LEFT JOIN training_participants tp ON tp.training_id = t.id AND tp.user_id = ?
-         WHERE t.user_id = ? OR tp.user_id IS NOT NULL
-         ORDER BY t.started_at DESC LIMIT ? OFFSET ?'
+         WHERE (t.user_id = ? OR tp.user_id IS NOT NULL) $archived_filter
+         ORDER BY t.started_at DESC LIMIT ? OFFSET ?"
     );
     $stmt->bindValue(1, $user_id, PDO::PARAM_INT);
     $stmt->bindValue(2, $user_id, PDO::PARAM_INT);
@@ -475,6 +480,7 @@ function trainings_update(int $user_id, int $id): void
     $vals = [];
     foreach ([
         'ended_at'                => 'datetime',
+        'archived_at'             => 'datetime_or_now',
         'location'                => 'string',
         'weather'                 => 'string',
         'notes'                   => 'string',
@@ -488,6 +494,14 @@ function trainings_update(int $user_id, int $id): void
         switch ($type) {
             case 'datetime':
                 if ($v === null) { $sets[] = "$key = NULL"; continue 2; }
+                $ts = strtotime((string)$v);
+                if ($ts === false) res_error("Ungültiges $key");
+                $sets[] = "$key = ?"; $vals[] = date('Y-m-d H:i:s', $ts);
+                break;
+            case 'datetime_or_now':
+                // true → now, false/null → NULL, sonst Datum parsen
+                if ($v === null || $v === false) { $sets[] = "$key = NULL"; continue 2; }
+                if ($v === true) { $sets[] = "$key = NOW()"; continue 2; }
                 $ts = strtotime((string)$v);
                 if ($ts === false) res_error("Ungültiges $key");
                 $sets[] = "$key = ?"; $vals[] = date('Y-m-d H:i:s', $ts);

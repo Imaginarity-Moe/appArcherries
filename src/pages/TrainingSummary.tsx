@@ -72,6 +72,70 @@ export default function TrainingSummary() {
         </div>
       </div>
 
+      {/* Multi-Player-Vergleich: wenn ≥2 Participants gescored haben, zeige
+          pro-Spieler-Karten mit Total, Avg, ggf. Legs/Sets. */}
+      {data.participants && data.participants.length > 1 && (
+        <section className="card space-y-3">
+          <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+            Vergleich
+            {data.training.scoring_mode && data.training.scoring_mode !== "points" && (
+              <span className="text-xs font-normal text-secondary">
+                · {data.training.scoring_mode === "legs" ? "Best of Legs" : "Sets & Legs"}
+              </span>
+            )}
+          </h2>
+          <ul className="space-y-2">
+            {[...data.participants]
+              .sort((a, b) => {
+                // Sortieren: bei legs/sets nach Legs absteigend, sonst nach Score
+                const legA = data.sets_legs?.find((l) => l.participant_id === a.participant_id)?.legs_won ?? 0;
+                const legB = data.sets_legs?.find((l) => l.participant_id === b.participant_id)?.legs_won ?? 0;
+                if (data.training.scoring_mode === "legs" || data.training.scoring_mode === "sets") {
+                  if (legA !== legB) return legB - legA;
+                }
+                return b.total_score - a.total_score;
+              })
+              .map((p, idx) => {
+                const legs = data.sets_legs?.find((l) => l.participant_id === p.participant_id)?.legs_won ?? null;
+                const isWinner = idx === 0;
+                return (
+                  <li
+                    key={p.participant_id}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-xl ${
+                      isWinner ? "bg-cherry-50 dark:bg-cherry-900/20 border border-cherry-300/40" : "bg-surface"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${isWinner ? "bg-cherry-500 text-cream" : "bg-elevated text-secondary"}`}>
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-semibold truncate">
+                          {p.is_self ? "Du" : p.display_name ?? "—"}
+                          {p.user_role === "guest" && (
+                            <span className="ml-1.5 text-[10px] uppercase tracking-wider text-muted font-normal">Gast</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted">
+                          {p.station_count} {p.station_count === 1 ? "Durchgang" : "Durchgänge"} · Ø {p.avg_per_station}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {legs !== null && (
+                        <div className="text-sm font-mono font-bold tabular-nums text-cherry-600 dark:text-cherry-400">
+                          {legs} Legs
+                        </div>
+                      )}
+                      <div className="score text-score-md leading-none">{p.total_score}</div>
+                    </div>
+                  </li>
+                );
+              })}
+          </ul>
+        </section>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div className="card-sunken">
           <div className="text-xs text-forest-700">{t("stats:training_summary.stations")}</div>
