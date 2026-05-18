@@ -184,8 +184,20 @@ function TargetRings({ rings }: { rings: number }) {
         const ringIdxFromCenter = rings - 1 - i;
         const pairIdx = Math.floor(ringIdxFromCenter / 2);
         const fill = RING_COLOR_PAIRS[Math.min(pairIdx, RING_COLOR_PAIRS.length - 1)];
+        // Border-Farbe: bei dunklem Ring weißer Trennstrich (sonst schwarz-auf-schwarz
+        // an Übergang Schwarz-Ring zu Schwarz-Ring nicht sichtbar). Bei hellem Ring
+        // dunkler Strich.
+        const isDarkRing = fill === "#1F1F1F" || fill === "#C0464F";
         return (
-          <circle key={i} cx={CX} cy={CY} r={r} fill={fill} stroke="rgba(0,0,0,0.3)" strokeWidth={0.2} />
+          <circle
+            key={i}
+            cx={CX}
+            cy={CY}
+            r={r}
+            fill={fill}
+            stroke={isDarkRing ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.3)"}
+            strokeWidth={0.25}
+          />
         );
       })}
       {/* Labels: innen-Center groß, andere am 12-Uhr-Bandrand */}

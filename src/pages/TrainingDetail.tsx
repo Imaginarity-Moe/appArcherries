@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, BarChart3, Check, Grid3x3, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BarChart3, Check, Grid3x3, Loader2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
 import {
   BOW_LABELS,
   DISCIPLINE_LABELS,
@@ -742,6 +742,40 @@ function StationLiveEntry({
 
   const hasPhoto = !!existing?.image_path;
 
+  // Zwischenergebnis bei target_practice: pro Participant total points
+  // sowie gewonnene Legs (bei legs/sets-Modus). Wird nur bei ≥2 Scoring-Participants angezeigt.
+  const standings = useMemo(() => {
+    if (training.discipline !== "target_practice") return [];
+    if (scoringParticipants.length < 2) return [];
+    const allTargets = training.targets ?? [];
+    const sums = scoringParticipants.map((p) => {
+      const ts = allTargets.filter((t) => t.participant_id === p.id);
+      const total = ts.reduce((s, tt) => s + tt.shots.reduce((x, sh) => x + (sh.points ?? 0), 0), 0);
+      return { p, total, ts };
+    });
+    // Legs gewonnen pro End: höchster End-Score gewinnt
+    if (training.scoring_mode === "legs" || training.scoring_mode === "sets") {
+      const numEnds = training.num_ends ?? 5;
+      const legsWon = new Map<number, number>();
+      for (let endIdx = 1; endIdx <= numEnds; endIdx++) {
+        const scores = sums.map(({ p, ts }) => {
+          const t = ts.find((tt) => tt.target_index === endIdx);
+          const total = t ? t.shots.reduce((s, sh) => s + (sh.points ?? 0), 0) : null;
+          return { pid: p.id, total };
+        });
+        // Alle Participants müssen das End gescored haben, sonst kein Leg-Gewinner
+        if (scores.some((s) => s.total === null)) continue;
+        const max = Math.max(...scores.map((s) => s.total!));
+        const winners = scores.filter((s) => s.total === max);
+        if (winners.length === 1) {
+          legsWon.set(winners[0].pid, (legsWon.get(winners[0].pid) ?? 0) + 1);
+        }
+      }
+      return sums.map((s) => ({ ...s, legs: legsWon.get(s.p.id) ?? 0 }));
+    }
+    return sums.map((s) => ({ ...s, legs: 0 }));
+  }, [training.targets, training.discipline, training.scoring_mode, training.num_ends, scoringParticipants]);
+
   return (
     <div className="fixed inset-0 z-30 bg-canvas dark:bg-canvas-dark overflow-y-auto animate-fade-in">
       {/* Top-Bar: kompakt, mit Live-Score rechts */}
@@ -775,20 +809,28 @@ function StationLiveEntry({
         {scoringParticipants.length > 1 && (
           <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1">
             <span className="text-[10px] uppercase tracking-wider text-muted shrink-0">Score für:</span>
-            {scoringParticipants.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setScoringForPid(p.id)}
-                className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                  scoringForPid === p.id
-                    ? "bg-cherry-500 text-cream"
-                    : "bg-surface text-secondary border border-hairline"
-                }`}
-              >
-                {p.is_self ? "Ich" : p.display_name ?? "—"}
-                {p.user_role === "guest" && " · Gast"}
-              </button>
-            ))}
+            {scoringParticipants.map((p) => {
+              const st = standings.find((s) => s.p.id === p.id);
+              const isLegMode = training.scoring_mode === "legs" || training.scoring_mode === "sets";
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setScoringForPid(p.id)}
+                  className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                    scoringForPid === p.id
+                      ? "bg-cherry-500 text-cream"
+                      : "bg-surface text-secondary border border-hairline"
+                  }`}
+                >
+                  <span>{p.is_self ? "Ich" : p.display_name ?? "—"}{p.user_role === "guest" && " · Gast"}</span>
+                  {st && (
+                    <span className={`font-mono tabular-nums text-[11px] ${scoringForPid === p.id ? "text-cream/80" : "text-cherry-500"}`}>
+                      {isLegMode ? `${st.legs} Legs · ${st.total}` : st.total}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -868,7 +910,9 @@ function StationLiveEntry({
                 <div className={`leading-tight mt-0.5 ${z ? "score text-lg" : "text-base text-muted font-bold"}`}>
                   {z ?? "·"}
                 </div>
-                {z && points > 0 && (
+                {/* Punkte nur anzeigen wenn die Zone nicht identisch zum Punktwert ist
+                    (bei target_practice ist zone = Ring-Zahl = Punkte → wäre Doppelung) */}
+                {z && points > 0 && String(points) !== z && (
                   <div className="text-[9px] text-cherry-600 dark:text-cherry-400 font-mono tabular-nums leading-none">+{points}</div>
                 )}
               </button>
@@ -940,10 +984,18 @@ function StationLiveEntry({
               scoringParticipants[scoringParticipants.length - 1].id === scoringForPid;
             const isFinalSave = isLastEnd && isLastScorer;
             return (
-              <button onClick={saveAndNext} className="btn-accent flex-1" disabled={busy}>
-                {busy ? t("training:live.saving")
-                      : isFinalSave ? "Speichern & beenden"
-                      : "Speichern & weiter"} <ArrowRight size={18} strokeWidth={2} />
+              <button onClick={saveAndNext} className="btn-accent flex-1 inline-flex items-center justify-center gap-2" disabled={busy}>
+                {busy ? (
+                  <>
+                    <Loader2 size={18} strokeWidth={2} className="animate-spin" />
+                    {t("training:live.saving")}
+                  </>
+                ) : (
+                  <>
+                    {isFinalSave ? "Speichern & beenden" : "Speichern & weiter"}
+                    <ArrowRight size={18} strokeWidth={2} />
+                  </>
+                )}
               </button>
             );
           })()}

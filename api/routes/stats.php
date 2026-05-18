@@ -139,18 +139,34 @@ function stats_overview(int $user_id): void
 
 function stats_per_training(int $user_id, int $training_id): void
 {
-    // Detail-Auswertung für genau ein Training
-    $stmt = db()->prepare(
-        'SELECT id, discipline, bow_type, started_at, summary_score
-         FROM trainings WHERE id = ? AND user_id = ?'
+    // Access-Check: User muss Owner ODER Participant des Trainings sein
+    $access = db()->prepare(
+        'SELECT t.id, t.discipline, t.bow_type, t.started_at, t.summary_score,
+                t.scoring_mode, t.num_ends, t.legs_to_win, t.sets_to_win,
+                t.arrows_per_end, t.target_distance_m, t.target_rings
+         FROM trainings t
+         LEFT JOIN training_participants tp ON tp.training_id = t.id AND tp.user_id = ?
+         WHERE t.id = ? AND (t.user_id = ? OR tp.user_id IS NOT NULL)
+         LIMIT 1'
     );
-    $stmt->execute([$training_id, $user_id]);
-    $t = $stmt->fetch();
+    $access->execute([$user_id, $training_id, $user_id]);
+    $t = $access->fetch();
     if (!$t) res_error('Not found', 404);
 
-    // Stations + Pfeile holen
+    // Alle Participants des Trainings
+    $p_stmt = db()->prepare(
+        'SELECT tp.id, tp.user_id, tp.role, u.display_name, u.role AS user_role
+         FROM training_participants tp
+         JOIN users u ON u.id = tp.user_id
+         WHERE tp.training_id = ?
+         ORDER BY tp.role = "owner" DESC, tp.joined_at ASC'
+    );
+    $p_stmt->execute([$training_id]);
+    $participants = $p_stmt->fetchAll();
+
+    // Alle Shots aller Participants in einem Schwung
     $stmt = db()->prepare(
-        'SELECT tt.id, tt.target_index, s.arrow_seq, s.zone, s.points
+        'SELECT tt.id, tt.target_index, tt.participant_id, s.arrow_seq, s.zone, s.points
          FROM training_targets tt
          LEFT JOIN shots s ON s.target_id = tt.id
          WHERE tt.training_id = ?
@@ -159,64 +175,160 @@ function stats_per_training(int $user_id, int $training_id): void
     $stmt->execute([$training_id]);
     $rows = $stmt->fetchAll();
 
-    $stations = []; // station_index => points
-    $zones    = []; // zone => count
-    $arrows   = []; // arrow_seq => [sum, count]
-
+    // Pro Participant einen Stats-Block bauen
+    $byPid = []; // pid => { stations, zones, arrows }
+    foreach ($participants as $p) {
+        $byPid[(int)$p['id']] = ['stations' => [], 'zones' => [], 'arrows' => []];
+    }
     foreach ($rows as $r) {
+        $pid = (int)$r['participant_id'];
+        if (!isset($byPid[$pid])) continue;
+        $bucket = &$byPid[$pid];
         $idx = (int)$r['target_index'];
         $pts = $r['points'] !== null ? (int)$r['points'] : 0;
-        $stations[$idx] = ($stations[$idx] ?? 0) + $pts;
-        if ($r['zone']) $zones[$r['zone']] = ($zones[$r['zone']] ?? 0) + 1;
+        $bucket['stations'][$idx] = ($bucket['stations'][$idx] ?? 0) + $pts;
+        if ($r['zone']) $bucket['zones'][$r['zone']] = ($bucket['zones'][$r['zone']] ?? 0) + 1;
         if ($r['arrow_seq'] !== null) {
             $seq = (int)$r['arrow_seq'];
-            $arrows[$seq] ??= ['sum' => 0, 'cnt' => 0];
-            $arrows[$seq]['sum'] += $pts;
-            $arrows[$seq]['cnt']++;
+            $bucket['arrows'][$seq] ??= ['sum' => 0, 'cnt' => 0];
+            $bucket['arrows'][$seq]['sum'] += $pts;
+            $bucket['arrows'][$seq]['cnt']++;
         }
+        unset($bucket);
     }
 
-    ksort($stations);
-    $stations_arr = [];
-    foreach ($stations as $idx => $pts) {
-        $stations_arr[] = ['station' => $idx, 'score' => $pts];
-    }
-
-    $zones_arr = [];
-    $total_z = array_sum($zones);
-    arsort($zones);
-    foreach ($zones as $z => $c) {
-        $zones_arr[] = ['zone' => $z, 'count' => $c, 'pct' => $total_z ? round($c / $total_z, 4) : 0];
-    }
-
-    $arrows_arr = [];
-    ksort($arrows);
-    foreach ($arrows as $seq => $a) {
-        $arrows_arr[] = [
-            'arrow_seq' => $seq,
-            'avg'       => $a['cnt'] > 0 ? round($a['sum'] / $a['cnt'], 2) : 0,
-            'count'     => $a['cnt'],
+    $build_block = function (array $stations, array $zones, array $arrows): array {
+        ksort($stations);
+        $stations_arr = [];
+        foreach ($stations as $idx => $pts) {
+            $stations_arr[] = ['station' => $idx, 'score' => $pts];
+        }
+        $zones_arr = [];
+        $total_z = array_sum($zones);
+        arsort($zones);
+        foreach ($zones as $z => $c) {
+            $zones_arr[] = ['zone' => $z, 'count' => $c, 'pct' => $total_z ? round($c / $total_z, 4) : 0];
+        }
+        $arrows_arr = [];
+        ksort($arrows);
+        foreach ($arrows as $seq => $a) {
+            $arrows_arr[] = [
+                'arrow_seq' => $seq,
+                'avg'       => $a['cnt'] > 0 ? round($a['sum'] / $a['cnt'], 2) : 0,
+                'count'     => $a['cnt'],
+            ];
+        }
+        $total = array_sum(array_column($stations_arr, 'score'));
+        $best  = $stations_arr ? max(array_column($stations_arr, 'score')) : 0;
+        $worst = $stations_arr ? min(array_column($stations_arr, 'score')) : 0;
+        return [
+            'total_score'      => (int)$total,
+            'station_count'    => count($stations_arr),
+            'avg_per_station'  => count($stations_arr) ? round($total / count($stations_arr), 1) : 0,
+            'best_station'     => $best,
+            'worst_station'    => $worst,
+            'stations'         => $stations_arr,
+            'zone_distribution'=> $zones_arr,
+            'arrow_consistency'=> $arrows_arr,
         ];
+    };
+
+    // Pro Participant ausgeben
+    $participants_stats = [];
+    $own_block = null;
+    foreach ($participants as $p) {
+        $pid = (int)$p['id'];
+        $block = $byPid[$pid] ?? ['stations' => [], 'zones' => [], 'arrows' => []];
+        $built = $build_block($block['stations'], $block['zones'], $block['arrows']);
+        $entry = array_merge([
+            'participant_id'   => $pid,
+            'user_id'          => (int)$p['user_id'],
+            'display_name'     => $p['display_name'],
+            'user_role'        => $p['user_role'],
+            'role'             => $p['role'],
+            'is_self'          => (int)$p['user_id'] === $user_id,
+        ], $built);
+        $participants_stats[] = $entry;
+        if ($entry['is_self']) $own_block = $built;
     }
 
-    $total = array_sum(array_column($stations_arr, 'score'));
-    $best  = $stations_arr ? max(array_column($stations_arr, 'score')) : 0;
-    $worst = $stations_arr ? min(array_column($stations_arr, 'score')) : 0;
+    // Sets/Legs-Wertung bei target_practice
+    $sets_legs = null;
+    if (($t['scoring_mode'] ?? null) === 'legs' || ($t['scoring_mode'] ?? null) === 'sets') {
+        $sets_legs = compute_sets_legs($participants_stats, (int)($t['num_ends'] ?? 0));
+    }
+
+    // Top-Level: own-Score (Backward-Compat). Falls User kein Participant
+    // (z.B. Owner mit nur Gäste-Spielern), nimm das erste Stats-Set.
+    $top = $own_block ?? ($participants_stats[0] ?? $build_block([], [], []));
 
     res_json([
         'training' => [
-            'id'         => (int)$t['id'],
-            'discipline' => $t['discipline'],
-            'bow_type'   => $t['bow_type'],
-            'started_at' => $t['started_at'],
+            'id'                 => (int)$t['id'],
+            'discipline'         => $t['discipline'],
+            'bow_type'           => $t['bow_type'],
+            'started_at'         => $t['started_at'],
+            'scoring_mode'       => $t['scoring_mode'] ?? null,
+            'num_ends'           => isset($t['num_ends']) && $t['num_ends'] !== null ? (int)$t['num_ends'] : null,
+            'legs_to_win'        => isset($t['legs_to_win']) && $t['legs_to_win'] !== null ? (int)$t['legs_to_win'] : null,
+            'sets_to_win'        => isset($t['sets_to_win']) && $t['sets_to_win'] !== null ? (int)$t['sets_to_win'] : null,
+            'arrows_per_end'     => isset($t['arrows_per_end']) && $t['arrows_per_end'] !== null ? (int)$t['arrows_per_end'] : null,
+            'target_distance_m'  => isset($t['target_distance_m']) && $t['target_distance_m'] !== null ? (int)$t['target_distance_m'] : null,
+            'target_rings'       => isset($t['target_rings']) && $t['target_rings'] !== null ? (int)$t['target_rings'] : null,
         ],
-        'total_score'      => (int)$total,
-        'station_count'    => count($stations_arr),
-        'avg_per_station'  => count($stations_arr) ? round($total / count($stations_arr), 1) : 0,
-        'best_station'     => $best,
-        'worst_station'    => $worst,
-        'stations'         => $stations_arr,
-        'zone_distribution'=> $zones_arr,
-        'arrow_consistency'=> $arrows_arr,
+        // Backward-Compat: own-Stats top-level
+        'total_score'       => $top['total_score'],
+        'station_count'     => $top['station_count'],
+        'avg_per_station'   => $top['avg_per_station'],
+        'best_station'      => $top['best_station'],
+        'worst_station'     => $top['worst_station'],
+        'stations'          => $top['stations'],
+        'zone_distribution' => $top['zone_distribution'],
+        'arrow_consistency' => $top['arrow_consistency'],
+        // Multi-Player-Vergleich
+        'participants'      => $participants_stats,
+        'sets_legs'         => $sets_legs,
     ]);
+}
+
+/**
+ * Berechnet pro participant gewonnene Legs (höchste End-Summe gewinnt 1 Leg).
+ * Bei sets-Modus zusätzlich pro Set die akkumulierten Legs.
+ * Vereinfacht: jeder Set hat legs_to_win Legs; danach beginnt der nächste Set.
+ */
+function compute_sets_legs(array $participants_stats, int $num_ends): array
+{
+    $result = [];
+    if ($num_ends <= 0) return $result;
+    // Stations-Mapping: pid → end → points
+    $perEnd = [];
+    foreach ($participants_stats as $p) {
+        $perEnd[$p['participant_id']] = [];
+        foreach ($p['stations'] as $st) {
+            $perEnd[$p['participant_id']][$st['station']] = $st['score'];
+        }
+    }
+    // Pro Participant Legs zählen
+    foreach ($participants_stats as $p) {
+        $legs = 0;
+        for ($e = 1; $e <= $num_ends; $e++) {
+            // Alle Participants müssen scored haben für ein vergleichbares End
+            $scores = [];
+            foreach ($participants_stats as $other) {
+                if (!isset($perEnd[$other['participant_id']][$e])) { $scores = []; break; }
+                $scores[$other['participant_id']] = $perEnd[$other['participant_id']][$e];
+            }
+            if (!$scores) continue;
+            $max = max($scores);
+            $winners = array_keys($scores, $max, true);
+            if (count($winners) === 1 && $winners[0] === $p['participant_id']) {
+                $legs++;
+            }
+        }
+        $result[] = [
+            'participant_id' => $p['participant_id'],
+            'legs_won'       => $legs,
+        ];
+    }
+    return $result;
 }
