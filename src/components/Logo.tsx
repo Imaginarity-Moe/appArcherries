@@ -1,5 +1,5 @@
 import logoFullUrl from "../assets/log_schriftzug.svg";
-import wordmarkUrl from "../assets/schriftzug.svg";
+import wordmarkSvg from "../assets/schriftzug.svg?raw";
 
 type Props = { size?: number; className?: string };
 
@@ -43,14 +43,18 @@ export function LogoWordmark({ className = "h-9 w-auto" }: { className?: string 
 /**
  * Nur Schriftzug (ohne Symbol) — für schmale Header wo das volle Logo zu groß wäre.
  * Default h-5 (~20px) matched die Icon-Höhe (Lucide 22px) im Mobile-Header.
+ *
+ * Wird inline gerendert (über ?raw), damit currentColor greift:
+ * Buchstaben adoptieren text-primary (theme-aware), der rote i-Punkt
+ * (#7a2532 hard-coded im SVG) bleibt unabhängig vom Theme cherry.
  */
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <img
-      src={wordmarkUrl}
-      alt="Archerries"
-      className={`h-5 w-auto dark:invert ${className}`}
-      draggable={false}
+    <span
+      role="img"
+      aria-label="Archerries"
+      className={`inline-block h-5 w-auto text-primary [&_svg]:h-full [&_svg]:w-auto ${className}`}
+      dangerouslySetInnerHTML={{ __html: wordmarkSvg }}
     />
   );
 }
