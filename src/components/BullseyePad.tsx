@@ -4,7 +4,12 @@ import type { Discipline } from "../api/trainings";
 type Props = {
   discipline: Discipline;
   selectedZone?: string | null;
-  onZoneSelect: (zoneCode: string) => void;
+  /**
+   * Wird beim Tap auf einen Ring gerufen.
+   * pos enthält die normalisierte Klick-Position innerhalb der SVG (0..1 für x und y,
+   * (0.5, 0.5) = Mitte) — wird für die Treffer-Heatmap auf /stats genutzt.
+   */
+  onZoneSelect: (zoneCode: string, pos?: { x: number; y: number }) => void;
   disabled?: boolean;
 };
 
@@ -99,7 +104,20 @@ export default function BullseyePad({ discipline, selectedZone, onZoneSelect, di
                   stroke={isSel ? "#8E2C3A" : "rgba(28,28,30,0.18)"}
                   strokeWidth={isSel ? 4 : 1}
                   className={`cursor-pointer transition ${disabled ? "opacity-40 pointer-events-none" : ""}`}
-                  onClick={() => !disabled && onZoneSelect(ring.code)}
+                  onClick={(e) => {
+                    if (disabled) return;
+                    // Klick-Position in SVG-Koordinaten → normalisiert auf 0..1
+                    const svg = e.currentTarget.ownerSVGElement;
+                    if (svg) {
+                      const rect = svg.getBoundingClientRect();
+                      const x = (e.clientX - rect.left) / rect.width;
+                      const y = (e.clientY - rect.top) / rect.height;
+                      const clamp = (v: number) => Math.max(0, Math.min(1, v));
+                      onZoneSelect(ring.code, { x: clamp(x), y: clamp(y) });
+                    } else {
+                      onZoneSelect(ring.code);
+                    }
+                  }}
                   aria-label={ring.label}
                 />
               );

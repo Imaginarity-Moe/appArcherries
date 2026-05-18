@@ -566,11 +566,19 @@ function StationLiveEntry({
   const [showStationGrid, setShowStationGrid] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
-  // Beim Pfeil-Tap: nächsten leeren Slot aktivieren
-  function handleZoneSelect(code: string) {
+  // Beim Pfeil-Tap: Zone speichern + (wenn pos vorhanden) Marker mitsetzen,
+  // dann nächsten leeren Slot aktivieren.
+  // pos kommt aus dem BullseyePad-Tap als normalisierte 0..1-Koordinaten der SVG;
+  // damit funktioniert die Treffer-Heatmap auf /stats automatisch, ohne Stations-Foto.
+  function handleZoneSelect(code: string, pos?: { x: number; y: number }) {
     const next = [...zonesPicked];
     next[activeSlot] = code;
     setZonesPicked(next);
+    if (pos) {
+      const nextM = [...markers];
+      nextM[activeSlot] = pos;
+      setMarkers(nextM);
+    }
     // Nächsten leeren Slot suchen
     const nextEmpty = next.findIndex((z, i) => i > activeSlot && z === null);
     if (nextEmpty !== -1) setActiveSlot(nextEmpty);
@@ -749,7 +757,7 @@ function StationLiveEntry({
         <BullseyePad
           discipline={training.discipline}
           selectedZone={zonesPicked[activeSlot] ?? null}
-          onZoneSelect={(code) => handleZoneSelect(code)}
+          onZoneSelect={(code, pos) => handleZoneSelect(code, pos)}
           disabled={firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx}
         />
 
