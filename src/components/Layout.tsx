@@ -294,11 +294,12 @@ function FooterLink({ to, icon, label, end }: { to: string; icon: React.ReactNod
 function BuildInfo({ compact = false }: { compact?: boolean }) {
   const rev = typeof __APP_REV__ !== "undefined" ? __APP_REV__ : "dev";
   const built = typeof __APP_BUILT__ !== "undefined" ? __APP_BUILT__ : "";
+  const builtBerlin = formatBerlin(built);
   if (compact) {
     return (
       <span
         className="text-[10px] font-mono text-muted leading-none px-1.5 py-0.5 rounded bg-surface/60"
-        title={`Revision ${rev} · gebaut ${built} UTC`}
+        title={`Revision ${rev} · gebaut ${builtBerlin || built}`}
       >
         v{rev}
       </span>
@@ -307,11 +308,29 @@ function BuildInfo({ compact = false }: { compact?: boolean }) {
   return (
     <div
       className="mt-2 pt-2 border-t border-hairline/60 text-[10px] font-mono text-muted opacity-60 text-center select-text"
-      title={`Build ${built} UTC`}
+      title={`Build ${builtBerlin || built}`}
     >
-      v{rev} · {built}
+      v{rev} · {builtBerlin || built}
     </div>
   );
+}
+
+/**
+ * Formatiert einen ISO-UTC-Timestamp als "YYYY-MM-DD HH:mm Berlin".
+ * Nutzt Intl.DateTimeFormat mit timeZone: Europe/Berlin → automatischer DST-Wechsel.
+ */
+function formatBerlin(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const fmt = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(d).map((p) => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute} Berlin`;
 }
 
 function SidebarLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {

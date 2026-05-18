@@ -23,11 +23,18 @@
     --text-muted:       95 92 84;      /* darker — passes WCAG AA 4.5 auf canvas + elevated */
   }
   html.dark {
-    /* Dark Mode — warm-black, charcoal-surfaces */
+    /* Dark Mode — warm-black, charcoal-surfaces.
+       color-scheme: dark sorgt dafür, dass native Form-Controls
+       (Date-Picker-Icon, Scrollbars, Select-Dropdown) in Dunkelvariante
+       rendern → kein dunkles Icon auf dunklem Hintergrund. */
+    color-scheme: dark;
     --bg-canvas:        17 17 17;      /* #111111 warm black */
     --bg-surface:       28 28 30;      /* #1C1C1E graphite */
     --bg-elevated:      35 35 38;      /* #232326 charcoal */
-    --border-hairline:  255 255 255;
+    /* Borders im Dark Mode dezent: warm-gray statt reines Weiß.
+       Sonst wirken Card-Outlines, Chips und Eingabe-Borders als helle
+       Linien grell auf dem warm-schwarzen Canvas. */
+    --border-hairline:  175 172 165;
     --text-primary:     245 242 235;   /* ivory */
     --text-secondary:   200 198 192;
     --text-muted:       175 172 165;   /* lifted — passes WCAG AA auf canvas-dark */
