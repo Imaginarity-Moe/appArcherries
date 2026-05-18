@@ -101,6 +101,14 @@
   html.dark .hover\:text-cherry-600:hover { color: #B46A76; }
   html.dark .border-cherry-500            { border-color: #B46A76; }
   html.dark .fill-cherry-500              { fill: #B46A76; }
+
+  /* Browser-natives Cancel-X bei input[type="search"] verstecken —
+     wir rendern eigene Clear-Buttons (siehe Bows/Arrows/Help/Parcours-Listen) */
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
 
 @layer components {
