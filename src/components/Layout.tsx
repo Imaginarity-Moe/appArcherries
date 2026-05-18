@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { LogoWordmark, Wordmark } from "./Logo";
 import NetworkStatusIcon from "./NetworkStatusIcon";
+import NotificationBell from "./NotificationBell";
 import { useConfirm } from "./ConfirmDialog";
 import Avatar from "./Avatar";
 import { useFooter, type FooterAction } from "./FooterContext";
@@ -73,7 +74,10 @@ export default function Layout() {
           <Link to="/" className="block py-2" aria-label="Archerries">
             <LogoWordmark className="h-8" />
           </Link>
-          <NetworkStatusIcon />
+          <div className="flex items-center gap-1">
+            <NetworkStatusIcon />
+            <NotificationBell align="left" />
+          </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-0.5">
           <SidebarLink to="/" icon={<Home size={18} strokeWidth={1.75} />} label={t("nav.home")} />
@@ -123,6 +127,7 @@ export default function Layout() {
           </Link>
           <div className="flex items-center gap-1.5">
             <NetworkStatusIcon />
+            <NotificationBell />
             <Link to="/profile" aria-label={t("nav.profile")} className="rounded-full no-tap-highlight">
               <Avatar user={user} size="sm" />
             </Link>

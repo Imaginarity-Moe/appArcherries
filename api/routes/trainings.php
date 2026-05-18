@@ -464,6 +464,18 @@ function trainings_add_friend_participant(int $user_id, int $training_id): void
         'INSERT INTO training_participants (training_id, user_id, role) VALUES (?, ?, ?)'
     )->execute([$training_id, $friend_id, $role]);
 
+    // Notification an den Freund: "X hat dich zum Training hinzugefügt"
+    require_once __DIR__ . '/notifications.php';
+    $u = db()->prepare('SELECT display_name FROM users WHERE id = ?');
+    $u->execute([$user_id]);
+    $owner_name = (string)($u->fetchColumn() ?: '');
+    notify_create($friend_id, 'training_friend_added', [
+        'training_id'     => $training_id,
+        'by_user_id'      => $user_id,
+        'by_display_name' => $owner_name,
+        'role'            => $role,
+    ]);
+
     trainings_detail($user_id, $training_id);
 }
 

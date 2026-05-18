@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/Mailer.php';
+require_once __DIR__ . '/notifications.php';
 
 /**
  * Freundschafts-System.
@@ -132,10 +133,17 @@ function friends_request(int $me): void
 
     db()->prepare('INSERT INTO friendships (requester_id, recipient_id, status) VALUES (?, ?, "pending")')
         ->execute([$me, $target_id]);
+    $friendship_id = (int)db()->lastInsertId();
 
-    // Notification-Email an Empfänger
+    // Notification-Email + In-App-Notif an Empfänger
     $me_row = friend_user_row($me);
     notify_friend_request($target, $me_row);
+    notify_create($target_id, 'friend_request_received', [
+        'friendship_id'     => $friendship_id,
+        'from_user_id'      => $me,
+        'from_display_name' => $me_row['display_name'],
+        'from_email'        => $me_row['email'],
+    ]);
 
     friends_list($me);
 }
@@ -161,10 +169,19 @@ function friends_respond(int $me, int $id): void
     if ($action === 'reject') {
         db()->prepare('DELETE FROM friendships WHERE id = ?')->execute([$id]);
         notify_friend_response($requester_row, $me_row, 'rejected');
+        notify_create((int)$f['requester_id'], 'friend_request_rejected', [
+            'by_user_id'      => $me,
+            'by_display_name' => $me_row['display_name'],
+        ]);
     } elseif ($action === 'accept') {
         db()->prepare('UPDATE friendships SET status = "accepted", responded_at = NOW() WHERE id = ?')
             ->execute([$id]);
         notify_friend_response($requester_row, $me_row, 'accepted');
+        notify_create((int)$f['requester_id'], 'friend_request_accepted', [
+            'friendship_id'   => $id,
+            'by_user_id'      => $me,
+            'by_display_name' => $me_row['display_name'],
+        ]);
     } else { // block
         // Block: Row bleibt mit status='blocked' damit Re-Anfrage abgewiesen werden kann.
         // KEINE Email an Anfrager (er soll nicht wissen, dass er blockiert ist).
