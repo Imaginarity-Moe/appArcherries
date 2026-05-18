@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Trophy } from "lucide-react";
 import { getStatsOverview, type StatsOverview } from "../api/stats";
 import { ScoreLineChart, ZoneDistributionBars, ArrowConsistencyBars } from "../components/charts";
+import StationHeatmap from "../components/StationHeatmap";
 import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
 import { fmtDate } from "../lib/format";
 import { useSyncListener } from "../lib/useSyncListener";
@@ -155,6 +156,8 @@ export default function Stats() {
               />
             </section>
           )}
+
+          <StationHeatmap />
         </>
       )}
     </div>
