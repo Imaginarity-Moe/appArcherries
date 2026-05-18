@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, Medal } from "lucide-react";
+import { Trophy, Medal, Globe, Users } from "lucide-react";
 import { listHighscores, type HighscoreGroup } from "../api/highscore";
 import { BOW_LABELS, DISCIPLINE_LABELS } from "../api/trainings";
 import Avatar from "./Avatar";
@@ -8,40 +8,47 @@ type Props = {
   parcoursId: number;
 };
 
+type Tab = "global" | "friends";
+
 /**
  * Top-3 Scores pro (Disziplin, Bow-Type) für einen Parcours.
- * Nur Trainings mit published_to_highscore=1 werden gelistet.
+ * Tabs: Global (alle) / Freunde (nur akzeptierte Freunde + ich selbst).
  */
 export default function HighscoreCard({ parcoursId }: Props) {
+  const [tab, setTab] = useState<Tab>("global");
   const [groups, setGroups] = useState<HighscoreGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    listHighscores(parcoursId)
+    setLoading(true);
+    listHighscores(parcoursId, tab === "friends")
       .then((r) => setGroups(r.groups))
       .finally(() => setLoading(false));
-  }, [parcoursId]);
-
-  if (loading) return null;
-  if (groups.length === 0) {
-    return (
-      <section className="card">
-        <h2 className="eyebrow flex items-center gap-2 mb-2">
-          <Trophy size={14} strokeWidth={1.75} /> Highscore
-        </h2>
-        <p className="text-sm text-muted">
-          Noch keine veröffentlichten Scores. Beende ein Training auf diesem Parcours und tippe „in
-          Highscore aufnehmen" auf der Auswertung.
-        </p>
-      </section>
-    );
-  }
+  }, [parcoursId, tab]);
 
   return (
     <section className="card space-y-4">
-      <h2 className="eyebrow flex items-center gap-2">
-        <Trophy size={14} strokeWidth={1.75} /> Highscore
-      </h2>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="eyebrow flex items-center gap-2">
+          <Trophy size={14} strokeWidth={1.75} /> Highscore
+        </h2>
+        <div className="inline-flex items-center gap-0.5 rounded-full bg-surface p-0.5">
+          <TabBtn active={tab === "global"} onClick={() => setTab("global")}>
+            <Globe size={12} strokeWidth={1.75} /> Global
+          </TabBtn>
+          <TabBtn active={tab === "friends"} onClick={() => setTab("friends")}>
+            <Users size={12} strokeWidth={1.75} /> Freunde
+          </TabBtn>
+        </div>
+      </div>
+      {loading && <p className="text-sm text-muted">Lade …</p>}
+      {!loading && groups.length === 0 && (
+        <p className="text-sm text-muted">
+          {tab === "friends"
+            ? "Keine Freundes-Scores auf diesem Parcours. Lade Freunde ein oder schalte auf Global."
+            : "Noch keine veröffentlichten Scores. Beende ein Training und tippe „in Highscore aufnehmen“."}
+        </p>
+      )}
       {groups.map((g) => (
         <div key={`${g.discipline}-${g.bow_type}`} className="space-y-2">
           <div className="text-xs text-muted">
@@ -65,6 +72,19 @@ export default function HighscoreCard({ parcoursId }: Props) {
         </div>
       ))}
     </section>
+  );
+}
+
+function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+        active ? "bg-cherry-500 text-cream" : "text-secondary hover:text-primary"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

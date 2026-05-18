@@ -27,6 +27,7 @@ import { usePageFooter } from "../components/FooterContext";
 
 // Lazy: qrcode.react wird nur beim Öffnen des Einladen-Modals geladen
 const InviteModal = lazy(() => import("../components/InviteModal"));
+const AddFriendModal = lazy(() => import("../components/AddFriendModal"));
 
 // Anzahl Pfeil-Slots je Disziplin
 const SLOTS_BY_DISCIPLINE: Record<Discipline, number> = {
@@ -211,6 +212,7 @@ function TrainingOverview({
   const { t } = useTranslation(["training", "common"]);
   const [, setSearchParams] = useSearchParams();
   const [showInvite, setShowInvite] = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
   const isSimple = training.discipline === "simple";
   // Nur eigene Targets anzeigen — andere Participants haben ihre eigenen
   const myTargets = (training.targets ?? []).filter(
@@ -314,6 +316,7 @@ function TrainingOverview({
             participants={training.participants}
             isOwner={!!training.is_owner}
             onInvite={() => setShowInvite(true)}
+            onAddFriend={() => setShowAddFriend(true)}
             isLive={isShared}
             isPolling={isPolling}
           />
@@ -370,6 +373,19 @@ function TrainingOverview({
       {showInvite && typeof training.id === "number" && (
         <Suspense fallback={null}>
           <InviteModal trainingId={training.id} onClose={() => setShowInvite(false)} />
+        </Suspense>
+      )}
+
+      {showAddFriend && typeof training.id === "number" && (
+        <Suspense fallback={null}>
+          <AddFriendModal
+            trainingId={training.id}
+            existingUserIds={(training.participants ?? [])
+              .map((p) => p.user_id)
+              .filter((id): id is number => typeof id === "number")}
+            onClose={() => setShowAddFriend(false)}
+            onAdded={() => { setShowAddFriend(false); void onChange(); }}
+          />
         </Suspense>
       )}
     </div>

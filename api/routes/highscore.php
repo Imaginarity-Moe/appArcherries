@@ -16,18 +16,35 @@ require_once __DIR__ . '/../lib/Auth.php';
  */
 function handle_highscore(string $method, string $path): void
 {
-    require_auth(); // jeder eingeloggte User darf den Highscore sehen
+    $claims = jwt_from_auth_header();
+    if (!$claims || empty($claims['uid'])) res_error('Unauthorized', 401);
+    $me = (int)$claims['uid'];
+
     if ($method !== 'GET') res_error('Method not allowed', 405);
 
-    $parcours_id = (int)(req_query('parcours_id', '0') ?? '0');
+    $parcours_id  = (int)(req_query('parcours_id', '0') ?? '0');
     if ($parcours_id < 1) res_error('parcours_id erforderlich');
 
-    $discipline = req_query('discipline');
-    $bow_type   = req_query('bow_type');
-    $limit      = max(1, min(20, (int)(req_query('limit', '3') ?? '3')));
+    $discipline   = req_query('discipline');
+    $bow_type     = req_query('bow_type');
+    $limit        = max(1, min(20, (int)(req_query('limit', '3') ?? '3')));
+    $friends_only = (req_query('friends_only', '0') ?? '0') === '1';
+
+    // Wenn friends_only: User-IDs der Freunde (+ ich selbst) sammeln, sonst null = alle
+    $allowed_users = null;
+    if ($friends_only) {
+        $s = db()->prepare(
+            'SELECT CASE WHEN requester_id = ? THEN recipient_id ELSE requester_id END AS friend_id
+             FROM friendships
+             WHERE status = "accepted" AND (requester_id = ? OR recipient_id = ?)'
+        );
+        $s->execute([$me, $me, $me]);
+        $allowed_users = array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN));
+        $allowed_users[] = $me; // eigenes Score immer mit dabei
+    }
 
     if ($discipline !== null && $discipline !== '') {
-        $rows = highscore_query($parcours_id, $discipline, $bow_type, $limit);
+        $rows = highscore_query($parcours_id, $discipline, $bow_type, $limit, $allowed_users);
         res_json(['scores' => $rows]);
         return;
     }
@@ -42,7 +59,7 @@ function handle_highscore(string $method, string $path): void
     $groups = $s->fetchAll();
     $out = [];
     foreach ($groups as $g) {
-        $rows = highscore_query($parcours_id, $g['discipline'], $g['bow_type'], $limit);
+        $rows = highscore_query($parcours_id, $g['discipline'], $g['bow_type'], $limit, $allowed_users);
         if (count($rows) > 0) {
             $out[] = [
                 'discipline' => $g['discipline'],
@@ -54,9 +71,12 @@ function handle_highscore(string $method, string $path): void
     res_json(['groups' => $out]);
 }
 
-function highscore_query(int $parcours_id, string $discipline, ?string $bow_type, int $limit): array
+function highscore_query(int $parcours_id, string $discipline, ?string $bow_type, int $limit, ?array $allowed_users = null): array
 {
     require_once __DIR__ . '/../lib/Scoring.php';
+
+    // friends_only-Modus: leere Allowlist → keine Ergebnisse
+    if ($allowed_users !== null && count($allowed_users) === 0) return [];
 
     // Schritt 1: alle veröffentlichten Trainings im Filter laden
     $sql = 'SELECT t.id, t.user_id, t.bow_type, t.summary_score, t.started_at, t.ended_at,
@@ -70,6 +90,11 @@ function highscore_query(int $parcours_id, string $discipline, ?string $bow_type
     if ($bow_type !== null && $bow_type !== '') {
         $sql .= ' AND t.bow_type = ?';
         $params[] = $bow_type;
+    }
+    if ($allowed_users !== null) {
+        $placeholders = implode(',', array_fill(0, count($allowed_users), '?'));
+        $sql    .= " AND t.user_id IN ($placeholders)";
+        $params  = array_merge($params, $allowed_users);
     }
     $sql .= ' ORDER BY t.started_at DESC';
     $s = db()->prepare($sql);

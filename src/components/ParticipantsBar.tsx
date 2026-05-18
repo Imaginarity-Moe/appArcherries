@@ -1,4 +1,4 @@
-import { UserPlus, Crown } from "lucide-react";
+import { UserPlus, Crown, Users } from "lucide-react";
 import type { Participant } from "../api/trainings";
 import Avatar from "./Avatar";
 
@@ -6,6 +6,8 @@ type Props = {
   participants: Participant[];
   isOwner: boolean;
   onInvite: () => void;
+  /** Optional: Freund 1-Tap-Hinzufügen. Wenn weggelassen, wird der Button ausgeblendet. */
+  onAddFriend?: () => void;
   /** True wenn das Training mehr als einen Teilnehmer hat → Live-Indikator zeigen */
   isLive?: boolean;
   /** True während ein Refresh läuft (kurzer Puls) */
@@ -17,7 +19,7 @@ type Props = {
  * Owner sieht einen "+ Einladen"-Button am Ende.
  * Nur sichtbar wenn mind. 2 Participants ODER User ist Owner.
  */
-export default function ParticipantsBar({ participants, isOwner, onInvite, isLive, isPolling }: Props) {
+export default function ParticipantsBar({ participants, isOwner, onInvite, onAddFriend, isLive, isPolling }: Props) {
   const showInvite = isOwner;
   if (participants.length <= 1 && !showInvite) return null;
 
@@ -49,12 +51,22 @@ export default function ParticipantsBar({ participants, isOwner, onInvite, isLiv
           </span>
         </div>
       ))}
+      {showInvite && onAddFriend && (
+        <button
+          onClick={onAddFriend}
+          className="flex-shrink-0 inline-flex items-center gap-1 rounded-2xl px-3 py-1.5 bg-cherry-500 text-cream text-sm font-medium hover:bg-cherry-600"
+          aria-label="Freund hinzufügen"
+        >
+          <Users size={14} /> Freund
+        </button>
+      )}
       {showInvite && (
         <button
           onClick={onInvite}
-          className="flex-shrink-0 inline-flex items-center gap-1 rounded-2xl px-3 py-1.5 border border-dashed border-forest-300 dark:border-forest-700 text-forest-700 dark:text-forest-300 hover:bg-forest-50 dark:hover:bg-forest-900 text-sm font-medium"
+          className="flex-shrink-0 inline-flex items-center gap-1 rounded-2xl px-3 py-1.5 border border-dashed border-hairline text-secondary hover:bg-surface text-sm font-medium"
+          aria-label="Per QR-Code einladen"
         >
-          <UserPlus size={14} /> Einladen
+          <UserPlus size={14} /> QR
         </button>
       )}
     </div>

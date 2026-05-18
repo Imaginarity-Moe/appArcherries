@@ -58,6 +58,13 @@ function handle_trainings(string $method, string $path): void
         return;
     }
 
+    if (preg_match('#^/(\d+)/participants$#', $sub, $m)) {
+        $id = (int)$m[1];
+        if ($method !== 'POST') res_error('Method not allowed', 405);
+        trainings_add_friend_participant($user['id'], $id);
+        return;
+    }
+
     if (preg_match('#^/(\d+)/invitations/(\d+)$#', $sub, $m)) {
         $id    = (int)$m[1];
         $invid = (int)$m[2];
@@ -421,6 +428,43 @@ function trainings_delete(int $user_id, int $id): void
     if (!training_owned($user_id, $id)) res_error('Not found', 404);
     db()->prepare('DELETE FROM trainings WHERE id = ? AND user_id = ?')->execute([$id, $user_id]);
     res_json(['ok' => true]);
+}
+
+/**
+ * Direkt einen akzeptierten Freund als scorer/viewer zum Training hinzufügen
+ * — ohne QR/Token. Owner only, Freund-Beziehung muss accepted sein.
+ */
+function trainings_add_friend_participant(int $user_id, int $training_id): void
+{
+    if (!user_is_training_owner($user_id, $training_id)) {
+        res_error('Nur der Owner kann Freunde hinzufügen', 403);
+    }
+    $in       = req_json();
+    $friend_id = (int)($in['user_id'] ?? 0);
+    $role     = (string)($in['role'] ?? 'scorer');
+    if ($friend_id <= 0) res_error('user_id erforderlich');
+    if (!in_array($role, ['scorer', 'viewer'], true)) res_error('Ungültige role');
+    if ($friend_id === $user_id) res_error('Owner ist bereits Participant', 409);
+
+    // Akzeptierte Freundschaft in BEIDEN Richtungen erlauben
+    $s = db()->prepare(
+        'SELECT 1 FROM friendships
+         WHERE status = "accepted"
+           AND ((requester_id = ? AND recipient_id = ?) OR (requester_id = ? AND recipient_id = ?))'
+    );
+    $s->execute([$user_id, $friend_id, $friend_id, $user_id]);
+    if (!$s->fetchColumn()) res_error('Nur akzeptierte Freunde können hinzugefügt werden', 403);
+
+    // Existiert schon?
+    $s = db()->prepare('SELECT id FROM training_participants WHERE training_id = ? AND user_id = ?');
+    $s->execute([$training_id, $friend_id]);
+    if ($s->fetchColumn()) res_error('Freund ist bereits Participant', 409);
+
+    db()->prepare(
+        'INSERT INTO training_participants (training_id, user_id, role) VALUES (?, ?, ?)'
+    )->execute([$training_id, $friend_id, $role]);
+
+    trainings_detail($user_id, $training_id);
 }
 
 // ─── Targets ──────────────────────────────────────────────────────────────────

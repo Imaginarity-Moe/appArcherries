@@ -17,8 +17,9 @@ export type HighscoreGroup = {
   scores: HighscoreEntry[];
 };
 
-export async function listHighscores(parcoursId: number): Promise<{ groups: HighscoreGroup[] }> {
-  return apiCached(`/highscore?parcours_id=${parcoursId}`);
+export async function listHighscores(parcoursId: number, friendsOnly = false): Promise<{ groups: HighscoreGroup[] }> {
+  const suffix = friendsOnly ? "&friends_only=1" : "";
+  return apiCached(`/highscore?parcours_id=${parcoursId}${suffix}`);
 }
 
 export async function getHighscore(

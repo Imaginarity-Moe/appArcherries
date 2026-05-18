@@ -33,6 +33,17 @@ export type JoinResponse = {
   token: string | null;
 };
 
+export async function addFriendToTraining(
+  trainingId: number,
+  friendUserId: number,
+  role: "scorer" | "viewer" = "scorer"
+): Promise<unknown> {
+  return api(`/trainings/${trainingId}/participants`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: friendUserId, role }),
+  });
+}
+
 export async function createInvitation(
   trainingId: number,
   opts: { role?: "scorer" | "viewer"; expires_in_hours?: number | null; max_uses?: number | null } = {}
