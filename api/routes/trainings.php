@@ -525,19 +525,44 @@ function trainings_delete(int $user_id, int $id): void
 }
 
 /**
- * Direkt einen akzeptierten Freund als scorer/viewer zum Training hinzufügen
- * — ohne QR/Token. Owner only, Freund-Beziehung muss accepted sein.
+ * Direkt einen akzeptierten Freund ODER einen Gast als Participant zum Training
+ * hinzufügen. Owner only.
+ *
+ * Body-Varianten:
+ *   { user_id: <id>, role?: "scorer"|"viewer" }   → akzeptierter Freund
+ *   { guest_name: "<name>", role?: "scorer" }      → frischer Gast-User wird angelegt
  */
 function trainings_add_friend_participant(int $user_id, int $training_id): void
 {
     if (!user_is_training_owner($user_id, $training_id)) {
-        res_error('Nur der Owner kann Freunde hinzufügen', 403);
+        res_error('Nur der Owner kann Teilnehmer hinzufügen', 403);
     }
-    $in       = req_json();
-    $friend_id = (int)($in['user_id'] ?? 0);
-    $role     = (string)($in['role'] ?? 'scorer');
-    if ($friend_id <= 0) res_error('user_id erforderlich');
+    $in    = req_json();
+    $role  = (string)($in['role'] ?? 'scorer');
     if (!in_array($role, ['scorer', 'viewer'], true)) res_error('Ungültige role');
+
+    // Gast-Pfad: { guest_name: "..." } → frischen Gast-User anlegen, role=guest, kein Passwort
+    $guest_name = trim((string)($in['guest_name'] ?? ''));
+    if ($guest_name !== '') {
+        if (mb_strlen($guest_name) > 80) res_error('Name zu lang');
+        // Gast-Email synthetisch erzeugen, damit users.email UNIQUE bleibt
+        $email = 'guest+' . bin2hex(random_bytes(6)) . '@archerries.guest';
+        db()->prepare(
+            'INSERT INTO users (email, password_hash, display_name, status, role) VALUES (?, NULL, ?, "active", "guest")'
+        )->execute([$email, $guest_name]);
+        $guest_id = (int)db()->lastInsertId();
+
+        db()->prepare(
+            'INSERT INTO training_participants (training_id, user_id, role) VALUES (?, ?, ?)'
+        )->execute([$training_id, $guest_id, $role]);
+
+        trainings_detail($user_id, $training_id);
+        return;
+    }
+
+    // Freund-Pfad: { user_id: <id> }
+    $friend_id = (int)($in['user_id'] ?? 0);
+    if ($friend_id <= 0) res_error('user_id oder guest_name erforderlich');
     if ($friend_id === $user_id) res_error('Owner ist bereits Participant', 409);
 
     // Akzeptierte Freundschaft in BEIDEN Richtungen erlauben
@@ -577,11 +602,25 @@ function trainings_add_friend_participant(int $user_id, int $training_id): void
 
 function targets_create(int $user_id, int $training_id): void
 {
-    $pid = user_participant_id($user_id, $training_id);
-    if ($pid === null) res_error('Not found', 404);
+    $own_pid = user_participant_id($user_id, $training_id);
+    if ($own_pid === null) res_error('Not found', 404);
 
     $in   = req_json();
     $disc = training_discipline($training_id);
+
+    // Owner kann optional für einen Gast (oder anderen Participant) scoren:
+    // body { for_participant_id: <pid> }. Validiert dass der Participant existiert
+    // und der Owner = Training-Owner ist.
+    $pid = $own_pid;
+    if (isset($in['for_participant_id']) && (int)$in['for_participant_id'] !== $own_pid) {
+        if (!user_is_training_owner($user_id, $training_id)) {
+            res_error('Nur der Owner kann für andere Participants scoren', 403);
+        }
+        $check = db()->prepare('SELECT id FROM training_participants WHERE id = ? AND training_id = ?');
+        $check->execute([(int)$in['for_participant_id'], $training_id]);
+        if (!$check->fetchColumn()) res_error('Participant nicht im Training');
+        $pid = (int)$in['for_participant_id'];
+    }
 
     $target_index = (int)($in['target_index'] ?? 0);
     if ($target_index < 1) res_error('target_index erforderlich (>=1)');
@@ -628,12 +667,21 @@ function targets_create(int $user_id, int $training_id): void
 
 function targets_update(int $user_id, int $training_id, int $tid): void
 {
-    $pid = user_participant_id($user_id, $training_id);
-    if ($pid === null) res_error('Not found', 404);
+    $own_pid = user_participant_id($user_id, $training_id);
+    if ($own_pid === null) res_error('Not found', 404);
 
-    $stmt = db()->prepare('SELECT id FROM training_targets WHERE id = ? AND training_id = ? AND participant_id = ?');
-    $stmt->execute([$tid, $training_id, $pid]);
-    if (!$stmt->fetch()) res_error('Not found', 404);
+    // Owner kann für andere Participants updaten (z.B. Gast). Sonst nur eigene.
+    $is_owner = user_is_training_owner($user_id, $training_id);
+    if ($is_owner) {
+        $stmt = db()->prepare('SELECT participant_id FROM training_targets WHERE id = ? AND training_id = ?');
+        $stmt->execute([$tid, $training_id]);
+    } else {
+        $stmt = db()->prepare('SELECT participant_id FROM training_targets WHERE id = ? AND training_id = ? AND participant_id = ?');
+        $stmt->execute([$tid, $training_id, $own_pid]);
+    }
+    $row = $stmt->fetch();
+    if (!$row) res_error('Not found', 404);
+    $pid = (int)$row['participant_id'];
 
     $in   = req_json();
     $disc = training_discipline($training_id);

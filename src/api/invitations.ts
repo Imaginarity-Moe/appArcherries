@@ -44,6 +44,18 @@ export async function addFriendToTraining(
   });
 }
 
+/** Gast-Participant ohne Account anlegen — Owner scort für ihn mit. */
+export async function addGuestToTraining(
+  trainingId: number,
+  guestName: string,
+  role: "scorer" | "viewer" = "scorer"
+): Promise<unknown> {
+  return api(`/trainings/${trainingId}/participants`, {
+    method: "POST",
+    body: JSON.stringify({ guest_name: guestName, role }),
+  });
+}
+
 export async function createInvitation(
   trainingId: number,
   opts: { role?: "scorer" | "viewer"; expires_in_hours?: number | null; max_uses?: number | null } = {}

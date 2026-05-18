@@ -813,13 +813,18 @@ function StationLiveEntry({
               return { x: m.x, y: m.y, points: pts };
             })}
             onShot={(points, x, y) => {
-              // Zone = Punkte als String. Marker mit x/y separat.
               const zone = points === 0 ? "miss" : String(points);
               const nextZ = [...zonesPicked]; nextZ[activeSlot] = zone; setZonesPicked(nextZ);
               const nextM = [...markers]; nextM[activeSlot] = { x, y }; setMarkers(nextM);
               const empty = nextZ.findIndex((z, i) => i > activeSlot && z === null);
               if (empty !== -1) setActiveSlot(empty);
               else if (activeSlot < slots - 1) setActiveSlot(activeSlot + 1);
+            }}
+            onMoveMarker={(slot, x, y, points) => {
+              // Drag im Zoom-Modal: setze sowohl Zone (für Score) als auch Marker (x/y).
+              const zone = points === 0 ? "miss" : String(points);
+              const nextZ = [...zonesPicked]; nextZ[slot] = zone; setZonesPicked(nextZ);
+              const nextM = [...markers]; nextM[slot] = { x, y }; setMarkers(nextM);
             }}
             onClearSlot={(s) => {
               const nextZ = [...zonesPicked]; nextZ[s] = null; setZonesPicked(nextZ);
