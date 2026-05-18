@@ -1,12 +1,14 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../lib/Mailer.php';
+
 /**
  * Freundschafts-System.
  * Endpoints:
  *   GET    /friends                 → { friends, incoming, outgoing, blocked }
- *   POST   /friends/requests        body { email } — sendet Anfrage
- *   PATCH  /friends/<id>            body { action: accept|reject|block }
+ *   POST   /friends/requests        body { email } — sendet Anfrage + Email
+ *   PATCH  /friends/<id>            body { action: accept|reject|block }, Email an Requester
  *   DELETE /friends/<id>            unfriend (oder eigene pending zurückziehen)
  */
 
@@ -94,7 +96,7 @@ function friends_request(int $me): void
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) res_error('Ungültige E-Mail');
 
     // User suchen
-    $s = db()->prepare('SELECT id FROM users WHERE email = ? AND status = "active"');
+    $s = db()->prepare('SELECT id, display_name, email FROM users WHERE email = ? AND status = "active"');
     $s->execute([$email]);
     $target = $s->fetch();
     if (!$target) res_error('Kein User mit dieser E-Mail gefunden', 404);
@@ -113,15 +115,27 @@ function friends_request(int $me): void
         if ($existing['status'] === 'accepted') res_error('Ihr seid bereits Freunde', 409);
         if ($existing['status'] === 'pending')  res_error('Anfrage existiert bereits', 409);
         if ($existing['status'] === 'blocked') {
-            // Wenn target mich blockiert hat (target=recipient mit status=blocked durch target),
-            // dann ist requester_id im row = ich. Aber wir machen das egal: blocked = nicht
-            // nochmal anfragbar.
-            res_error('Verbindung nicht möglich', 403);
+            // Wer hat wen blockiert?
+            //  - status='blocked' wird gesetzt vom Recipient
+            //  - Wenn der Recipient = target_id, dann hat target MICH blockiert
+            //  - Wenn der Recipient = me, dann habe ich target blockiert
+            if ((int)$existing['recipient_id'] === $target_id) {
+                res_error(sprintf(
+                    '%s möchte keine weiteren Anfragen von dir empfangen.',
+                    $target['display_name'] ?? $target['email']
+                ), 403);
+            } else {
+                res_error('Du hast diesen User blockiert. Hebe die Blockierung erst auf.', 403);
+            }
         }
     }
 
     db()->prepare('INSERT INTO friendships (requester_id, recipient_id, status) VALUES (?, ?, "pending")')
         ->execute([$me, $target_id]);
+
+    // Notification-Email an Empfänger
+    $me_row = friend_user_row($me);
+    notify_friend_request($target, $me_row);
 
     friends_list($me);
 }
@@ -141,12 +155,19 @@ function friends_respond(int $me, int $id): void
     if ((int)$f['recipient_id'] !== $me) res_error('Forbidden', 403);
     if ($f['status'] !== 'pending')     res_error('Anfrage ist nicht offen', 409);
 
+    $me_row        = friend_user_row($me);
+    $requester_row = friend_user_row((int)$f['requester_id']);
+
     if ($action === 'reject') {
         db()->prepare('DELETE FROM friendships WHERE id = ?')->execute([$id]);
+        notify_friend_response($requester_row, $me_row, 'rejected');
     } elseif ($action === 'accept') {
         db()->prepare('UPDATE friendships SET status = "accepted", responded_at = NOW() WHERE id = ?')
             ->execute([$id]);
+        notify_friend_response($requester_row, $me_row, 'accepted');
     } else { // block
+        // Block: Row bleibt mit status='blocked' damit Re-Anfrage abgewiesen werden kann.
+        // KEINE Email an Anfrager (er soll nicht wissen, dass er blockiert ist).
         db()->prepare('UPDATE friendships SET status = "blocked", responded_at = NOW() WHERE id = ?')
             ->execute([$id]);
     }
@@ -171,4 +192,48 @@ function friends_delete(int $me, int $id): void
 
     db()->prepare('DELETE FROM friendships WHERE id = ?')->execute([$id]);
     friends_list($me);
+}
+
+// ─── Notification-Helper ──────────────────────────────────────────────────────
+
+function friend_user_row(int $user_id): array
+{
+    $s = db()->prepare('SELECT id, email, display_name FROM users WHERE id = ?');
+    $s->execute([$user_id]);
+    return $s->fetch() ?: ['id' => $user_id, 'email' => '', 'display_name' => null];
+}
+
+function notify_friend_request(array $target, array $requester): void
+{
+    $base = rtrim((string)config()['app_url'], '/');
+    $name_req    = $requester['display_name'] ?: $requester['email'];
+    $name_target = $target['display_name'] ?: $target['email'];
+    $html = "<p>Hallo " . htmlspecialchars($name_target) . ",</p>"
+          . "<p><strong>" . htmlspecialchars($name_req) . "</strong> (" . htmlspecialchars($requester['email'])
+          . ") möchte dein Freund in Archerries werden.</p>"
+          . "<p><a href=\"$base/friends\">Anfrage in Archerries öffnen</a></p>"
+          . "<p style=\"color:#888;font-size:12px\">Du kannst die Anfrage annehmen, ablehnen oder den Anfrager blockieren.</p>";
+    @send_mail($target['email'], 'Archerries: Neue Freundes-Anfrage', $html);
+}
+
+function notify_friend_response(array $requester, array $responder, string $action): void
+{
+    if (!$requester['email']) return;
+    $base = rtrim((string)config()['app_url'], '/');
+    $name_res = $responder['display_name'] ?: $responder['email'];
+    $name_req = $requester['display_name'] ?: $requester['email'];
+    if ($action === 'accepted') {
+        $subject = 'Archerries: Deine Freundes-Anfrage wurde angenommen';
+        $html = "<p>Hallo " . htmlspecialchars($name_req) . ",</p>"
+              . "<p>Gute Nachricht: <strong>" . htmlspecialchars($name_res) . "</strong> hat deine"
+              . " Freundes-Anfrage angenommen. Ihr seid jetzt verbunden.</p>"
+              . "<p><a href=\"$base/friends\">Freundes-Liste öffnen</a></p>";
+    } else { // rejected
+        $subject = 'Archerries: Deine Freundes-Anfrage wurde abgelehnt';
+        $html = "<p>Hallo " . htmlspecialchars($name_req) . ",</p>"
+              . "<p>Deine Freundes-Anfrage an <strong>" . htmlspecialchars($name_res)
+              . "</strong> wurde abgelehnt.</p>"
+              . "<p>Du kannst es später erneut versuchen.</p>";
+    }
+    @send_mail($requester['email'], $subject, $html);
 }

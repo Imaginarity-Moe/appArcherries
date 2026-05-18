@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import AvatarUploader from "../components/AvatarUploader";
+import { listFriends } from "../api/friends";
 
 type Theme = "light" | "dark" | "auto";
 
@@ -14,11 +15,18 @@ export default function Profile() {
   const [theme, setTheme] = useState<Theme>(
     (localStorage.getItem("archerries.theme") as Theme) || "auto"
   );
+  const [incomingFriends, setIncomingFriends] = useState(0);
 
   useEffect(() => {
     localStorage.setItem("archerries.theme", theme);
     applyTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    listFriends()
+      .then((r) => setIncomingFriends(r.incoming.length))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-5 animate-fade-in max-w-2xl mx-auto">
@@ -92,11 +100,23 @@ export default function Profile() {
 
       <Link to="/friends" className="card-interactive flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="w-9 h-9 rounded-full bg-surface flex items-center justify-center text-cherry-500">
+          <span className="relative w-9 h-9 rounded-full bg-surface flex items-center justify-center text-cherry-500">
             <Users size={18} strokeWidth={1.75} />
+            {incomingFriends > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-cherry-500 text-cream text-[10px] font-bold flex items-center justify-center">
+                {incomingFriends}
+              </span>
+            )}
           </span>
           <div>
-            <div className="font-semibold">Freunde</div>
+            <div className="font-semibold flex items-center gap-1.5">
+              Freunde
+              {incomingFriends > 0 && (
+                <span className="text-[10px] uppercase tracking-wider font-bold text-cherry-500">
+                  {incomingFriends === 1 ? "1 neue Anfrage" : `${incomingFriends} neue Anfragen`}
+                </span>
+              )}
+            </div>
             <div className="text-sm text-secondary">Anfragen senden, annehmen und Freundes-Liste verwalten</div>
           </div>
         </div>

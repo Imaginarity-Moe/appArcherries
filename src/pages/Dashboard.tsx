@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Target, TrendingUp, Calendar, Plus, Users, Play } from "lucide-react";
+import { Target, TrendingUp, Calendar, Plus, Users, Play, UserPlus } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import {
   BOW_LABELS,
@@ -9,6 +9,7 @@ import {
   listTrainings,
   type TrainingListItem,
 } from "../api/trainings";
+import { listFriends } from "../api/friends";
 import Sparkline from "../components/Sparkline";
 import { LogoMark } from "../components/Logo";
 import { fmtDate } from "../lib/format";
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const [items, setItems] = useState<TrainingListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [incomingCount, setIncomingCount] = useState(0);
 
   const loadTrainings = () => {
     listTrainings(1, 50)
@@ -30,6 +32,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadTrainings();
+    listFriends()
+      .then((r) => setIncomingCount(r.incoming.length))
+      .catch(() => {});
   }, []);
 
   // Nach Sync-Drain: Liste neu laden (Server hat ggf. neue Daten z.B. von geteilten Runden)
@@ -80,6 +85,28 @@ export default function Dashboard() {
         </h1>
         <p className="text-sm text-secondary mt-0.5 capitalize">{today}</p>
       </div>
+
+      {/* Friend-Request-Banner: offene Anfragen */}
+      {incomingCount > 0 && (
+        <Link
+          to="/friends"
+          className="block card-interactive border-cherry-500/40 hover:border-cherry-500"
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-full bg-cherry-500 text-cream flex items-center justify-center shrink-0">
+              <UserPlus size={18} strokeWidth={2} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold">
+                {incomingCount === 1
+                  ? "1 neue Freundes-Anfrage"
+                  : `${incomingCount} neue Freundes-Anfragen`}
+              </div>
+              <div className="text-xs text-secondary mt-0.5">Tippe hier zum Bearbeiten</div>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Schnellstart-Banner: offenes Training fortsetzen */}
       {openTraining && (
