@@ -240,13 +240,19 @@ function TrainingOverview({
     ];
     if (isOpen && !isSimple) {
       const firstStation = myTargets.length === 0;
-      actions.push({
-        kind: "button",
-        onClick: () => setSearchParams({ station: String(nextIndex) }),
-        icon: <Plus size={20} strokeWidth={2} />,
-        label: firstStation ? "Starten" : `Station ${nextIndex}`,
-        primary: true,
-      });
+      // target_practice: nach num_ends keine "Station N+1" mehr
+      const tpMax = training.discipline === "target_practice" && training.num_ends
+        ? training.num_ends : null;
+      const reachedMax = tpMax !== null && nextIndex > tpMax;
+      if (!reachedMax) {
+        actions.push({
+          kind: "button",
+          onClick: () => setSearchParams({ station: String(nextIndex) }),
+          icon: <Plus size={20} strokeWidth={2} />,
+          label: firstStation ? "Starten" : `Station ${nextIndex}`,
+          primary: true,
+        });
+      }
     }
     if (isOpen) {
       actions.push({
@@ -362,16 +368,22 @@ function TrainingOverview({
         <SimpleScoreCard training={training} onChange={onChange} />
       ) : (
         <>
-          {isOpen && (
-            <button
-              onClick={() => setSearchParams({ station: String(nextIndex) })}
-              className="btn w-full tap-large"
-            >
-              {myTargets.length === 0
-                ? "Training starten"
-                : t("training:detail.add_station", { n: nextIndex })}
-            </button>
-          )}
+          {isOpen && (() => {
+            // target_practice: nach num_ends keinen weiteren Add-Button mehr
+            const tpMax = training.discipline === "target_practice" && training.num_ends
+              ? training.num_ends : null;
+            if (tpMax !== null && nextIndex > tpMax) return null;
+            return (
+              <button
+                onClick={() => setSearchParams({ station: String(nextIndex) })}
+                className="btn w-full tap-large"
+              >
+                {myTargets.length === 0
+                  ? "Training starten"
+                  : t("training:detail.add_station", { n: nextIndex })}
+              </button>
+            );
+          })()}
 
           {/* Stations-Karten */}
           <div className="space-y-2">
@@ -553,12 +565,29 @@ function StationLiveEntry({
     : SLOTS_BY_DISCIPLINE[training.discipline];
   const confirm = useConfirm();
 
+  // Multi-Participant-Score: Owner kann für Gäste (oder andere Participants)
+  // scoren. Default = eigene my_participant_id, Switcher oben im Live-Entry.
+  const allParticipants = training.participants ?? [];
+  const myPid = training.my_participant_id ?? null;
+  const [scoringForPid, setScoringForPid] = useState<number | null>(myPid);
+  // Bei Training-Refresh oder erstem Mount: scoringForPid auf myPid setzen falls null
+  useEffect(() => {
+    if (scoringForPid === null && myPid !== null) setScoringForPid(myPid);
+  }, [myPid, scoringForPid]);
+  // Andere scoring-bare Participants (Owner darf für alle scoren — sonst nur self)
+  const isOwner = !!training.is_owner;
+  const scoringParticipants = isOwner
+    ? allParticipants.filter((p) => p.role !== "viewer")
+    : allParticipants.filter((p) => p.id === myPid);
+
   // Live-Eingabe ist ein Vollbild-Modus — die globale Bottom-Nav (Home/Stats/+…)
   // hat hier keinen Sinn und überlappt sich mit dem "Speichern & weiter"-Button.
   usePageFooter([]);
 
+  // myTargets = Targets des aktuell gewählten Scoring-Participants.
+  // Bei normalem Single-Player ist scoringForPid === my_participant_id.
   const myTargets = (training.targets ?? []).filter(
-    (t) => !t.participant_id || t.participant_id === training.my_participant_id
+    (t) => !t.participant_id || t.participant_id === scoringForPid
   );
   const existing = myTargets.find((t) => t.target_index === stationIndex);
   // Fallback-Total für Stations-Grid: target_practice nutzt num_ends, Parcours-Training
@@ -619,7 +648,7 @@ function StationLiveEntry({
     setZonesPicked(zArr);
     setMarkers(mArr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stationIndex, existing?.id, slots]);
+  }, [stationIndex, existing?.id, slots, scoringForPid]);
 
   // Beim Pfeil-Tap: nächsten leeren Slot aktivieren
   function handleZoneSelect(code: string) {
@@ -654,6 +683,8 @@ function StationLiveEntry({
         animal_or_face: animal || null,
         distance_m: distance ? Number(distance) : null,
         shots,
+        // Owner kann für anderen Participant (Gast) scoren
+        ...(scoringForPid && scoringForPid !== myPid ? { for_participant_id: scoringForPid } : {}),
       });
       await onChange();
     } finally {
@@ -663,7 +694,26 @@ function StationLiveEntry({
 
   async function saveAndNext() {
     await save();
-    if (stationIndex < 99) onNavigate(stationIndex + 1);
+    // Auto-Cycle bei mehreren Schützen:
+    // wenn noch andere scoring-Participants existieren UND aktueller scoringForPid
+    // war für den letzten in der Liste → nächste Station + erster Participant.
+    // Sonst: gleicher Station, nächster Participant.
+    if (scoringParticipants.length > 1) {
+      const idx = scoringParticipants.findIndex((p) => p.id === scoringForPid);
+      const nextIdx = idx + 1;
+      if (nextIdx < scoringParticipants.length) {
+        // Nächster Schütze, gleiche Station
+        setScoringForPid(scoringParticipants[nextIdx].id);
+        return;
+      }
+      // Letzter war an der Reihe → nächste Station, erster Schütze
+      setScoringForPid(scoringParticipants[0].id);
+    }
+    // Bei target_practice Schluss am letzten End — kein "Speichern&weiter" mehr
+    const maxEnd = training.discipline === "target_practice" && training.num_ends
+      ? training.num_ends : 99;
+    if (stationIndex < maxEnd) onNavigate(stationIndex + 1);
+    else onClose(); // alle Stations durch → zurück zur Übersicht
   }
 
   async function deleteStation() {
@@ -719,37 +769,63 @@ function StationLiveEntry({
       </header>
 
       <div className="container-app py-2 space-y-2.5">
-        {/* Zeile 1: Tier + Distanz + Foto-Trigger als kompakte Reihe */}
-        <div className="flex items-center gap-2">
-          <input
-            className="input flex-1 min-w-0"
-            placeholder={t("training:live.animal_or_face")}
-            value={animal}
-            onChange={(e) => setAnimal(e.target.value)}
-          />
-          <input
-            className="input w-20 shrink-0"
-            type="number"
-            inputMode="decimal"
-            step="0.5"
-            placeholder="m"
-            value={distance}
-            onChange={(e) => setDistance(e.target.value)}
-          />
-          {existing && (
-            <div className="shrink-0">
-              <StationPhoto
-                trainingId={training.id}
-                targetId={existing.id}
-                imagePath={existing.image_path}
-                onChange={() => onChange()}
-              />
-            </div>
-          )}
-        </div>
+        {/* Participant-Switcher: nur bei ≥2 scoring-Participants. Owner kann
+            zwischen sich und Gästen wechseln; Score-Save geht dann an den
+            gewählten Participant. */}
+        {scoringParticipants.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted shrink-0">Score für:</span>
+            {scoringParticipants.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setScoringForPid(p.id)}
+                className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                  scoringForPid === p.id
+                    ? "bg-cherry-500 text-cream"
+                    : "bg-surface text-secondary border border-hairline"
+                }`}
+              >
+                {p.is_self ? "Ich" : p.display_name ?? "—"}
+                {p.user_role === "guest" && " · Gast"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Zeile 1: Tier + Distanz + Foto-Trigger — bei target_practice komplett ausblenden,
+            dort gibts feste Distance + keine Tiernamen + keinen Foto-Upload */}
+        {training.discipline !== "target_practice" && (
+          <div className="flex items-center gap-2">
+            <input
+              className="input flex-1 min-w-0"
+              placeholder={t("training:live.animal_or_face")}
+              value={animal}
+              onChange={(e) => setAnimal(e.target.value)}
+            />
+            <input
+              className="input w-20 shrink-0"
+              type="number"
+              inputMode="decimal"
+              step="0.5"
+              placeholder="m"
+              value={distance}
+              onChange={(e) => setDistance(e.target.value)}
+            />
+            {existing && (
+              <div className="shrink-0">
+                <StationPhoto
+                  trainingId={training.id}
+                  targetId={existing.id}
+                  imagePath={existing.image_path}
+                  onChange={() => onChange()}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Interaktive Marker auf dem Foto — nur einblenden wenn Foto vorhanden */}
-        {hasPhoto && (
+        {hasPhoto && training.discipline !== "target_practice" && (
           <PhotoMarkers
             imagePath={existing!.image_path!}
             markers={markers}
@@ -800,9 +876,12 @@ function StationLiveEntry({
           })}
         </div>
 
-        {/* Pad: TargetPad für target_practice (Custom-Ringe + Long-Press-Zoom),
-            sonst BullseyePad mit Disziplin-spezifischen Zonen */}
+        {/* Pad: TargetPad für target_practice (Custom-Ringe + Long-Press-Lupe),
+            sonst BullseyePad mit Disziplin-spezifischen Zonen.
+            target_practice darf aus dem container-app-Padding ausbrechen
+            damit die Scheibe so groß wie möglich ist (100vw - 20px). */}
         {training.discipline === "target_practice" ? (
+          <div className="-mx-5 sm:-mx-6">
           <TargetPad
             rings={training.target_rings ?? 10}
             activeSlot={activeSlot}
@@ -831,6 +910,7 @@ function StationLiveEntry({
               const nextM = [...markers]; nextM[s] = null; setMarkers(nextM);
             }}
           />
+          </div>
         ) : (
           <BullseyePad
             discipline={training.discipline}
@@ -852,9 +932,21 @@ function StationLiveEntry({
               <ArrowLeft size={20} strokeWidth={1.75} />
             </button>
           )}
-          <button onClick={saveAndNext} className="btn-accent flex-1" disabled={busy}>
-            {busy ? t("training:live.saving") : "Speichern & weiter"} <ArrowRight size={18} strokeWidth={2} />
-          </button>
+          {(() => {
+            const maxEnd = training.discipline === "target_practice" && training.num_ends
+              ? training.num_ends : null;
+            const isLastEnd = maxEnd !== null && stationIndex >= maxEnd;
+            const isLastScorer = scoringParticipants.length <= 1 ||
+              scoringParticipants[scoringParticipants.length - 1].id === scoringForPid;
+            const isFinalSave = isLastEnd && isLastScorer;
+            return (
+              <button onClick={saveAndNext} className="btn-accent flex-1" disabled={busy}>
+                {busy ? t("training:live.saving")
+                      : isFinalSave ? "Speichern & beenden"
+                      : "Speichern & weiter"} <ArrowRight size={18} strokeWidth={2} />
+              </button>
+            );
+          })()}
         </div>
       </div>
 

@@ -298,6 +298,8 @@ type UpsertTargetBody = {
   distance_m?: number | null;
   notes?: string | null;
   shots?: Array<{ arrow_seq: number; zone: string | null; x_norm?: number | null; y_norm?: number | null }>;
+  /** Owner-only: scort für anderen Participant (z.B. Gast ohne Account) */
+  for_participant_id?: number;
 };
 
 export async function upsertTarget(
