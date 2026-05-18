@@ -139,8 +139,19 @@ export default function Stats() {
 
           {data!.zone_distribution.length > 0 && (
             <section className="card">
-              <h2 className="font-display text-lg font-semibold mb-3">{t("stats:zone_distribution")}</h2>
+              <h2 className="font-display text-lg font-semibold mb-3">
+                {t("stats:zone_distribution")} <span className="text-xs font-normal text-secondary">· 3D (Tier-Zonen)</span>
+              </h2>
               <ZoneDistributionBars data={data!.zone_distribution} />
+            </section>
+          )}
+
+          {(data!.zone_distribution_target?.length ?? 0) > 0 && (
+            <section className="card">
+              <h2 className="font-display text-lg font-semibold mb-3">
+                {t("stats:zone_distribution")} <span className="text-xs font-normal text-secondary">· Scheibe (Ringe)</span>
+              </h2>
+              <ZoneDistributionBars data={data!.zone_distribution_target!} />
             </section>
           )}
 

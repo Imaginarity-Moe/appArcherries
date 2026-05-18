@@ -2,7 +2,10 @@ import { apiCached } from "./client";
 
 export type StatsOverview = {
   trend: Array<{ id: number; date: string; discipline: string; bow_type: string; score: number }>;
+  /** Zonen-Verteilung für 3D-Disziplinen (inner_kill, outer_kill, wound, miss) */
   zone_distribution: Array<{ zone: string; count: number; pct: number }>;
+  /** Zonen-Verteilung für Scheiben-Disziplinen (Field-WA, target_practice — numerische Ringe 1..10/X) */
+  zone_distribution_target?: Array<{ zone: string; count: number; pct: number }>;
   arrow_consistency: Array<{ arrow_seq: number; avg: number; count: number }>;
   personal_bests: Array<{ discipline: string; bow_type: string; best: number }>;
   personal_bests_parcours: Array<{

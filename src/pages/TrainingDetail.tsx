@@ -221,6 +221,8 @@ function TrainingOverview({
   const [, setSearchParams] = useSearchParams();
   const [showInvite, setShowInvite] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [showAllInTable, setShowAllInTable] = useState(false);
   const isSimple = training.discipline === "simple";
   // Nur eigene Targets anzeigen — andere Participants haben ihre eigenen
   const myTargets = (training.targets ?? []).filter(
@@ -395,16 +397,55 @@ function TrainingOverview({
             );
           })()}
 
-          {/* Stations-Karten */}
-          <div className="space-y-2">
-            {myTargets.map((tgt) => (
-              <StationRow
-                key={tgt.id}
-                target={tgt}
-                onClick={() => setSearchParams({ station: String(tgt.target_index) })}
-              />
-            ))}
-          </div>
+          {/* View-Toggle: Karten / Tabelle */}
+          {myTargets.length > 0 && (
+            <div className="flex items-center gap-2 justify-between mb-2 flex-wrap">
+              <div className="inline-flex p-0.5 bg-surface rounded-lg">
+                <button
+                  onClick={() => setViewMode("cards")}
+                  className={`px-3 py-1 text-xs font-medium rounded ${viewMode === "cards" ? "bg-elevated text-primary" : "text-secondary"}`}
+                >
+                  Karten
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`px-3 py-1 text-xs font-medium rounded ${viewMode === "table" ? "bg-elevated text-primary" : "text-secondary"}`}
+                >
+                  Tabelle
+                </button>
+              </div>
+              {viewMode === "table" && (training.participants?.length ?? 0) > 1 && (
+                <label className="inline-flex items-center gap-1.5 text-xs text-secondary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showAllInTable}
+                    onChange={(e) => setShowAllInTable(e.target.checked)}
+                    className="accent-cherry-500"
+                  />
+                  Alle Teilnehmer
+                </label>
+              )}
+            </div>
+          )}
+
+          {viewMode === "cards" ? (
+            <div className="space-y-2">
+              {myTargets.map((tgt) => (
+                <StationRow
+                  key={tgt.id}
+                  target={tgt}
+                  onClick={() => setSearchParams({ station: String(tgt.target_index) })}
+                />
+              ))}
+            </div>
+          ) : (
+            <StationsTable
+              training={training}
+              myParticipantId={training.my_participant_id ?? null}
+              showAll={showAllInTable}
+              onPickStation={(idx) => setSearchParams({ station: String(idx) })}
+            />
+          )}
         </>
       )}
 
@@ -462,6 +503,116 @@ function computeForeignMarkers(training: Training, stationIndex: number, myPid: 
     }
   });
   return out;
+}
+
+/**
+ * Tabellen-Ansicht der Stations: Zeilen = Stationen, Spalten = Pfeile.
+ * Bei showAll: zusätzliche Spalten pro Mit-Spieler mit deren Gesamt-Score
+ * pro End. Klick auf eine Zeile öffnet die Station-Live-Eingabe.
+ */
+function StationsTable({
+  training,
+  myParticipantId,
+  showAll,
+  onPickStation,
+}: {
+  training: Training;
+  myParticipantId: number | null;
+  showAll: boolean;
+  onPickStation: (idx: number) => void;
+}) {
+  const allTargets = training.targets ?? [];
+  const allParticipants = (training.participants ?? []).filter((p) => p.role !== "viewer");
+  const me = allParticipants.find((p) => p.id === myParticipantId) ?? allParticipants[0];
+  const otherPlayers = allParticipants.filter((p) => p.id !== me?.id);
+
+  // Anzahl Pfeil-Spalten = max(arrows_per_end, observed shots)
+  const slotsPerStation = training.discipline === "target_practice" && training.arrows_per_end
+    ? training.arrows_per_end
+    : SLOTS_BY_DISCIPLINE[training.discipline];
+
+  // Sammle alle target_index, die im aktuellen Modus angezeigt werden sollen
+  const allIndexes = Array.from(new Set(
+    allTargets.filter((t) =>
+      showAll ? true : t.participant_id === me?.id || !t.participant_id
+    ).map((t) => t.target_index)
+  )).sort((a, b) => a - b);
+
+  const ownTargetByIdx = new Map<number, Target>();
+  allTargets.filter((t) => t.participant_id === me?.id).forEach((t) => ownTargetByIdx.set(t.target_index, t));
+
+  const sumShots = (t?: Target) =>
+    t ? t.shots.reduce((s, sh) => s + (sh.points ?? 0), 0) : null;
+
+  return (
+    <div className="card overflow-x-auto p-0">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="text-[10px] uppercase tracking-wider text-muted bg-surface">
+            <th className="text-left px-2 py-2 font-medium">#</th>
+            {Array.from({ length: slotsPerStation }, (_, i) => (
+              <th key={i} className="px-1.5 py-2 font-medium text-center">P{i + 1}</th>
+            ))}
+            <th className="px-2 py-2 font-medium text-right">{me?.is_self ? "Du" : me?.display_name ?? "—"}</th>
+            {showAll && otherPlayers.map((p) => (
+              <th key={p.id} className="px-2 py-2 font-medium text-right">
+                {p.is_self ? "Du" : p.display_name ?? "—"}
+                {p.user_role === "guest" && <span className="text-muted font-normal"> (Gast)</span>}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-hairline">
+          {allIndexes.map((idx) => {
+            const own = ownTargetByIdx.get(idx);
+            const ownTotal = sumShots(own);
+            return (
+              <tr
+                key={idx}
+                onClick={() => onPickStation(idx)}
+                className="cursor-pointer hover:bg-surface transition"
+              >
+                <td className="px-2 py-2 font-medium text-secondary">{idx}</td>
+                {Array.from({ length: slotsPerStation }, (_, i) => {
+                  const sh = own?.shots.find((s) => s.arrow_seq === i + 1);
+                  return (
+                    <td key={i} className="px-1.5 py-2 text-center font-mono tabular-nums">
+                      {sh ? (
+                        <span className={sh.points && sh.points > 0 ? "text-primary" : "text-muted"}>
+                          {sh.zone ?? "—"}
+                        </span>
+                      ) : (
+                        <span className="text-muted">·</span>
+                      )}
+                    </td>
+                  );
+                })}
+                <td className="px-2 py-2 text-right font-mono tabular-nums font-bold text-cherry-600 dark:text-cherry-400">
+                  {ownTotal ?? "·"}
+                </td>
+                {showAll && otherPlayers.map((p) => {
+                  const t = allTargets.find((tt) => tt.target_index === idx && tt.participant_id === p.id);
+                  const total = sumShots(t);
+                  return (
+                    <td key={p.id} className="px-2 py-2 text-right font-mono tabular-nums text-secondary">
+                      {total ?? "·"}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+          {allIndexes.length === 0 && (
+            <tr>
+              <td colSpan={slotsPerStation + 2} className="px-3 py-6 text-center text-secondary text-sm">
+                Noch keine Durchgänge erfasst.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function StartPlayerPicker({
@@ -575,13 +726,17 @@ function StationRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-wider text-forest-300">#{target.target_index}</span>
-          <span className="font-semibold truncate">{target.animal_or_face || "—"}</span>
+          {target.animal_or_face && (
+            <span className="font-semibold truncate">{target.animal_or_face}</span>
+          )}
         </div>
         <div className="flex flex-wrap gap-1 mt-1">
           {target.shots.map((s) => (
             <span key={s.arrow_seq} className="chip text-[10px] py-0.5">
               {s.zone ?? "—"}
-              <span className="text-forest-300">·{s.points}</span>
+              {s.zone && String(s.points) !== s.zone && (
+                <span className="text-forest-300">·{s.points}</span>
+              )}
             </span>
           ))}
         </div>

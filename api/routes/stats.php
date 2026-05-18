@@ -49,25 +49,35 @@ function stats_overview(int $user_id): void
         ];
     }, $stmt->fetchAll());
 
-    // Zonen-Verteilung
-    $stmt = db()->prepare(
-        "SELECT s.zone, COUNT(*) AS cnt
-         FROM shots s
-         JOIN training_targets tt ON tt.id = s.target_id
-         JOIN trainings t ON t.id = tt.training_id
-         WHERE $wsql AND s.zone IS NOT NULL AND s.zone != ''
-         GROUP BY s.zone ORDER BY cnt DESC"
-    );
-    $stmt->execute($args);
-    $rows = $stmt->fetchAll();
-    $total_shots = array_sum(array_map(fn ($r) => (int)$r['cnt'], $rows));
-    $zone_dist = array_map(function ($r) use ($total_shots) {
-        return [
-            'zone'  => $r['zone'],
-            'count' => (int)$r['cnt'],
-            'pct'   => $total_shots > 0 ? round((int)$r['cnt'] / $total_shots, 4) : 0,
-        ];
-    }, $rows);
+    // Zonen-Verteilung — getrennt nach Disziplin-Familie:
+    //  3d_*  → animal/IFAA-Zonen (inner_kill, outer_kill, wound, miss)
+    //  field_*, target_practice → numerische Ring-Zonen (10, 9, 8, …, X)
+    // Damit werden inkompatible Zonen-Werte nicht gemischt aggregiert.
+    $threeD_disciplines = "'3d_wa','3d_ifaa','3d_ifaa_hunter','3d_ifaa_animal','3d_bowhunter'";
+    $tgt_disciplines    = "'field_wa','field_ifaa','target_practice'";
+    $build_zone_dist = function (string $disc_in) use ($wsql, $args) {
+        $stmt = db()->prepare(
+            "SELECT s.zone, COUNT(*) AS cnt
+             FROM shots s
+             JOIN training_targets tt ON tt.id = s.target_id
+             JOIN trainings t ON t.id = tt.training_id
+             WHERE $wsql AND t.discipline IN ($disc_in)
+               AND s.zone IS NOT NULL AND s.zone != ''
+             GROUP BY s.zone ORDER BY cnt DESC"
+        );
+        $stmt->execute($args);
+        $rows = $stmt->fetchAll();
+        $total = array_sum(array_map(fn ($r) => (int)$r['cnt'], $rows));
+        return array_map(function ($r) use ($total) {
+            return [
+                'zone'  => $r['zone'],
+                'count' => (int)$r['cnt'],
+                'pct'   => $total > 0 ? round((int)$r['cnt'] / $total, 4) : 0,
+            ];
+        }, $rows);
+    };
+    $zone_dist        = $build_zone_dist($threeD_disciplines);   // Tier-Zonen (3D)
+    $zone_dist_target = $build_zone_dist($tgt_disciplines);      // Ring-Zonen (Scheibe)
 
     // Pfeil-Konsistenz (Ø pro arrow_seq)
     $stmt = db()->prepare(
@@ -130,7 +140,8 @@ function stats_overview(int $user_id): void
 
     res_json([
         'trend'                  => $trend,
-        'zone_distribution'      => $zone_dist,
+        'zone_distribution'        => $zone_dist,        // 3D-Disziplinen (Tier-Zonen)
+        'zone_distribution_target' => $zone_dist_target, // Scheiben-Disziplinen (Ringe)
         'arrow_consistency'      => $arrow_consistency,
         'personal_bests'         => $pbs,
         'personal_bests_parcours'=> $pbs_parcours,
