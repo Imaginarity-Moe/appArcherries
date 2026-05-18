@@ -185,6 +185,32 @@ function trainings_list(int $user_id): void
     $stmt->execute();
     $items = $stmt->fetchAll();
 
+    // Participants pro Training in einem zweiten Query holen (aggregiert)
+    $ids = array_column($items, 'id');
+    $participants_by_training = [];
+    if ($ids) {
+        $place = implode(',', array_fill(0, count($ids), '?'));
+        $ps = db()->prepare(
+            "SELECT tp.training_id, tp.user_id, tp.role, u.display_name, u.role AS user_role
+             FROM training_participants tp
+             JOIN users u ON u.id = tp.user_id
+             WHERE tp.training_id IN ($place)
+             ORDER BY tp.training_id, tp.role = 'owner' DESC, tp.joined_at ASC"
+        );
+        $ps->execute($ids);
+        foreach ($ps->fetchAll() as $p) {
+            $tid = (int)$p['training_id'];
+            $participants_by_training[$tid] ??= [];
+            $participants_by_training[$tid][] = [
+                'user_id'      => (int)$p['user_id'],
+                'role'         => $p['role'],
+                'user_role'    => $p['user_role'],
+                'display_name' => $p['display_name'],
+                'is_self'      => (int)$p['user_id'] === $user_id,
+            ];
+        }
+    }
+
     foreach ($items as &$it) {
         $it['id']            = (int)$it['id'];
         $it['owner_user_id'] = (int)$it['owner_user_id'];
@@ -197,6 +223,7 @@ function trainings_list(int $user_id): void
         } else {
             $it['total_score'] = (int)$it['summary_score'];
         }
+        $it['participants'] = $participants_by_training[(int)$it['id']] ?? [];
     }
     unset($it);
 

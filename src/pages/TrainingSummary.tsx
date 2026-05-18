@@ -180,6 +180,12 @@ export default function TrainingSummary() {
         </div>
       )}
 
+      {/* Treffer-Heatmap aller Teilnehmer (nur bei target_practice mit
+          x/y-Koordinaten und ≥1 Treffer) */}
+      {training && training.discipline === "target_practice" && (
+        <ParticipantsHeatmap training={training} />
+      )}
+
       {/* Highscore-Veröffentlichung — nur für Trainings auf einem Parcours mit Score > 0 */}
       {training && training.parcours_id && data.total_score > 0 && (
         <div className="card">
@@ -213,6 +219,78 @@ export default function TrainingSummary() {
           <BarChart3 size={16} /> {t("common:nav.stats")}
           <ArrowRight size={16} />
         </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Statische Heatmap: alle Pfeile aller Participants als farbcodierte Punkte
+ * auf einem WA-Auflage-SVG. Pro Spieler eine Farbe + Legende.
+ */
+const HEATMAP_COLORS = ["#C0464F", "#3F6D5E", "#3FA6C9", "#D4A547", "#7A5C8A", "#A85A47"];
+const HEATMAP_RING_COLORS = ["#D4A547", "#C0464F", "#3FA6C9", "#1F1F1F", "#F5F2EB"];
+function ParticipantsHeatmap({ training }: { training: Training }) {
+  const rings = training.target_rings ?? 10;
+  const participants = (training.participants ?? []).filter((p) => p.role !== "viewer");
+  const points: Array<{ x: number; y: number; color: string; player: string }> = [];
+  const totalsByPlayer = new Map<number, { total: number; count: number; color: string; name: string }>();
+  participants.forEach((p, idx) => {
+    const color = HEATMAP_COLORS[idx % HEATMAP_COLORS.length];
+    const name = p.is_self ? "Du" : (p.display_name ?? "—");
+    let total = 0, count = 0;
+    (training.targets ?? [])
+      .filter((t) => t.participant_id === p.id)
+      .forEach((t) => {
+        t.shots.forEach((sh) => {
+          if (sh.x_norm == null || sh.y_norm == null) return;
+          points.push({ x: sh.x_norm, y: sh.y_norm, color, player: name });
+          total += sh.points ?? 0;
+          count++;
+        });
+      });
+    if (count > 0) totalsByPlayer.set(p.id, { total, count, color, name });
+  });
+  if (points.length === 0) return null;
+
+  // SVG-Geometrie (viewBox 0..100, dieselbe wie TargetPad)
+  const VB = 100;
+  const CX = 50;
+  const CY = 50;
+  const OUTER_R = 47;
+  const ringWidth = OUTER_R / rings;
+
+  return (
+    <div className="card">
+      <h2 className="font-display text-lg font-semibold mb-3">Treffer-Heatmap (alle Spieler)</h2>
+      <div className="w-full max-w-md mx-auto">
+        <svg viewBox={`0 0 ${VB} ${VB}`} className="block w-full h-auto bg-surface rounded-xl">
+          <rect x="0" y="0" width={VB} height={VB} fill="rgba(0,0,0,0.04)" />
+          {Array.from({ length: rings }, (_, i) => {
+            const r = OUTER_R - i * ringWidth;
+            const ringIdxFromCenter = rings - 1 - i;
+            const pairIdx = Math.floor(ringIdxFromCenter / 2);
+            const fill = HEATMAP_RING_COLORS[Math.min(pairIdx, HEATMAP_RING_COLORS.length - 1)];
+            const isDark = fill === "#1F1F1F" || fill === "#C0464F";
+            return (
+              <circle key={i} cx={CX} cy={CY} r={r} fill={fill}
+                      stroke={isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.3)"} strokeWidth={0.2} />
+            );
+          })}
+          {points.map((pt, i) => (
+            <circle key={i} cx={pt.x * VB} cy={pt.y * VB} r={1.6}
+                    fill={pt.color} fillOpacity={0.75} stroke="white" strokeWidth={0.3} />
+          ))}
+        </svg>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-3 justify-center text-xs">
+        {Array.from(totalsByPlayer.values()).map((row, i) => (
+          <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: row.color }} />
+            <span className="font-medium">{row.name}</span>
+            <span className="text-muted">· {row.count} Pfeile · {row.total} Pkt</span>
+          </span>
+        ))}
       </div>
     </div>
   );

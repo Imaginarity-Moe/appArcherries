@@ -32,22 +32,31 @@ export default function SwipeableCard({ children, leftAction, rightAction, thres
   const [offset, setOffset] = useState(0);
   const startX = useRef<number | null>(null);
   const startOffset = useRef(0);
+  const captured = useRef(false);
+  // Threshold ab dem wir den Pointer einfangen — darunter ist's ein normaler Klick
+  const MOVE_LOCK = 8;
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // NICHT direkt setPointerCapture — sonst kommt der Link-Click drinnen
+    // nicht durch. Wir capturen erst beim ersten Move > MOVE_LOCK.
     startX.current = e.clientX;
     startOffset.current = offset;
+    captured.current = false;
   }
 
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
     if (startX.current === null) return;
     const dx = e.clientX - startX.current;
+    if (!captured.current && Math.abs(dx) > MOVE_LOCK) {
+      // Jetzt erst capturen — User swiped wirklich
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch {/* ignore */}
+      captured.current = true;
+    }
+    if (!captured.current) return; // unter Threshold → keine Card-Bewegung, Click bleibt möglich
     let next = startOffset.current + dx;
-    // Constrain je nach verfügbarer Action
     if (next < 0 && !leftAction) next = 0;
     if (next > 0 && !rightAction) next = 0;
-    // Etwas "elastisch": über 1.5×threshold dämpfen
     const max = threshold * 2;
     if (next > max) next = max + (next - max) * 0.2;
     if (next < -max) next = -max + (next + max) * 0.2;
@@ -57,12 +66,15 @@ export default function SwipeableCard({ children, leftAction, rightAction, thres
   function onPointerUp() {
     if (startX.current === null) return;
     startX.current = null;
+    if (!captured.current) {
+      // Kein Swipe — Klick darf durchgehen, kein State-Change
+      return;
+    }
+    captured.current = false;
     if (offset <= -threshold && leftAction) {
-      // Swipe nach links bestätigt
       setOffset(0);
       leftAction.onAction();
     } else if (offset >= threshold && rightAction) {
-      // Swipe nach rechts bestätigt
       setOffset(0);
       rightAction.onAction();
     } else {

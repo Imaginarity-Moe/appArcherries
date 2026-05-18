@@ -201,7 +201,7 @@ export default function Dashboard() {
                       loadTrainings();
                     },
                   }}
-                  rightAction={{
+                  rightAction={it.ended_at ? {
                     label: "Archivieren",
                     color: "#3F6D5E",
                     icon: <Archive size={18} strokeWidth={2} />,
@@ -215,7 +215,7 @@ export default function Dashboard() {
                       await setTrainingArchived(it.id, true);
                       loadTrainings();
                     },
-                  }}
+                  } : undefined}
                 >
                   <TrainingCard item={it} />
                 </SwipeableCard>
@@ -254,11 +254,27 @@ function GlimpseCard({
 }
 
 function TrainingCard({ item }: { item: TrainingListItem }) {
+  const isEnded = !!item.ended_at;
+  const participants = item.participants ?? [];
+  // Anzeige-Namen: "Du" für eigenen Eintrag, ansonsten display_name
+  const participantLabels = participants.map((p) =>
+    p.is_self ? "Du" : (p.display_name ?? "—") + (p.user_role === "guest" ? " (Gast)" : "")
+  );
   return (
     <Link to={`/trainings/${item.id}`} className="card-interactive flex items-center justify-between gap-4">
       <div className="min-w-0 flex-1">
-        <div className="text-xs text-forest-700 dark:text-forest-300 mb-0.5 flex items-center gap-2">
+        <div className="text-xs text-forest-700 dark:text-forest-300 mb-0.5 flex items-center gap-2 flex-wrap">
           <span>{fmtDate(item.started_at)}</span>
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold rounded-full px-1.5 py-0.5 ${
+              isEnded
+                ? "text-secondary bg-surface"
+                : "text-cherry-700 dark:text-cherry-300 bg-cherry-50 dark:bg-cherry-900/30"
+            }`}
+            title={isEnded ? "Training abgeschlossen" : "Training läuft noch"}
+          >
+            {isEnded ? "Beendet" : "Läuft"}
+          </span>
           {item.is_shared && (
             <span
               className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-copper-600 bg-copper-50 dark:bg-copper-700/20 rounded-full px-1.5 py-0.5"
@@ -271,6 +287,11 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
         <div className="font-semibold truncate">
           {DISCIPLINE_LABELS[item.discipline]} · {BOW_LABELS[item.bow_type]}
         </div>
+        {participantLabels.length > 1 && (
+          <div className="text-xs text-secondary truncate flex items-center gap-1 mt-0.5">
+            <Users size={11} strokeWidth={1.75} /> {participantLabels.join(", ")}
+          </div>
+        )}
         {item.location && (
           <div className="text-sm text-forest-700 dark:text-forest-300 truncate">
             📍 {item.location}
