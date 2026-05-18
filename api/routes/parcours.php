@@ -318,6 +318,12 @@ function parcours_serialize(array $row): array
     require_once __DIR__ . '/parcours_reviews.php';
     $agg = reviews_aggregate((int)$row['id']);
 
+    // Anzahl Bahnen, für die der Owner Detail-Datensätze (parcours_lanes-Tabelle)
+    // angelegt hat — unabhängig von lanes_count (= Gesamt-Soll).
+    $stmt = db()->prepare('SELECT COUNT(*) FROM parcours_lanes WHERE parcours_id = ?');
+    $stmt->execute([(int)$row['id']]);
+    $lanes_detailed = (int)$stmt->fetchColumn();
+
     return [
         'id'                => (int)$row['id'],
         'user_id'           => (int)$row['user_id'],
@@ -330,6 +336,7 @@ function parcours_serialize(array $row): array
         'image_url'         => parcours_image_url($row['image_path']),
         'is_public'         => (bool)$row['is_public'],
         'lanes_count'       => isset($row['lanes_count']) && $row['lanes_count'] !== null ? (int)$row['lanes_count'] : null,
+        'lanes_detailed_count' => $lanes_detailed,
         'price_info'        => $row['price_info']        ?? null,
         'opening_hours'     => $row['opening_hours']     ?? null,
         'website'           => $row['website']           ?? null,

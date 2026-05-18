@@ -193,7 +193,7 @@ export async function getTraining(id: number | string): Promise<{ training: Trai
 // WRITES
 // ============================================================
 
-export async function createTraining(body: Partial<Training>): Promise<{ training: Training }> {
+export async function createTraining(body: Partial<Training> & { start_lane?: number }): Promise<{ training: Training }> {
   if (navigator.onLine) {
     try {
       const r = await api<{ training: Training }>(`/trainings`, { method: "POST", body: JSON.stringify(body) });

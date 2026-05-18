@@ -13,6 +13,9 @@ export type Parcours = {
   is_public: boolean;
   // Stammdaten-Erweiterung (Sprint A)
   lanes_count: number | null;
+  /** Anzahl Bahnen, die der Owner mit Detail-Daten (animal, distances, foto)
+   *  über die Bahnen-Verwaltung erfasst hat. Aggregat aus parcours_lanes-Tabelle. */
+  lanes_detailed_count: number;
   price_info: string | null;
   opening_hours: string | null;
   website: string | null;

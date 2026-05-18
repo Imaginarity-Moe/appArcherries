@@ -62,6 +62,7 @@ export default function NewTraining() {
   const [pegColor, setPegColor] = useState<PegColor | "">("");
   const [distanceMode, setDistanceMode] = useState<"" | "marked" | "unmarked">("");
   const [parcoursId, setParcoursId] = useState<number | null>(null);
+  const [startLane, setStartLane] = useState<number>(1);
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -164,6 +165,7 @@ export default function NewTraining() {
         peg_color: is3d && pegColor ? (pegColor as PegColor) : null,
         distance_marked: distanceMode === "" ? null : distanceMode === "marked",
         parcours_id: parcoursId,
+        start_lane: parcoursId && startLane > 1 ? startLane : undefined,
         location: location || null,
         notes: notes || null,
       });
@@ -429,15 +431,44 @@ export default function NewTraining() {
                   <select
                     className="input"
                     value={parcoursId ?? ""}
-                    onChange={(e) => setParcoursId(e.target.value ? Number(e.target.value) : null)}
+                    onChange={(e) => {
+                      setParcoursId(e.target.value ? Number(e.target.value) : null);
+                      setStartLane(1);
+                    }}
                   >
                     <option value="">—</option>
                     {parcoursOptions.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
+                        {p.lanes_detailed_count > 0 ? ` (${p.lanes_detailed_count} Bahnen)` : ""}
                       </option>
                     ))}
                   </select>
+                  {/* Start-Bahn-Picker: nur bei Parcours mit detaillierten Bahnen */}
+                  {(() => {
+                    const selected = parcoursOptions.find((p) => p.id === parcoursId);
+                    if (!selected || selected.lanes_detailed_count <= 1) return null;
+                    const total = selected.lanes_detailed_count;
+                    return (
+                      <div className="mt-3">
+                        <label className="text-sm font-medium text-forest-700 dark:text-forest-300 mb-1 block">
+                          Startbahn (optional)
+                        </label>
+                        <select
+                          className="input"
+                          value={startLane}
+                          onChange={(e) => setStartLane(Number(e.target.value))}
+                        >
+                          {Array.from({ length: total }, (_, i) => i + 1).map((n) => (
+                            <option key={n} value={n}>Bahn {n}</option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-muted mt-1">
+                          Stationen werden ab dieser Bahn der Reihe nach vorbereitet.
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </>

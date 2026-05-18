@@ -145,6 +145,8 @@ export default function ParcoursEdit() {
         busy={busy}
         error={error}
         extraFields={imageBlock}
+        parcoursId={parcours.id}
+        lanesDetailedCount={parcours.lanes_detailed_count}
       />
     </div>
   );

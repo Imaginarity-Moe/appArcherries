@@ -267,6 +267,55 @@ function trainings_create(int $user_id): void
         db()->prepare(
             'INSERT INTO training_participants (training_id, user_id, role) VALUES (?, ?, ?)'
         )->execute([$id, $user_id, 'owner']);
+        $owner_participant_id = (int)db()->lastInsertId();
+
+        // Vorgenerierte Stations aus parcours_lanes — wenn Parcours Bahnen-Daten
+        // hat, werden alle als training_targets mit Tier+Distanz angelegt.
+        // start_lane (default 1) rotiert die Reihenfolge: start, start+1, ..., last, 1, ..., start-1.
+        if ($parcours_id !== null && $discipline !== 'simple') {
+            $start_lane = max(1, (int)($in['start_lane'] ?? 1));
+            $peg_for_distance = match ($peg_color) {
+                'blue'   => 'distance_blue',
+                'red'    => 'distance_red',
+                'yellow' => 'distance_yellow',
+                'white'  => 'distance_white',
+                default  => null,
+            };
+            $lane_cols = 'lane_number, animal_description';
+            if ($peg_for_distance) $lane_cols .= ", $peg_for_distance AS distance_for_peg";
+            $ls = db()->prepare(
+                "SELECT $lane_cols FROM parcours_lanes WHERE parcours_id = ? ORDER BY sort_order ASC, lane_number ASC"
+            );
+            $ls->execute([$parcours_id]);
+            $lanes = $ls->fetchAll();
+            if ($lanes) {
+                // Rotation: alle Bahnen ab start_lane, dann wrap-around
+                $rotated = [];
+                $rest    = [];
+                foreach ($lanes as $l) {
+                    if ((int)$l['lane_number'] >= $start_lane) $rotated[] = $l;
+                    else $rest[] = $l;
+                }
+                $rotated = array_merge($rotated, $rest);
+
+                $ti = db()->prepare(
+                    'INSERT INTO training_targets (training_id, participant_id, target_index, animal_or_face, distance_m)
+                     VALUES (?, ?, ?, ?, ?)'
+                );
+                foreach ($rotated as $idx => $l) {
+                    $dist = isset($l['distance_for_peg']) && $l['distance_for_peg'] !== null
+                        ? (int)$l['distance_for_peg']
+                        : null;
+                    $ti->execute([
+                        $id,
+                        $owner_participant_id,
+                        $idx + 1,
+                        $l['animal_description'] ?: null,
+                        $dist,
+                    ]);
+                }
+            }
+        }
 
         db()->commit();
     } catch (Throwable $e) {

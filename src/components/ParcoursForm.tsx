@@ -1,4 +1,5 @@
 import { FormEvent, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import { Icon, LatLng } from "leaflet";
 import { Star, X, Globe, Mail, Phone, Clock, Coins, Ruler, Calendar, Map as MapIcon } from "lucide-react";
@@ -121,9 +122,12 @@ type Props = {
   formId?: string;
   /** Optional: internen Submit-Button verstecken (wenn ein externer in der Footer-Nav existiert) */
   hideSubmitButton?: boolean;
+  /** Optional: Anzahl bereits detailliert erfasster Bahnen + Parcours-ID für den Link "Bahnen verwalten" */
+  lanesDetailedCount?: number;
+  parcoursId?: number;
 };
 
-export default function ParcoursForm({ state, setState, onSubmit, submitLabel, busy, error, extraFields, formId, hideSubmitButton }: Props) {
+export default function ParcoursForm({ state, setState, onSubmit, submitLabel, busy, error, extraFields, formId, hideSubmitButton, lanesDetailedCount, parcoursId }: Props) {
   const update = <K extends keyof ParcoursFormState>(k: K, v: ParcoursFormState[K]) =>
     setState({ ...state, [k]: v });
 
@@ -232,6 +236,15 @@ export default function ParcoursForm({ state, setState, onSubmit, submitLabel, b
               value={state.lanes_count}
               onChange={(e) => update("lanes_count", e.target.value)}
             />
+            {parcoursId && lanesDetailedCount !== undefined && (
+              <p className="text-xs text-muted mt-1.5">
+                {lanesDetailedCount} {state.lanes_count ? `von ${state.lanes_count} ` : ""}
+                {lanesDetailedCount === 1 ? "Bahn" : "Bahnen"} detailliert erfasst —{" "}
+                <Link to={`/parcours/${parcoursId}/lanes`} className="text-cherry-500 hover:underline">
+                  Bahnen verwalten
+                </Link>
+              </p>
+            )}
           </Field>
           <Field label="Geschätzte Dauer (Min)">
             <input
