@@ -45,7 +45,122 @@ function handle_arrows(string $method, string $path): void
         return;
     }
 
+    // /arrows/<id>/events  +  /arrows/<id>/events/<eventId>
+    if (preg_match('#^/(\d+)/events$#', $sub, $m)) {
+        $id = (int)$m[1];
+        match ($method) {
+            'GET'  => arrow_events_list($user['id'], $id),
+            'POST' => arrow_events_create($user['id'], $id),
+            default => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+    if (preg_match('#^/(\d+)/events/(\d+)$#', $sub, $m)) {
+        $arrow_id = (int)$m[1]; $event_id = (int)$m[2];
+        if ($method !== 'DELETE') res_error('Method not allowed', 405);
+        arrow_events_delete($user['id'], $arrow_id, $event_id);
+        return;
+    }
+
     res_error('Not found', 404);
+}
+
+// ─── Events ───────────────────────────────────────────────────────────────
+
+const ARROW_EVENT_KINDS = ['broken', 'lost', 'added', 'replaced'];
+
+function arrow_assert_own(int $user_id, int $arrow_id): void
+{
+    $s = db()->prepare('SELECT id FROM arrows WHERE id = ? AND user_id = ?');
+    $s->execute([$arrow_id, $user_id]);
+    if (!$s->fetch()) res_error('Not found', 404);
+}
+
+function arrow_events_list(int $user_id, int $arrow_id): void
+{
+    arrow_assert_own($user_id, $arrow_id);
+    $s = db()->prepare(
+        'SELECT id, kind, count, occurred_at, notes, created_at
+         FROM arrow_events WHERE arrow_id = ?
+         ORDER BY occurred_at DESC, id DESC'
+    );
+    $s->execute([$arrow_id]);
+    $rows = array_map(fn ($r) => [
+        'id'          => (int)$r['id'],
+        'kind'        => $r['kind'],
+        'count'       => (int)$r['count'],
+        'occurred_at' => $r['occurred_at'],
+        'notes'       => $r['notes'],
+        'created_at'  => $r['created_at'],
+    ], $s->fetchAll());
+    res_json(['events' => $rows]);
+}
+
+function arrow_events_create(int $user_id, int $arrow_id): void
+{
+    arrow_assert_own($user_id, $arrow_id);
+    $in = req_json();
+    $kind = (string)($in['kind'] ?? '');
+    if (!in_array($kind, ARROW_EVENT_KINDS, true)) res_error('Ungültiges kind');
+    $count = max(1, (int)($in['count'] ?? 1));
+    $when  = (string)($in['occurred_at'] ?? '');
+    if ($when !== '') {
+        $ts = strtotime($when);
+        $when = $ts === false ? date('Y-m-d') : date('Y-m-d', $ts);
+    } else {
+        $when = date('Y-m-d');
+    }
+    $notes = isset($in['notes']) && $in['notes'] !== '' ? (string)$in['notes'] : null;
+
+    db()->beginTransaction();
+    try {
+        db()->prepare(
+            'INSERT INTO arrow_events (arrow_id, kind, count, occurred_at, notes) VALUES (?, ?, ?, ?, ?)'
+        )->execute([$arrow_id, $kind, $count, $when, $notes]);
+
+        // Aggregate auf arrows aktualisieren — broken/lost erhöhen, added/replaced reduziert broken
+        if ($kind === 'broken') {
+            db()->prepare('UPDATE arrows SET count_broken = count_broken + ? WHERE id = ?')->execute([$count, $arrow_id]);
+        } elseif ($kind === 'lost') {
+            db()->prepare('UPDATE arrows SET count_lost = count_lost + ? WHERE id = ?')->execute([$count, $arrow_id]);
+        } elseif ($kind === 'added') {
+            db()->prepare('UPDATE arrows SET count_total = COALESCE(count_total, 0) + ? WHERE id = ?')->execute([$count, $arrow_id]);
+        } elseif ($kind === 'replaced') {
+            // Repariert: count_broken nach unten (min 0)
+            db()->prepare('UPDATE arrows SET count_broken = GREATEST(CAST(count_broken AS SIGNED) - ?, 0) WHERE id = ?')->execute([$count, $arrow_id]);
+        }
+        db()->commit();
+    } catch (Throwable $e) {
+        db()->rollBack();
+        throw $e;
+    }
+    arrow_events_list($user_id, $arrow_id);
+}
+
+function arrow_events_delete(int $user_id, int $arrow_id, int $event_id): void
+{
+    arrow_assert_own($user_id, $arrow_id);
+    // Aggregate zurückrechnen
+    $s = db()->prepare('SELECT kind, count FROM arrow_events WHERE id = ? AND arrow_id = ?');
+    $s->execute([$event_id, $arrow_id]);
+    $e = $s->fetch();
+    if (!$e) res_error('Not found', 404);
+
+    db()->beginTransaction();
+    try {
+        $c = (int)$e['count'];
+        if ($e['kind'] === 'broken')   db()->prepare('UPDATE arrows SET count_broken = GREATEST(CAST(count_broken AS SIGNED) - ?, 0) WHERE id = ?')->execute([$c, $arrow_id]);
+        elseif ($e['kind'] === 'lost') db()->prepare('UPDATE arrows SET count_lost   = GREATEST(CAST(count_lost   AS SIGNED) - ?, 0) WHERE id = ?')->execute([$c, $arrow_id]);
+        elseif ($e['kind'] === 'added') db()->prepare('UPDATE arrows SET count_total  = GREATEST(CAST(count_total  AS SIGNED) - ?, 0) WHERE id = ?')->execute([$c, $arrow_id]);
+        elseif ($e['kind'] === 'replaced') db()->prepare('UPDATE arrows SET count_broken = count_broken + ? WHERE id = ?')->execute([$c, $arrow_id]);
+
+        db()->prepare('DELETE FROM arrow_events WHERE id = ?')->execute([$event_id]);
+        db()->commit();
+    } catch (Throwable $e2) {
+        db()->rollBack();
+        throw $e2;
+    }
+    arrow_events_list($user_id, $arrow_id);
 }
 
 function arrows_list(int $user_id): void
@@ -191,7 +306,7 @@ function arrows_image_delete(int $user_id, int $id): void
 function arrow_writable_fields_with_values(array $in): array
 {
     $out = [];
-    $string_fields = ['manufacturer', 'model', 'spine', 'fletching_colors', 'nock_manufacturer', 'nock_color', 'tip_manufacturer', 'notes'];
+    $string_fields = ['manufacturer', 'model', 'spine', 'fletching_colors', 'nock_manufacturer', 'nock_color', 'tip_manufacturer', 'notes', 'purchase_url'];
     foreach ($string_fields as $f) {
         if (array_key_exists($f, $in)) {
             $v = $in[$f];
@@ -320,6 +435,7 @@ function arrow_serialize(array $r, bool $include_bows): array
         'count_lost'            => (int)$r['count_lost'],
         'purchased_at'          => $r['purchased_at'],
         'price_per_arrow_cents' => $r['price_per_arrow_cents'] !== null ? (int)$r['price_per_arrow_cents'] : null,
+        'purchase_url'          => $r['purchase_url'] ?? null,
         'notes'                 => $r['notes'],
         'image_path'            => $r['image_path'],
         'image_url'             => $r['image_path'] ?: null,

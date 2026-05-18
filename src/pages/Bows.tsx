@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Plus, Star, Crosshair } from "lucide-react";
+import { ArrowLeft, Plus, Star, Crosshair, Search, X } from "lucide-react";
 import { listBows, type Bow } from "../api/bows";
 import { BOW_LABELS } from "../api/trainings";
 import { usePageFooter } from "../components/FooterContext";
+import EquipmentTabs from "../components/EquipmentTabs";
+
+type SortKey = "default" | "name" | "updated";
 
 export default function Bows() {
   const [bows, setBows] = useState<Bow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortKey>("default");
 
   useEffect(() => {
     listBows()
@@ -15,22 +20,24 @@ export default function Bows() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Custom-Footer: Zurück + Neu (auf Mobile als Pill, auf Desktop als sticky Action-Bar)
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filteredList = q
+      ? bows.filter((b) =>
+          [b.name, BOW_LABELS[b.bow_type], b.notes ?? ""].some((s) => s.toLowerCase().includes(q))
+        )
+      : bows;
+    const sorted = [...filteredList];
+    if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sort === "updated") sorted.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    else sorted.sort((a, b) => (a.is_default === b.is_default ? a.name.localeCompare(b.name) : a.is_default ? -1 : 1));
+    return sorted;
+  }, [bows, query, sort]);
+
   const footerActions = useMemo(
     () => [
-      {
-        kind: "link" as const,
-        to: "/profile",
-        icon: <ArrowLeft size={20} strokeWidth={1.75} />,
-        label: "Zurück",
-      },
-      {
-        kind: "link" as const,
-        to: "/bows/new",
-        icon: <Plus size={20} strokeWidth={2} />,
-        label: "Neu",
-        primary: true,
-      },
+      { kind: "link" as const, to: "/profile", icon: <ArrowLeft size={20} strokeWidth={1.75} />, label: "Zurück" },
+      { kind: "link" as const, to: "/bows/new", icon: <Plus size={20} strokeWidth={2} />, label: "Neu", primary: true },
     ],
     []
   );
@@ -38,7 +45,37 @@ export default function Bows() {
 
   return (
     <div className="space-y-4 animate-fade-in max-w-2xl mx-auto">
-      <h1 className="display text-h2">Meine Bögen</h1>
+      <h1 className="display text-h2">Equipment</h1>
+      <EquipmentTabs />
+
+      {/* Suche + Sortierung */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search size={14} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Bogen suchen…"
+            className="input pl-9 pr-8 py-1.5 text-sm w-full"
+          />
+          {query && (
+            <button onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-primary" aria-label="Leeren">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortKey)}
+          className="input py-1.5 text-sm w-auto pr-8"
+          aria-label="Sortieren"
+        >
+          <option value="default">Standard zuerst</option>
+          <option value="name">Name A–Z</option>
+          <option value="updated">Zuletzt geändert</option>
+        </select>
+      </div>
 
       {loading && <p className="text-secondary">Lade…</p>}
 
@@ -55,19 +92,16 @@ export default function Bows() {
         </div>
       )}
 
+      {!loading && bows.length > 0 && filtered.length === 0 && (
+        <div className="card text-center py-6 text-sm text-secondary">Keine Treffer für „{query}"</div>
+      )}
+
       <ul className="space-y-2">
-        {bows.map((b) => (
+        {filtered.map((b) => (
           <li key={b.id}>
-            <Link
-              to={`/bows/${b.id}/edit`}
-              className="card-interactive flex items-center gap-3"
-            >
+            <Link to={`/bows/${b.id}/edit`} className="card-interactive flex items-center gap-3">
               {b.image_url ? (
-                <img
-                  src={b.image_url}
-                  alt=""
-                  className="w-16 h-16 rounded-xl object-cover shrink-0"
-                />
+                <img src={b.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-surface flex items-center justify-center shrink-0">
                   <Crosshair size={22} strokeWidth={1.5} className="text-muted" />
@@ -85,7 +119,8 @@ export default function Bows() {
                 <div className="text-sm text-secondary mt-0.5">
                   {BOW_LABELS[b.bow_type]}
                   {b.draw_weight_lbs !== null && ` · ${b.draw_weight_lbs} lbs`}
-                  {b.arrow_spine && ` · Pfeil ${b.arrow_spine}`}
+                  {b.length_inch != null && ` · ${b.length_inch}″`}
+                  {b.arrow_spine && ` · Spine ${b.arrow_spine}`}
                 </div>
                 {b.notes && (
                   <div className="text-xs text-muted mt-1 line-clamp-1">{b.notes}</div>

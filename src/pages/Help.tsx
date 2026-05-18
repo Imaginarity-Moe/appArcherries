@@ -27,6 +27,7 @@ import HelpBows from "./help/HelpBows";
 import HelpGlossary from "./help/HelpGlossary";
 import HelpApp from "./help/HelpApp";
 import HelpCommunity from "./help/HelpCommunity";
+import HelpEquipment from "./help/HelpEquipment";
 
 type Section = {
   key: string;
@@ -45,6 +46,7 @@ const SECTIONS: Section[] = [
   { key: "scoring",         icon: <Award size={18} strokeWidth={1.75} />,      keywords: "wertung punkte score vital wound kill miss treffer zone ring inner outer x bowhunter ifaa",                  content: <HelpScoring /> },
   { key: "pegs",            icon: <Compass size={18} strokeWidth={1.75} />,    keywords: "pflock peg blau rot gelb weiss farbe distanz markiert unmarkiert",                                            content: <HelpPegs /> },
   { key: "bows",            icon: <Crosshair size={18} strokeWidth={1.75} />,  keywords: "bogen recurve compound barebow longbow traditional jagd profil setup pfeilspine zuggewicht visiermarken",   content: <HelpBows /> },
+  { key: "equipment",       icon: <Crosshair size={18} strokeWidth={1.75} />,  keywords: "equipment pfeil arrow spine länge gpi befiederung nocke spitze grains shop nachkauf bestand defekt verloren history verlauf",  content: <HelpEquipment /> },
   { key: "glossary",        icon: <Languages size={18} strokeWidth={1.75} />,  keywords: "begriff glossary definition spot passe quiver release nocke fletching killzone vital wound",                content: <HelpGlossary /> },
   { key: "app",             icon: <Info size={18} strokeWidth={1.75} />,       keywords: "about app entwicklung feedback geplant hosting daten datenschutz roadmap version",                          content: <HelpApp /> },
 ];

@@ -63,6 +63,7 @@ export type Arrow = {
   count_lost: number;
   purchased_at: string | null;
   price_per_arrow_cents: number | null;
+  purchase_url: string | null;
 
   notes: string | null;
   image_path: string | null;
@@ -111,4 +112,39 @@ export async function uploadArrowImage(id: number, file: File): Promise<{ arrow:
 
 export async function deleteArrowImage(id: number): Promise<{ arrow: Arrow }> {
   return api(`/arrows/${id}/image`, { method: "DELETE" });
+}
+
+// ─── Events: Verlauf von Verlusten / Defekten / Nachkäufen ────────────────
+
+export type ArrowEventKind = "broken" | "lost" | "added" | "replaced";
+
+export type ArrowEvent = {
+  id: number;
+  kind: ArrowEventKind;
+  count: number;
+  occurred_at: string;
+  notes: string | null;
+  created_at: string;
+};
+
+export const EVENT_LABELS: Record<ArrowEventKind, string> = {
+  broken: "Defekt",
+  lost: "Verloren",
+  added: "Nachgekauft",
+  replaced: "Repariert / ersetzt",
+};
+
+export async function listArrowEvents(arrowId: number): Promise<{ events: ArrowEvent[] }> {
+  return api(`/arrows/${arrowId}/events`);
+}
+
+export async function createArrowEvent(
+  arrowId: number,
+  body: { kind: ArrowEventKind; count: number; occurred_at?: string; notes?: string | null }
+): Promise<{ events: ArrowEvent[] }> {
+  return api(`/arrows/${arrowId}/events`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function deleteArrowEvent(arrowId: number, eventId: number): Promise<{ events: ArrowEvent[] }> {
+  return api(`/arrows/${arrowId}/events/${eventId}`, { method: "DELETE" });
 }

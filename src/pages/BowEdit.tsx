@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, X, Check, Loader2, Star, Camera, Trash2 } from "lucide-react";
 import {
   createBow,
@@ -296,30 +296,55 @@ export default function BowEdit({ mode }: { mode: Mode }) {
         </Field>
 
         {/* Verknüpfte Pfeil-Sets */}
-        {allArrows.length > 0 && (
-          <div>
-            <label className="text-sm font-medium text-secondary mb-1.5 block">Genutzte Pfeil-Sets</label>
-            <div className="flex flex-wrap gap-2">
-              {allArrows.map((a) => {
-                const sel = arrowIds.has(a.id);
-                return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => toggleArrow(a.id)}
-                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition active:scale-95 ${
-                      sel
-                        ? "bg-cherry-500 text-cream shadow-cherry"
-                        : "bg-surface text-secondary hover:text-primary border border-hairline"
-                    }`}
-                  >
-                    {a.name}{a.spine && <span className="opacity-70"> · {a.spine}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <div>
+          <label className="text-sm font-medium text-secondary mb-1.5 block">Genutzte Pfeil-Sets</label>
+          {allArrows.length === 0 ? (
+            <p className="text-sm text-muted">
+              Du hast noch keine Pfeil-Sets angelegt.{" "}
+              <Link to="/arrows/new" className="text-cherry-600 dark:text-cherry-400 underline">
+                Jetzt anlegen →
+              </Link>
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {allArrows.map((a) => {
+                  const sel = arrowIds.has(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => toggleArrow(a.id)}
+                      className={`rounded-full px-3 py-1.5 text-sm font-medium transition active:scale-95 ${
+                        sel
+                          ? "bg-cherry-500 text-cream shadow-cherry"
+                          : "bg-surface text-secondary hover:text-primary border border-hairline"
+                      }`}
+                    >
+                      {a.name}{a.spine && <span className="opacity-70"> · {a.spine}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {arrowIds.size > 0 && (
+                <div className="pt-2 mt-2 border-t border-hairline">
+                  <div className="text-xs text-muted mb-1.5">Direkt zum Pfeil-Set springen:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allArrows.filter((a) => arrowIds.has(a.id)).map((a) => (
+                      <Link
+                        key={a.id}
+                        to={`/arrows/${a.id}/edit`}
+                        className="inline-flex items-center gap-1 text-xs text-cherry-600 dark:text-cherry-400 hover:underline"
+                      >
+                        {a.name} →
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         <label className="flex items-center gap-2.5 cursor-pointer">
           <input

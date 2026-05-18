@@ -1,14 +1,20 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, X, Check, Loader2, Star, Camera, Trash2 } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, X, Check, Loader2, Star, Camera, Trash2, ExternalLink, History, Plus } from "lucide-react";
 import {
   createArrow,
+  createArrowEvent,
   deleteArrow,
+  deleteArrowEvent,
   deleteArrowImage,
+  EVENT_LABELS,
   getArrow,
+  listArrowEvents,
   updateArrow,
   uploadArrowImage,
   type Arrow,
+  type ArrowEvent,
+  type ArrowEventKind,
   type ArrowMaterial,
   type FletchingType,
   type NockType,
@@ -69,9 +75,11 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
   const [countLost, setCountLost] = useState("");
   const [purchasedAt, setPurchasedAt] = useState("");
   const [pricePerArrow, setPricePerArrow] = useState(""); // Euro mit Komma
+  const [purchaseUrl, setPurchaseUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [bowIds, setBowIds] = useState<Set<number>>(new Set());
+  const [events, setEvents] = useState<ArrowEvent[]>([]);
 
   useEffect(() => {
     listBows().then((r) => setAllBows(r.bows)).catch(() => {});
@@ -105,13 +113,54 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
         setCountLost(a.count_lost.toString());
         setPurchasedAt(a.purchased_at ?? "");
         setPricePerArrow(a.price_per_arrow_cents != null ? (a.price_per_arrow_cents / 100).toFixed(2).replace(".", ",") : "");
+        setPurchaseUrl(a.purchase_url ?? "");
         setNotes(a.notes ?? "");
         setIsDefault(a.is_default);
         setBowIds(new Set((a.linked_bows ?? []).map((b) => b.id)));
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Konnte Pfeil-Set nicht laden"))
       .finally(() => setLoading(false));
+
+    // Events nachladen (nur Edit-Modus)
+    if (id) {
+      listArrowEvents(Number(id))
+        .then((r) => setEvents(r.events))
+        .catch(() => {});
+    }
   }, [mode, id]);
+
+  async function addEvent(kind: ArrowEventKind, count: number, when: string, notes: string) {
+    if (!arrow) return;
+    setBusy(true);
+    try {
+      const r = await createArrowEvent(arrow.id, { kind, count, occurred_at: when || undefined, notes: notes || null });
+      setEvents(r.events);
+      // Aggregate aktualisieren (Server hat die Counter geupdated)
+      const fresh = await getArrow(arrow.id);
+      setArrow(fresh.arrow);
+      setCountBroken(fresh.arrow.count_broken.toString());
+      setCountLost(fresh.arrow.count_lost.toString());
+      setCountTotal(fresh.arrow.count_total?.toString() ?? "");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeEvent(eventId: number) {
+    if (!arrow) return;
+    setBusy(true);
+    try {
+      const r = await deleteArrowEvent(arrow.id, eventId);
+      setEvents(r.events);
+      const fresh = await getArrow(arrow.id);
+      setArrow(fresh.arrow);
+      setCountBroken(fresh.arrow.count_broken.toString());
+      setCountLost(fresh.arrow.count_lost.toString());
+      setCountTotal(fresh.arrow.count_total?.toString() ?? "");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const footerActions = useMemo(() => {
     const actions: Array<
@@ -190,6 +239,7 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
         count_lost: countLost ? Number(countLost) : 0,
         purchased_at: purchasedAt || null,
         price_per_arrow_cents: priceCents(),
+        purchase_url: purchaseUrl || null,
         notes: notes || null,
         is_default: isDefault,
         bow_ids: [...bowIds],
@@ -426,7 +476,39 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
               <input inputMode="decimal" className="input" placeholder="z.B. 24,90" value={pricePerArrow} onChange={(e) => setPricePerArrow(e.target.value)} />
             </Field>
           </div>
+          <Field label="Shop-Link für Nachkauf">
+            <div className="flex items-stretch gap-2">
+              <input
+                type="url"
+                className="input flex-1"
+                placeholder="https://shop.example.com/easton-x10"
+                value={purchaseUrl}
+                onChange={(e) => setPurchaseUrl(e.target.value)}
+              />
+              {purchaseUrl && (
+                <a
+                  href={purchaseUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-secondary inline-flex items-center gap-1"
+                  aria-label="Shop öffnen"
+                >
+                  <ExternalLink size={14} strokeWidth={1.75} />
+                </a>
+              )}
+            </div>
+          </Field>
         </section>
+
+        {/* Ereignisse (nur im Edit-Modus) */}
+        {mode === "edit" && arrow && (
+          <ArrowEventsSection
+            events={events}
+            busy={busy}
+            onAdd={addEvent}
+            onRemove={removeEvent}
+          />
+        )}
 
         {/* Verknüpfte Bögen */}
         <section className="card space-y-2">
@@ -434,13 +516,32 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
           {allBows.length === 0 ? (
             <p className="text-sm text-muted">Du hast noch keine Bögen angelegt — leg im Bogen-Bereich zuerst einen an.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {allBows.map((b) => (
-                <ChipBtn key={b.id} active={bowIds.has(b.id)} onClick={() => toggleBow(b.id)}>
-                  {b.name} <span className="opacity-70">· {BOW_LABELS[b.bow_type]}</span>
-                </ChipBtn>
-              ))}
-            </div>
+            <>
+              <div className="flex flex-wrap gap-2">
+                {allBows.map((b) => (
+                  <ChipBtn key={b.id} active={bowIds.has(b.id)} onClick={() => toggleBow(b.id)}>
+                    {b.name} <span className="opacity-70">· {BOW_LABELS[b.bow_type]}</span>
+                  </ChipBtn>
+                ))}
+              </div>
+              {/* Direkt-Links zu den verknüpften Bögen */}
+              {bowIds.size > 0 && (
+                <div className="pt-2 border-t border-hairline">
+                  <div className="text-xs text-muted mb-1.5">Direkt zum Bogen springen:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allBows.filter((b) => bowIds.has(b.id)).map((b) => (
+                      <Link
+                        key={b.id}
+                        to={`/bows/${b.id}/edit`}
+                        className="inline-flex items-center gap-1 text-xs text-cherry-600 dark:text-cherry-400 hover:underline"
+                      >
+                        {b.name} →
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </section>
 
@@ -487,6 +588,106 @@ function ChipBtn({ active, onClick, children }: { active: boolean; onClick: () =
       {children}
     </button>
   );
+}
+
+function ArrowEventsSection({
+  events,
+  busy,
+  onAdd,
+  onRemove,
+}: {
+  events: ArrowEvent[];
+  busy: boolean;
+  onAdd: (kind: ArrowEventKind, count: number, when: string, notes: string) => Promise<void>;
+  onRemove: (id: number) => Promise<void>;
+}) {
+  const [kind, setKind] = useState<ArrowEventKind>("broken");
+  const [count, setCount] = useState("1");
+  const [when, setWhen] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const KINDS: ArrowEventKind[] = ["broken", "lost", "added", "replaced"];
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const n = Math.max(1, parseInt(count, 10) || 1);
+    await onAdd(kind, n, when, notes);
+    setCount("1");
+    setNotes("");
+    setWhen("");
+  }
+
+  return (
+    <section className="card space-y-3">
+      <h2 className="eyebrow flex items-center gap-1.5">
+        <History size={14} strokeWidth={1.75} /> Verlauf
+      </h2>
+
+      <form onSubmit={submit} className="space-y-2.5 pb-3 border-b border-hairline">
+        <div className="flex flex-wrap gap-1.5">
+          {KINDS.map((k) => (
+            <ChipBtn key={k} active={kind === k} onClick={() => setKind(k)}>
+              {EVENT_LABELS[k]}
+            </ChipBtn>
+          ))}
+        </div>
+        <div className="grid grid-cols-[80px_1fr] gap-2">
+          <input type="number" min={1} className="input" placeholder="1" value={count} onChange={(e) => setCount(e.target.value)} aria-label="Anzahl" />
+          <input type="date" className="input" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="Datum (optional, heute wenn leer)" />
+        </div>
+        <input className="input" placeholder={"Notiz (optional, z.B. „Wettkampf Hannover“)"} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <button type="submit" disabled={busy} className="btn-secondary text-sm inline-flex items-center gap-1.5">
+          <Plus size={14} strokeWidth={2} /> Ereignis erfassen
+        </button>
+      </form>
+
+      {events.length === 0 ? (
+        <p className="text-sm text-muted">Noch keine Ereignisse erfasst.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {events.map((ev) => (
+            <li key={ev.id} className="flex items-center gap-2 text-sm">
+              <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold ${kindBg(ev.kind)}`}>
+                {ev.count}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium">
+                  {EVENT_LABELS[ev.kind]}
+                  <span className="text-muted font-normal"> · {fmtDate(ev.occurred_at)}</span>
+                </div>
+                {ev.notes && <div className="text-xs text-muted truncate">{ev.notes}</div>}
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemove(ev.id)}
+                disabled={busy}
+                className="btn-icon"
+                aria-label="Ereignis entfernen"
+                title="Ereignis entfernen"
+              >
+                <X size={14} strokeWidth={1.75} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function kindBg(kind: ArrowEventKind): string {
+  switch (kind) {
+    case "broken":   return "bg-cherry-500/15 text-cherry-700 dark:text-cherry-300";
+    case "lost":     return "bg-amber-500/15 text-amber-700 dark:text-amber-300";
+    case "added":    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+    case "replaced": return "bg-sky-500/15 text-sky-700 dark:text-sky-300";
+  }
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 /** Drei-Zustand-Checkbox: null = nicht gesetzt, true / false. */
