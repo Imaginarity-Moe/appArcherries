@@ -435,6 +435,35 @@ function TrainingOverview({
  * Speichert starting_participant_id im Training. Rotation pro Leg passiert
  * dann im Live-Entry automatisch (siehe scoringParticipants useMemo).
  */
+/**
+ * Im collab-Mode: sammle die Pfeile aller ANDEREN Participants für die aktuelle
+ * Station und gib sie als foreignMarkers für das TargetPad zurück. Pro Spieler
+ * eine eindeutige Farbe + Initial-Label.
+ */
+const FOREIGN_COLORS = ["#3F6D5E", "#7A5C8A", "#D4A547", "#3FA6C9", "#A85A47", "#5C7AAA"];
+function computeForeignMarkers(training: Training, stationIndex: number, myPid: number | null) {
+  const out: { x: number; y: number; points: number; label: string; color: string }[] = [];
+  const participants = (training.participants ?? []).filter((p) => p.role !== "viewer" && p.id !== myPid);
+  participants.forEach((p, pIdx) => {
+    const t = (training.targets ?? []).find((tt) => tt.participant_id === p.id && tt.target_index === stationIndex);
+    if (!t) return;
+    const color = FOREIGN_COLORS[pIdx % FOREIGN_COLORS.length];
+    const label = (p.display_name ?? "?").slice(0, 1).toUpperCase();
+    for (const sh of t.shots) {
+      if (sh.x_norm == null || sh.y_norm == null) continue;
+      // DB-Werte sind 0..1 normalisiert; TargetPad rendert daraus selbst die viewBox-Position.
+      out.push({
+        x: sh.x_norm,
+        y: sh.y_norm,
+        points: sh.points ?? 0,
+        label,
+        color,
+      });
+    }
+  });
+  return out;
+}
+
 function StartPlayerPicker({
   training,
   onChange,
@@ -636,11 +665,15 @@ function StationLiveEntry({
   useEffect(() => {
     if (scoringForPid === null && myPid !== null) setScoringForPid(myPid);
   }, [myPid, scoringForPid]);
-  // Andere scoring-bare Participants (Owner darf für alle scoren — sonst nur self)
+  // Andere scoring-bare Participants. Im collab-Mode: jeder scort nur für sich.
+  // Im solo-Mode: Owner kann für alle scoren (mit Switcher), nicht-Owner nur self.
   const isOwner = !!training.is_owner;
-  const baseScoringParticipants = isOwner
-    ? allParticipants.filter((p) => p.role !== "viewer")
-    : allParticipants.filter((p) => p.id === myPid);
+  const isCollabMode = training.discipline === "target_practice" && training.shared_scoring_mode === "collab";
+  const baseScoringParticipants = isCollabMode
+    ? allParticipants.filter((p) => p.id === myPid)
+    : isOwner
+      ? allParticipants.filter((p) => p.role !== "viewer")
+      : allParticipants.filter((p) => p.id === myPid);
 
   // Start-Player-Rotation pro Leg/Set: bei target_practice mit Multi-Player
   // bestimmt starting_participant_id, wer Leg 1 startet. Leg N (1-indexed)
@@ -1041,6 +1074,7 @@ function StationLiveEntry({
               const nextZ = [...zonesPicked]; nextZ[s] = null; setZonesPicked(nextZ);
               const nextM = [...markers]; nextM[s] = null; setMarkers(nextM);
             }}
+            foreignMarkers={isCollabMode ? computeForeignMarkers(training, stationIndex, myPid) : undefined}
           />
           </div>
         ) : (

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+/** Marker-Koordinaten sind immer 0..1 (DB-Konvention). TargetPad skaliert intern auf viewBox. */
 type Marker = { x: number; y: number; points: number };
 
 type Props = {
@@ -14,6 +15,8 @@ type Props = {
   onMoveMarker: (slot: number, x: number, y: number, points: number) => void;
   onClearSlot: (slot: number) => void;
   disabled?: boolean;
+  /** Marker von anderen Spielern (collab-mode) — nur Anzeige, nicht editierbar */
+  foreignMarkers?: Array<{ x: number; y: number; points: number; label: string; color: string }>;
 };
 
 /**
@@ -43,7 +46,7 @@ function pointsForRadius(rings: number, r: number): number {
  * mit dem Finger wird der nächste Marker mitgezogen, mit OFFSET damit der
  * Finger den Treffpunkt nicht verdeckt.
  */
-export default function TargetPad({ rings, activeSlot, markers, onShot, onMoveMarker, disabled }: Props) {
+export default function TargetPad({ rings, activeSlot, markers, onShot, onMoveMarker, disabled, foreignMarkers }: Props) {
   // Drag-State
   const [magnifier, setMagnifier] = useState<{ x: number; y: number; slot: number } | null>(null);
   const [draft, setDraft] = useState<Marker | null>(null);
@@ -54,75 +57,87 @@ export default function TargetPad({ rings, activeSlot, markers, onShot, onMoveMa
   // Bei viewBox 100 entsprechen 8 Einheiten ca. 8% der Höhe = ~32px bei 400px Größe.
   const FINGER_OFFSET_Y = 10;
 
-  function relPos(clientX: number, clientY: number, svg: SVGSVGElement) {
+  /** Klick-Position in VIEWBOX-Einheiten (0..VB) — wird intern für Geometrie genutzt. */
+  function relPosVB(clientX: number, clientY: number, svg: SVGSVGElement) {
     const rect = svg.getBoundingClientRect();
     return {
       x: ((clientX - rect.left) / rect.width) * VB,
       y: ((clientY - rect.top) / rect.height) * VB,
     };
   }
+  /** Klick-Position normalisiert (0..1) — wird nach OUTSIDE rausgegeben. */
+  function relPosNorm(clientX: number, clientY: number, svg: SVGSVGElement) {
+    const rect = svg.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height,
+    };
+  }
 
-  function pickClosestSlot(x: number, y: number): number {
+  /** xNorm/yNorm sind 0..1, markers ebenfalls 0..1. */
+  function pickClosestSlot(xNorm: number, yNorm: number): number {
     let best = activeSlot;
     let bestDist = Infinity;
     markers.forEach((m, i) => {
       if (!m) return;
-      const d = Math.hypot(m.x - x, m.y - y);
+      const d = Math.hypot(m.x - xNorm, m.y - yNorm);
       if (d < bestDist) { bestDist = d; best = i; }
     });
-    return bestDist < 8 ? best : activeSlot; // 8 = 8% der Bildbreite
+    return bestDist < 0.08 ? best : activeSlot;
   }
 
   function handlePointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (disabled) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     longPressTimer.current = setTimeout(() => {
-      // Long-Press: in Drag-Modus wechseln
       longPressTimer.current = null;
       const svg = svgRef.current;
       if (!svg) return;
-      const { x, y } = relPos(e.clientX, e.clientY, svg);
-      const slot = pickClosestSlot(x, y);
-      // Marker initial an die "Treffpunkt"-Position, NICHT unter den Finger
-      const targetY = y - FINGER_OFFSET_Y;
-      const r = Math.hypot(x - CX, targetY - CY);
+      const norm = relPosNorm(e.clientX, e.clientY, svg);
+      const slot = pickClosestSlot(norm.x, norm.y);
+      // Target-Y mit Finger-Offset, in VIEWBOX-Einheiten umgerechnet
+      const finger = relPosVB(e.clientX, e.clientY, svg);
+      const targetVBY = finger.y - FINGER_OFFSET_Y;
+      const r = Math.hypot(finger.x - CX, targetVBY - CY);
       const points = pointsForRadius(rings, r);
-      setMagnifier({ x, y, slot });
-      setDraft({ x, y: targetY, points });
+      // magnifier/draft halten ebenfalls normalisierte 0..1-Werte
+      setMagnifier({ x: norm.x, y: norm.y, slot });
+      setDraft({ x: norm.x, y: targetVBY / VB, points });
     }, 350);
   }
 
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (disabled) return;
-    if (magnifier === null) return; // Long-Press noch nicht aktiv
+    if (magnifier === null) return;
     const svg = svgRef.current;
     if (!svg) return;
-    const { x, y } = relPos(e.clientX, e.clientY, svg);
-    const targetY = y - FINGER_OFFSET_Y;
-    const r = Math.hypot(x - CX, targetY - CY);
+    const norm = relPosNorm(e.clientX, e.clientY, svg);
+    const finger = relPosVB(e.clientX, e.clientY, svg);
+    const targetVBY = finger.y - FINGER_OFFSET_Y;
+    const r = Math.hypot(finger.x - CX, targetVBY - CY);
     const points = pointsForRadius(rings, r);
-    setMagnifier({ x, y, slot: magnifier.slot });
-    setDraft({ x, y: targetY, points });
+    setMagnifier({ x: norm.x, y: norm.y, slot: magnifier.slot });
+    setDraft({ x: norm.x, y: targetVBY / VB, points });
   }
 
   function handlePointerUp(e: React.PointerEvent<SVGSVGElement>) {
     if (disabled) return;
-    // Long-Press Mode: Marker übernehmen
     if (magnifier && draft) {
       onMoveMarker(magnifier.slot, draft.x, draft.y, draft.points);
       setMagnifier(null);
       setDraft(null);
       return;
     }
-    // Tap-Mode: normalen Schuss setzen
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
       const svg = svgRef.current;
       if (!svg) return;
-      const { x, y } = relPos(e.clientX, e.clientY, svg);
-      const points = pointsForRadius(rings, Math.hypot(x - CX, y - CY));
-      onShot(points, x, y);
+      const norm = relPosNorm(e.clientX, e.clientY, svg);
+      // VB-Distanz für pointsForRadius (CX/CY/OUTER_R sind in VB-Einheiten)
+      const r = Math.hypot(norm.x * VB - CX, norm.y * VB - CY);
+      const points = pointsForRadius(rings, r);
+      onShot(points, norm.x, norm.y);
     }
   }
 
@@ -156,7 +171,25 @@ export default function TargetPad({ rings, activeSlot, markers, onShot, onMoveMa
           onContextMenu={(e) => e.preventDefault()}
         >
           <TargetRings rings={rings} />
-          {/* Bestehende Marker (während Drag: getrackter durch draft ersetzt) */}
+          {/* Marker anderer Spieler (collab-mode): farbcodiert, kleiner, nicht editierbar.
+              fm.x/y sind 0..1 normalisiert. */}
+          {foreignMarkers?.map((fm, i) => (
+            <g key={`f-${i}`} style={{ pointerEvents: "none" }}>
+              <circle cx={fm.x * VB} cy={fm.y * VB} r={2} fill={fm.color} stroke="white" strokeWidth={0.4} fillOpacity={0.7} />
+              <text
+                x={fm.x * VB}
+                y={fm.y * VB + 0.8}
+                textAnchor="middle"
+                fontSize={2.2}
+                fontWeight="bold"
+                fill="white"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+              >
+                {fm.label}
+              </text>
+            </g>
+          ))}
+          {/* Eigene Marker (während Drag: getrackter durch draft ersetzt) */}
           {markers.map((m, i) => {
             const display = magnifier?.slot === i && draft ? draft : m;
             if (!display) return null;
@@ -230,19 +263,22 @@ function TargetRings({ rings }: { rings: number }) {
 }
 
 function ArrowMarker({ index, marker, active }: { index: number; marker: Marker; active: boolean }) {
+  // marker.x/y sind 0..1 normalisiert → in viewBox-Einheiten skalieren
+  const cx = marker.x * VB;
+  const cy = marker.y * VB;
   return (
     <g style={{ pointerEvents: "none" }}>
       <circle
-        cx={marker.x}
-        cy={marker.y}
+        cx={cx}
+        cy={cy}
         r={2.4}
         fill={MARKER_COLORS[index % MARKER_COLORS.length]}
         stroke="white"
         strokeWidth={active ? 0.7 : 0.4}
       />
       <text
-        x={marker.x}
-        y={marker.y + 1}
+        x={cx}
+        y={cy + 1}
         textAnchor="middle"
         fontSize={2.8}
         fontWeight="bold"
@@ -264,35 +300,36 @@ function Magnifier({
   rings, centerX, centerY, target, fingerOffsetY, markerIndex,
 }: {
   rings: number;
-  centerX: number;     // Position des Fingers
+  centerX: number;     // 0..1 normalisiert (Finger-Position)
   centerY: number;
-  target: Marker;      // Treffpunkt (Finger - offset)
-  fingerOffsetY: number;
+  target: Marker;      // 0..1 normalisiert (Treffpunkt = Finger - offset)
+  fingerOffsetY: number; // in viewBox-Einheiten
   markerIndex: number;
 }) {
-  const RADIUS = 14;          // Lupe-Radius in viewBox-Einheiten
-  const ZOOM = 3.5;           // Faktor
-  // Position der Lupe: über dem Finger (= centerY - offset - radius - kleiner Abstand)
-  const lupeCX = centerX;
-  const lupeCY = centerY - fingerOffsetY - RADIUS - 2;
-  // Aber wenn Lupe oben aus dem Bild wäre → unter den Finger setzen
-  const finalCY = lupeCY - RADIUS < 0 ? centerY + fingerOffsetY + RADIUS + 2 : lupeCY;
+  const RADIUS = 14;
+  const ZOOM = 3.5;
+  // In viewBox-Koordinaten umrechnen (markers + Finger sind normalisiert)
+  const fingerVBX = centerX * VB;
+  const fingerVBY = centerY * VB;
+  const targetVBX = target.x * VB;
+  const targetVBY = target.y * VB;
+
+  const lupeCX = fingerVBX;
+  const lupeCY = fingerVBY - fingerOffsetY - RADIUS - 2;
+  const finalCY = lupeCY - RADIUS < 0 ? fingerVBY + fingerOffsetY + RADIUS + 2 : lupeCY;
 
   const ringWidth = OUTER_R / rings;
 
   return (
     <g>
-      {/* Schatten-Hintergrund */}
       <circle cx={lupeCX} cy={finalCY} r={RADIUS + 0.8} fill="rgba(0,0,0,0.4)" />
-      {/* Clip-Path für die Lupe */}
       <defs>
         <clipPath id="lupe-clip">
           <circle cx={lupeCX} cy={finalCY} r={RADIUS} />
         </clipPath>
       </defs>
       <g clipPath="url(#lupe-clip)">
-        {/* Vergrößerter Ausschnitt: transform um target.x/y, zoom-faktor */}
-        <g transform={`translate(${lupeCX} ${finalCY}) scale(${ZOOM}) translate(${-target.x} ${-target.y})`}>
+        <g transform={`translate(${lupeCX} ${finalCY}) scale(${ZOOM}) translate(${-targetVBX} ${-targetVBY})`}>
           <rect x="0" y="0" width={VB} height={VB} fill="rgba(0,0,0,0.04)" />
           {Array.from({ length: rings }, (_, i) => {
             const r = OUTER_R - i * ringWidth;
@@ -301,15 +338,12 @@ function Magnifier({
             const fill = RING_COLOR_PAIRS[Math.min(pairIdx, RING_COLOR_PAIRS.length - 1)];
             return <circle key={i} cx={CX} cy={CY} r={r} fill={fill} stroke="rgba(0,0,0,0.3)" strokeWidth={0.2} />;
           })}
-          {/* Marker-Vorschau: Kreuz/Punkt am Treffpunkt */}
-          <circle cx={target.x} cy={target.y} r={1.5} fill={MARKER_COLORS[markerIndex % MARKER_COLORS.length]} stroke="white" strokeWidth={0.4} />
-          <line x1={target.x - 3} y1={target.y} x2={target.x + 3} y2={target.y} stroke="white" strokeWidth={0.3} />
-          <line x1={target.x} y1={target.y - 3} x2={target.x} y2={target.y + 3} stroke="white" strokeWidth={0.3} />
+          <circle cx={targetVBX} cy={targetVBY} r={1.5} fill={MARKER_COLORS[markerIndex % MARKER_COLORS.length]} stroke="white" strokeWidth={0.4} />
+          <line x1={targetVBX - 3} y1={targetVBY} x2={targetVBX + 3} y2={targetVBY} stroke="white" strokeWidth={0.3} />
+          <line x1={targetVBX} y1={targetVBY - 3} x2={targetVBX} y2={targetVBY + 3} stroke="white" strokeWidth={0.3} />
         </g>
       </g>
-      {/* Lupe-Ring */}
       <circle cx={lupeCX} cy={finalCY} r={RADIUS} fill="none" stroke="white" strokeWidth={0.6} />
-      {/* Punkte-Badge */}
       <rect x={lupeCX - 7} y={finalCY - RADIUS - 5} width="14" height="4.5" rx="1" fill="rgba(0,0,0,0.8)" />
       <text x={lupeCX} y={finalCY - RADIUS - 1.5} textAnchor="middle" fontSize="3.2" fontWeight="bold" fill="white"
             style={{ fontFamily: "JetBrains Mono, monospace" }}>

@@ -76,6 +76,7 @@ export default function NewTraining() {
   const [tpScoringMode, setTpScoringMode] = useState<"points" | "legs" | "sets">("points");
   const [tpLegsToWin, setTpLegsToWin] = useState<string>("3");
   const [tpSetsToWin, setTpSetsToWin] = useState<string>("2");
+  const [tpSharedMode, setTpSharedMode] = useState<"solo" | "collab">("solo");
 
   // Hilfsfunktion: clamped Number aus String, fallback bei leer
   const clampInt = (v: string, min: number, max: number, fallback: number) => {
@@ -213,6 +214,7 @@ export default function NewTraining() {
           scoring_mode: tpScoringMode,
           ...(tpScoringMode !== "points" ? { legs_to_win: clampInt(tpLegsToWin, 1, 20, 3) } : {}),
           ...(tpScoringMode === "sets"   ? { sets_to_win: clampInt(tpSetsToWin, 1, 10, 2) } : {}),
+          shared_scoring_mode: tpSharedMode,
         } : {}),
       });
       nav(`/trainings/${r.training.id}`);
@@ -455,6 +457,30 @@ export default function NewTraining() {
                   )}
                 </div>
               )}
+              <div>
+                <label className="text-xs text-secondary mb-1.5 block">Eingabe bei Multi-Player</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["solo", "collab"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setTpSharedMode(m)}
+                      className={`py-2 rounded-lg text-xs font-medium tap-target transition ${
+                        tpSharedMode === m
+                          ? "bg-cherry-500 text-cream"
+                          : "bg-surface text-secondary border border-hairline"
+                      }`}
+                    >
+                      {m === "solo" ? "Einer scort (Wechsel)" : "Jeder scort selbst"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted mt-1.5">
+                  {tpSharedMode === "solo"
+                    ? "Owner scort für alle Spieler — Reihenfolge wechselt pro Leg."
+                    : "Jeder Spieler scort am eigenen Handy. Alle sehen die Marker aller Schützen live."}
+                </p>
+              </div>
               <p className="text-xs text-muted">
                 Multi-Player über Freund hinzufügen oder QR-Code im Training-Detail.
               </p>

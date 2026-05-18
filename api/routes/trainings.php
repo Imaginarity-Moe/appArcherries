@@ -255,6 +255,7 @@ function trainings_create(int $user_id): void
     $tp_scoring_mode   = null;
     $tp_legs_to_win    = null;
     $tp_sets_to_win    = null;
+    $tp_shared_mode    = 'solo';
     if ($discipline === 'target_practice') {
         $tp_arrows_per_end = max(1, min(20, (int)($in['arrows_per_end'] ?? 3)));
         $tp_num_ends       = max(1, min(50, (int)($in['num_ends'] ?? 10)));
@@ -270,6 +271,8 @@ function trainings_create(int $user_id): void
             $tp_legs_to_win = max(1, min(20, (int)($in['legs_to_win'] ?? 3)));
             $tp_sets_to_win = max(1, min(10, (int)($in['sets_to_win'] ?? 2)));
         }
+        $ssm = (string)($in['shared_scoring_mode'] ?? 'solo');
+        $tp_shared_mode = in_array($ssm, ['solo','collab'], true) ? $ssm : 'solo';
     }
 
     db()->beginTransaction();
@@ -279,8 +282,8 @@ function trainings_create(int $user_id): void
                (user_id, parcours_id, started_at, discipline, nfaa_mode, bow_type, bow_id,
                 peg_color, distance_marked, location, weather, notes, summary_score,
                 arrows_per_end, num_ends, target_distance_m, target_rings, scoring_mode,
-                legs_to_win, sets_to_win)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                legs_to_win, sets_to_win, shared_scoring_mode)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $user_id,
@@ -303,6 +306,7 @@ function trainings_create(int $user_id): void
             $tp_scoring_mode,
             $tp_legs_to_win,
             $tp_sets_to_win,
+            $tp_shared_mode,
         ]);
         $id = (int)db()->lastInsertId();
 

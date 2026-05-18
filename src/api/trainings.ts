@@ -85,6 +85,8 @@ export type Training = {
   sets_to_win?: number | null;
   /** Multi-Player: training_participant_id, der Leg 1 eröffnet. Rotation pro Leg. */
   starting_participant_id?: number | null;
+  /** 'solo' = nur Owner scort für alle (Rotation), 'collab' = jeder am eigenen Gerät */
+  shared_scoring_mode?: "solo" | "collab" | null;
   targets?: Target[];
   participants?: Participant[];
   is_owner?: boolean;
@@ -226,6 +228,7 @@ export async function createTraining(body: Partial<Training> & {
   scoring_mode?: ScoringMode;
   legs_to_win?: number;
   sets_to_win?: number;
+  shared_scoring_mode?: "solo" | "collab";
 }): Promise<{ training: Training }> {
   if (navigator.onLine) {
     try {
