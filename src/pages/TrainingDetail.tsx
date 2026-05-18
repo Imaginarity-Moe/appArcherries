@@ -16,6 +16,8 @@ import {
   type Training,
 } from "../api/trainings";
 import BullseyePad from "../components/BullseyePad";
+import AnimalTargetPad from "../components/AnimalTargetPad";
+import { matchAnimalTarget } from "../components/animalTargets";
 import ParticipantsBar from "../components/ParticipantsBar";
 import StationPhoto from "../components/StationPhoto";
 import PhotoMarkers from "../components/PhotoMarkers";
@@ -753,13 +755,32 @@ function StationLiveEntry({
           })}
         </div>
 
-        {/* Bullseye-Pad */}
-        <BullseyePad
-          discipline={training.discipline}
-          selectedZone={zonesPicked[activeSlot] ?? null}
-          onZoneSelect={(code, pos) => handleZoneSelect(code, pos)}
-          disabled={firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx}
-        />
+        {/* Animal-Target (Tier-Silhouette) wenn animal_or_face einem bekannten Tier
+            entspricht, sonst Standard-BullseyePad mit Ringen. */}
+        {(() => {
+          const animalTarget = matchAnimalTarget(animal);
+          const disabled = firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx;
+          if (animalTarget) {
+            return (
+              <AnimalTargetPad
+                target={animalTarget}
+                selectedZone={zonesPicked[activeSlot] ?? null}
+                onZoneSelect={(code, pos) => handleZoneSelect(code, pos)}
+                disabled={disabled}
+                markers={markers}
+                activeSlot={activeSlot}
+              />
+            );
+          }
+          return (
+            <BullseyePad
+              discipline={training.discipline}
+              selectedZone={zonesPicked[activeSlot] ?? null}
+              onZoneSelect={(code, pos) => handleZoneSelect(code, pos)}
+              disabled={disabled}
+            />
+          );
+        })()}
 
         {/* Aktionen: Speichern + (optional) Vorherige */}
         <div className="flex items-center gap-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
