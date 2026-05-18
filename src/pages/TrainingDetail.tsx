@@ -239,11 +239,12 @@ function TrainingOverview({
       { kind: "link", to: "/", icon: <ArrowLeft size={20} strokeWidth={1.75} />, label: "Zurück" },
     ];
     if (isOpen && !isSimple) {
+      const firstStation = myTargets.length === 0;
       actions.push({
         kind: "button",
         onClick: () => setSearchParams({ station: String(nextIndex) }),
         icon: <Plus size={20} strokeWidth={2} />,
-        label: `Station ${nextIndex}`,
+        label: firstStation ? "Starten" : `Station ${nextIndex}`,
         primary: true,
       });
     }
@@ -366,7 +367,9 @@ function TrainingOverview({
               onClick={() => setSearchParams({ station: String(nextIndex) })}
               className="btn w-full tap-large"
             >
-              {t("training:detail.add_station", { n: nextIndex })}
+              {myTargets.length === 0
+                ? "Training starten"
+                : t("training:detail.add_station", { n: nextIndex })}
             </button>
           )}
 
@@ -593,6 +596,30 @@ function StationLiveEntry({
   const [busy, setBusy] = useState(false);
   const [showStationGrid, setShowStationGrid] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+
+  // KEY-FIX: Wenn stationIndex wechselt (Speichern&Weiter), Form-State auf das
+  // existing-Target der neuen Station zurücksetzen. Sonst behält die Component
+  // die Pfeile vom vorigen End.
+  useEffect(() => {
+    setAnimal(existing?.animal_or_face ?? "");
+    setDistance(existing?.distance_m?.toString() ?? "");
+    setActiveSlot(0);
+    const zArr: (string | null)[] = Array(slots).fill(null);
+    const mArr: ({ x: number; y: number } | null)[] = Array(slots).fill(null);
+    if (existing) {
+      for (const s of existing.shots) {
+        if (s.arrow_seq >= 1 && s.arrow_seq <= slots) {
+          zArr[s.arrow_seq - 1] = s.zone;
+          if (s.x_norm != null && s.y_norm != null) {
+            mArr[s.arrow_seq - 1] = { x: s.x_norm, y: s.y_norm };
+          }
+        }
+      }
+    }
+    setZonesPicked(zArr);
+    setMarkers(mArr);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stationIndex, existing?.id, slots]);
 
   // Beim Pfeil-Tap: nächsten leeren Slot aktivieren
   function handleZoneSelect(code: string) {

@@ -67,14 +67,22 @@ export default function NewTraining() {
   const [startLane, setStartLane] = useState<number>(1);
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
-  // target_practice-Konfiguration
-  const [tpArrowsPerEnd, setTpArrowsPerEnd] = useState<number>(3);
-  const [tpNumEnds, setTpNumEnds] = useState<number>(10);
-  const [tpDistance, setTpDistance] = useState<number>(18);
-  const [tpRings, setTpRings] = useState<number>(10);
+  // target_practice-Konfiguration — als String gehalten, damit der User das Feld
+  // löschen und neu eingeben kann (Number-state mit Clamp schluckt leere Eingaben).
+  const [tpArrowsPerEnd, setTpArrowsPerEnd] = useState<string>("3");
+  const [tpNumEnds, setTpNumEnds] = useState<string>("10");
+  const [tpDistance, setTpDistance] = useState<string>("18");
+  const [tpRings, setTpRings] = useState<string>("10");
   const [tpScoringMode, setTpScoringMode] = useState<"points" | "legs" | "sets">("points");
-  const [tpLegsToWin, setTpLegsToWin] = useState<number>(3);
-  const [tpSetsToWin, setTpSetsToWin] = useState<number>(2);
+  const [tpLegsToWin, setTpLegsToWin] = useState<string>("3");
+  const [tpSetsToWin, setTpSetsToWin] = useState<string>("2");
+
+  // Hilfsfunktion: clamped Number aus String, fallback bei leer
+  const clampInt = (v: string, min: number, max: number, fallback: number) => {
+    const n = parseInt(v, 10);
+    if (Number.isNaN(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parcoursOptions, setParcoursOptions] = useState<Parcours[]>([]);
@@ -153,10 +161,27 @@ export default function NewTraining() {
     return [...fav, ...rest];
   }, [favDisciplines]);
 
-  // Während des Wizards die globale Bottom-Nav verstecken — der +-FAB würde
-  // sonst einen NEUEN Wizard starten und der User Home/Stats/Parcours/Help
-  // beim halb-ausgefüllten Wizard verwirrend wegschicken.
-  usePageFooter([]);
+  // Step-spezifische Footer-Actions (Zurück+Weiter immer sichtbar, auch bei langer Form).
+  // Submit von Step 3 läuft über submit() — das passiert via Action-Button hier.
+  const footerActions = useMemo(() => {
+    if (step === 1) {
+      return [
+        { kind: "button" as const, icon: <ArrowLeft size={20} strokeWidth={1.75} />, label: "Abbrechen", onClick: () => nav("/") },
+        { kind: "button" as const, icon: <ArrowRight size={20} strokeWidth={2} />, label: "Weiter", primary: true, onClick: () => setStep(2) },
+      ];
+    }
+    if (step === 2) {
+      return [
+        { kind: "button" as const, icon: <ArrowLeft size={20} strokeWidth={1.75} />, label: "Zurück", onClick: () => setStep(1) },
+        { kind: "button" as const, icon: <ArrowRight size={20} strokeWidth={2} />, label: "Weiter", primary: true, onClick: () => setStep(3) },
+      ];
+    }
+    return [
+      { kind: "button" as const, icon: <ArrowLeft size={20} strokeWidth={1.75} />, label: "Zurück", onClick: () => setStep(2) },
+      { kind: "button" as const, icon: <Check size={20} strokeWidth={2} />, label: busy ? "Speichere…" : "Starten", primary: true, onClick: () => submit() },
+    ];
+  }, [step, busy]);
+  usePageFooter(footerActions);
 
   function pickBow(b: Bow) {
     setSelectedBowId(b.id);
@@ -181,13 +206,13 @@ export default function NewTraining() {
         notes: notes || null,
         // target_practice-Felder (Backend ignoriert sie bei anderen Disziplinen)
         ...(isTargetPractice ? {
-          arrows_per_end: tpArrowsPerEnd,
-          num_ends: tpNumEnds,
-          target_distance_m: tpDistance,
-          target_rings: tpRings,
+          arrows_per_end:    clampInt(tpArrowsPerEnd, 1, 20, 3),
+          num_ends:          clampInt(tpNumEnds, 1, 50, 10),
+          target_distance_m: clampInt(tpDistance, 1, 200, 18),
+          target_rings:      clampInt(tpRings, 3, 12, 10),
           scoring_mode: tpScoringMode,
-          ...(tpScoringMode !== "points" ? { legs_to_win: tpLegsToWin } : {}),
-          ...(tpScoringMode === "sets"   ? { sets_to_win: tpSetsToWin } : {}),
+          ...(tpScoringMode !== "points" ? { legs_to_win: clampInt(tpLegsToWin, 1, 20, 3) } : {}),
+          ...(tpScoringMode === "sets"   ? { sets_to_win: clampInt(tpSetsToWin, 1, 10, 2) } : {}),
         } : {}),
       });
       nav(`/trainings/${r.training.id}`);
@@ -376,23 +401,23 @@ export default function NewTraining() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-secondary mb-1 block">Pfeile pro Durchgang</label>
-                  <input type="number" min={1} max={20} className="input" value={tpArrowsPerEnd}
-                    onChange={(e) => setTpArrowsPerEnd(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} />
+                  <input type="number" inputMode="numeric" min={1} max={20} className="input"
+                    value={tpArrowsPerEnd} onChange={(e) => setTpArrowsPerEnd(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-xs text-secondary mb-1 block">Anzahl Durchgänge</label>
-                  <input type="number" min={1} max={50} className="input" value={tpNumEnds}
-                    onChange={(e) => setTpNumEnds(Math.max(1, Math.min(50, Number(e.target.value) || 1)))} />
+                  <input type="number" inputMode="numeric" min={1} max={50} className="input"
+                    value={tpNumEnds} onChange={(e) => setTpNumEnds(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-xs text-secondary mb-1 block">Distanz (m)</label>
-                  <input type="number" min={1} max={200} className="input" value={tpDistance}
-                    onChange={(e) => setTpDistance(Math.max(1, Math.min(200, Number(e.target.value) || 1)))} />
+                  <input type="number" inputMode="numeric" min={1} max={200} className="input"
+                    value={tpDistance} onChange={(e) => setTpDistance(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-xs text-secondary mb-1 block">Ringe der Scheibe</label>
-                  <input type="number" min={3} max={12} className="input" value={tpRings}
-                    onChange={(e) => setTpRings(Math.max(3, Math.min(12, Number(e.target.value) || 10)))} />
+                  <input type="number" inputMode="numeric" min={3} max={12} className="input"
+                    value={tpRings} onChange={(e) => setTpRings(e.target.value)} />
                 </div>
               </div>
               <div>
@@ -418,14 +443,14 @@ export default function NewTraining() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-secondary mb-1 block">Legs zum Sieg</label>
-                    <input type="number" min={1} max={20} className="input" value={tpLegsToWin}
-                      onChange={(e) => setTpLegsToWin(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} />
+                    <input type="number" inputMode="numeric" min={1} max={20} className="input"
+                      value={tpLegsToWin} onChange={(e) => setTpLegsToWin(e.target.value)} />
                   </div>
                   {tpScoringMode === "sets" && (
                     <div>
                       <label className="text-xs text-secondary mb-1 block">Sets zum Sieg</label>
-                      <input type="number" min={1} max={10} className="input" value={tpSetsToWin}
-                        onChange={(e) => setTpSetsToWin(Math.max(1, Math.min(10, Number(e.target.value) || 1)))} />
+                      <input type="number" inputMode="numeric" min={1} max={10} className="input"
+                        value={tpSetsToWin} onChange={(e) => setTpSetsToWin(e.target.value)} />
                     </div>
                   )}
                 </div>
