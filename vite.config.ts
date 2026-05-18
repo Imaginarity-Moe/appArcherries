@@ -22,6 +22,19 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      // Cache-Bust für statische Icons in public/: iOS Safari cached
+      // apple-touch-icon sehr aggressiv. Per build-time-Hash im href bekommt
+      // Safari nach jedem Deploy eine "neue" URL und lädt frisch.
+      name: "cache-bust-static-icons",
+      transformIndexHtml(html: string) {
+        const v = APP_REV || Date.now().toString();
+        return html.replace(
+          /href="(\/(?:apple-touch-icon|favicon-32x32)\.png)"/g,
+          `href="$1?v=${v}"`
+        );
+      },
+    },
     VitePWA({
       // autoUpdate + skipWaiting + clientsClaim:
       //  - Neuer SW wird im Hintergrund installiert
