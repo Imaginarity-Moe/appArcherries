@@ -37,36 +37,3 @@ export async function getStatsOverview(filters: { discipline?: string; bow?: str
 export async function getTrainingStats(trainingId: number): Promise<TrainingStats> {
   return apiCached(`/stats/training/${trainingId}`);
 }
-
-export type HeatmapTarget = { name: string; shot_count: number };
-export type HeatmapShot = {
-  x: number;
-  y: number;
-  points: number | null;
-  zone: string | null;
-  discipline: string;
-};
-export type HeatmapResponse = {
-  target: string;
-  shots: HeatmapShot[];
-  total: number;
-  avg_score: number;
-  distances: number[];
-};
-
-export async function listHeatmapTargets(): Promise<{ targets: HeatmapTarget[] }> {
-  return apiCached("/stats/heatmap/targets");
-}
-
-export async function getHeatmap(filters: {
-  target: string;
-  distance?: number | null;
-  discipline?: string | null;
-  bow_type?: string | null;
-}): Promise<HeatmapResponse> {
-  const qs = new URLSearchParams({ target: filters.target });
-  if (filters.distance) qs.set("distance", String(filters.distance));
-  if (filters.discipline) qs.set("discipline", filters.discipline);
-  if (filters.bow_type) qs.set("bow_type", filters.bow_type);
-  return apiCached(`/stats/heatmap?${qs.toString()}`);
-}

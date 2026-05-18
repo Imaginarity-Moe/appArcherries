@@ -16,8 +16,6 @@ import {
   type Training,
 } from "../api/trainings";
 import BullseyePad from "../components/BullseyePad";
-import AnimalTargetPad from "../components/AnimalTargetPad";
-import { matchAnimalTarget } from "../components/animalTargets";
 import ParticipantsBar from "../components/ParticipantsBar";
 import StationPhoto from "../components/StationPhoto";
 import PhotoMarkers from "../components/PhotoMarkers";
@@ -568,19 +566,11 @@ function StationLiveEntry({
   const [showStationGrid, setShowStationGrid] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
-  // Beim Pfeil-Tap: Zone speichern + (wenn pos vorhanden) Marker mitsetzen,
-  // dann nächsten leeren Slot aktivieren.
-  // pos kommt aus dem BullseyePad-Tap als normalisierte 0..1-Koordinaten der SVG;
-  // damit funktioniert die Treffer-Heatmap auf /stats automatisch, ohne Stations-Foto.
-  function handleZoneSelect(code: string, pos?: { x: number; y: number }) {
+  // Beim Pfeil-Tap: nächsten leeren Slot aktivieren
+  function handleZoneSelect(code: string) {
     const next = [...zonesPicked];
     next[activeSlot] = code;
     setZonesPicked(next);
-    if (pos) {
-      const nextM = [...markers];
-      nextM[activeSlot] = pos;
-      setMarkers(nextM);
-    }
     // Nächsten leeren Slot suchen
     const nextEmpty = next.findIndex((z, i) => i > activeSlot && z === null);
     if (nextEmpty !== -1) setActiveSlot(nextEmpty);
@@ -755,32 +745,13 @@ function StationLiveEntry({
           })}
         </div>
 
-        {/* Animal-Target (Tier-Silhouette) wenn animal_or_face einem bekannten Tier
-            entspricht, sonst Standard-BullseyePad mit Ringen. */}
-        {(() => {
-          const animalTarget = matchAnimalTarget(animal);
-          const disabled = firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx;
-          if (animalTarget) {
-            return (
-              <AnimalTargetPad
-                target={animalTarget}
-                selectedZone={zonesPicked[activeSlot] ?? null}
-                onZoneSelect={(code, pos) => handleZoneSelect(code, pos)}
-                disabled={disabled}
-                markers={markers}
-                activeSlot={activeSlot}
-              />
-            );
-          }
-          return (
-            <BullseyePad
-              discipline={training.discipline}
-              selectedZone={zonesPicked[activeSlot] ?? null}
-              onZoneSelect={(code, pos) => handleZoneSelect(code, pos)}
-              disabled={disabled}
-            />
-          );
-        })()}
+        {/* Bullseye-Pad */}
+        <BullseyePad
+          discipline={training.discipline}
+          selectedZone={zonesPicked[activeSlot] ?? null}
+          onZoneSelect={(code) => handleZoneSelect(code)}
+          disabled={firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx}
+        />
 
         {/* Aktionen: Speichern + (optional) Vorherige */}
         <div className="flex items-center gap-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]">
