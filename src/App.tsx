@@ -25,6 +25,7 @@ const ParcoursDetail  = lazy(() => import("./pages/ParcoursDetail"));     // Lea
 const ParcoursEdit    = lazy(() => import("./pages/ParcoursEdit"));       // Leaflet
 const ParcoursLanes   = lazy(() => import("./pages/ParcoursLanes"));      // Bahnen-Verwaltung
 const Bows            = lazy(() => import("./pages/Bows"));               // Bow-Profile-Manager
+const BowEdit         = lazy(() => import("./pages/BowEdit"));            // Bow-Form (new + edit)
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -66,6 +67,8 @@ export default function App() {
         <Route path="/parcours/:id/lanes" element={<RequireAuth><L><ParcoursLanes /></L></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path="/bows" element={<RequireAuth><L><Bows /></L></RequireAuth>} />
+        <Route path="/bows/new" element={<RequireAuth><L><BowEdit mode="new" /></L></RequireAuth>} />
+        <Route path="/bows/:id/edit" element={<RequireAuth><L><BowEdit mode="edit" /></L></RequireAuth>} />
 
         {/* Hilfe (Accordion + Suche auf einer Page; Deep-Links via #anchor) */}
         <Route path="/help" element={<RequireAuth><HelpHub /></RequireAuth>} />

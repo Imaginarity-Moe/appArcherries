@@ -2,8 +2,10 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/Auth.php';
+require_once __DIR__ . '/../lib/Uploads.php';
 
 const VALID_BOW_TYPES_BOW = ['recurve', 'compound', 'barebow', 'traditional'];
+const BOWS_UPLOAD_DIR     = '/uploads/bows';
 
 function handle_bows(string $method, string $path): void
 {
@@ -22,8 +24,19 @@ function handle_bows(string $method, string $path): void
     if (preg_match('#^/(\d+)$#', $sub, $m)) {
         $id = (int)$m[1];
         match ($method) {
+            'GET'    => bow_detail($user['id'], $id),
             'PATCH'  => bows_update($user['id'], $id),
             'DELETE' => bows_delete($user['id'], $id),
+            default  => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+
+    if (preg_match('#^/(\d+)/image$#', $sub, $m)) {
+        $id = (int)$m[1];
+        match ($method) {
+            'POST'   => bows_image_upload($user['id'], $id),
+            'DELETE' => bows_image_delete($user['id'], $id),
             default  => res_error('Method not allowed', 405),
         };
         return;
@@ -35,7 +48,7 @@ function handle_bows(string $method, string $path): void
 function bows_list(int $user_id): void
 {
     $stmt = db()->prepare(
-        'SELECT id, name, bow_type, draw_weight_lbs, arrow_spine, sight_marks, notes, is_default, created_at, updated_at
+        'SELECT id, name, bow_type, draw_weight_lbs, arrow_spine, sight_marks, notes, image_path, is_default, created_at, updated_at
          FROM bows WHERE user_id = ? ORDER BY is_default DESC, name ASC'
     );
     $stmt->execute([$user_id]);
@@ -44,6 +57,7 @@ function bows_list(int $user_id): void
         $r['id']         = (int)$r['id'];
         $r['is_default'] = (bool)$r['is_default'];
         if ($r['draw_weight_lbs'] !== null) $r['draw_weight_lbs'] = (float)$r['draw_weight_lbs'];
+        $r['image_url']  = $r['image_path'] ?: null;
     }
     unset($r);
     res_json(['bows' => $rows]);
@@ -151,7 +165,7 @@ function bows_delete(int $user_id, int $id): void
 function bow_detail(int $user_id, int $id, int $status = 200): void
 {
     $stmt = db()->prepare(
-        'SELECT id, name, bow_type, draw_weight_lbs, arrow_spine, sight_marks, notes, is_default, created_at, updated_at
+        'SELECT id, name, bow_type, draw_weight_lbs, arrow_spine, sight_marks, notes, image_path, is_default, created_at, updated_at
          FROM bows WHERE id = ? AND user_id = ?'
     );
     $stmt->execute([$id, $user_id]);
@@ -160,5 +174,32 @@ function bow_detail(int $user_id, int $id, int $status = 200): void
     $r['id']         = (int)$r['id'];
     $r['is_default'] = (bool)$r['is_default'];
     if ($r['draw_weight_lbs'] !== null) $r['draw_weight_lbs'] = (float)$r['draw_weight_lbs'];
+    $r['image_url']  = $r['image_path'] ?: null;
     res_json(['bow' => $r], $status);
+}
+
+function bows_image_upload(int $user_id, int $id): void
+{
+    $stmt = db()->prepare('SELECT image_path FROM bows WHERE id = ? AND user_id = ?');
+    $stmt->execute([$id, $user_id]);
+    $row = $stmt->fetch();
+    if (!$row) res_error('Not found', 404);
+
+    $rel = process_image_upload(BOWS_UPLOAD_DIR, sprintf('b%d', $id));
+    delete_upload_file($row['image_path'] ?? null);
+
+    db()->prepare('UPDATE bows SET image_path = ? WHERE id = ?')->execute([$rel, $id]);
+    bow_detail($user_id, $id);
+}
+
+function bows_image_delete(int $user_id, int $id): void
+{
+    $stmt = db()->prepare('SELECT image_path FROM bows WHERE id = ? AND user_id = ?');
+    $stmt->execute([$id, $user_id]);
+    $row = $stmt->fetch();
+    if (!$row) res_error('Not found', 404);
+
+    delete_upload_file($row['image_path'] ?? null);
+    db()->prepare('UPDATE bows SET image_path = NULL WHERE id = ?')->execute([$id]);
+    bow_detail($user_id, $id);
 }

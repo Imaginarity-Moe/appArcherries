@@ -114,7 +114,7 @@ export default function AddressAutocomplete({ value, onChange, onSelectLocation,
 
       {open && results.length > 0 && (
         <ul
-          className="absolute z-30 left-0 right-0 mt-1 rounded-2xl bg-elevated border border-hairline shadow-lift overflow-hidden max-h-80 overflow-y-auto"
+          className="absolute z-30 left-0 right-0 mt-1 rounded-2xl bg-elevated border border-hairline shadow-lift overflow-hidden max-h-80 overflow-y-auto divide-y divide-hairline"
           role="listbox"
         >
           {results.map((r, i) => (
@@ -128,7 +128,9 @@ export default function AddressAutocomplete({ value, onChange, onSelectLocation,
                 pick(r);
               }}
               className={`px-4 py-2.5 cursor-pointer text-sm transition ${
-                i === hovered ? "bg-surface text-primary" : "text-secondary hover:bg-surface"
+                i === hovered
+                  ? "bg-cherry-50 dark:bg-cherry-900/30 text-primary border-l-2 border-l-cherry-500"
+                  : "text-secondary hover:bg-surface/60 border-l-2 border-l-transparent"
               }`}
             >
               <div className="font-medium">{formatAddress(r.address) || r.display_name.split(",")[0]}</div>
