@@ -327,6 +327,7 @@ function TrainingOverview({
             <StationStatusGrid
               targets={myTargets}
               onPick={(idx) => setSearchParams({ station: String(idx) })}
+              totalLanes={training.parcours_lanes_count}
             />
           </div>
         )}
@@ -395,12 +396,17 @@ function TrainingOverview({
 function StationStatusGrid({
   targets,
   onPick,
+  totalLanes,
 }: {
   targets: Target[];
   onPick: (idx: number) => void;
+  /** Optional: Soll-Anzahl Bahnen aus dem zugehörigen Parcours. Wenn gesetzt,
+   *  begrenzt das Grid auf diese Zahl statt hartem Default 28. */
+  totalLanes?: number | null;
 }) {
   const byIdx = new Map(targets.map((t) => [t.target_index, t]));
-  const max = Math.max(28, ...Array.from(byIdx.keys()));
+  const fallback = totalLanes && totalLanes > 0 ? totalLanes : 28;
+  const max = Math.max(fallback, ...Array.from(byIdx.keys()));
   const cells = Array.from({ length: max }, (_, i) => i + 1);
 
   return (
@@ -537,7 +543,10 @@ function StationLiveEntry({
     (t) => !t.participant_id || t.participant_id === training.my_participant_id
   );
   const existing = myTargets.find((t) => t.target_index === stationIndex);
-  const totalStations = Math.max(28, ...myTargets.map((t) => t.target_index));
+  const fallbackTotal = training.parcours_lanes_count && training.parcours_lanes_count > 0
+    ? training.parcours_lanes_count
+    : 28;
+  const totalStations = Math.max(fallbackTotal, ...myTargets.map((t) => t.target_index));
 
   const [animal, setAnimal] = useState(existing?.animal_or_face ?? "");
   const [distance, setDistance] = useState(existing?.distance_m?.toString() ?? "");
@@ -781,6 +790,7 @@ function StationLiveEntry({
               setShowStationGrid(false);
               onNavigate(idx);
             }}
+            totalLanes={training.parcours_lanes_count}
           />
         </BottomSheet>
       )}

@@ -69,6 +69,8 @@ export type Training = {
   total_score: number;
   parcours_id: number | null;
   parcours_name?: string | null;
+  /** Geplante Gesamt-Bahnenzahl des verknüpften Parcours, für Grid/Counter im TrainingDetail */
+  parcours_lanes_count?: number | null;
   targets?: Target[];
   participants?: Participant[];
   is_owner?: boolean;

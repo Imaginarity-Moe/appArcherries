@@ -331,7 +331,8 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
     if (!user_can_access_training($user_id, $id)) res_error('Not found', 404);
 
     $stmt = db()->prepare(
-        'SELECT t.*, p.name AS parcours_name, b.name AS bow_name
+        'SELECT t.*, p.name AS parcours_name, p.lanes_count AS parcours_lanes_count,
+                b.name AS bow_name
          FROM trainings t
          LEFT JOIN parcours p ON p.id = t.parcours_id
          LEFT JOIN bows b ON b.id = t.bow_id
@@ -411,6 +412,8 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
     $t['nfaa_mode']              = (bool)(int)($t['nfaa_mode'] ?? 0);
     $t['published_to_highscore'] = (bool)(int)($t['published_to_highscore'] ?? 0);
     $t['bow_id']         = isset($t['bow_id']) && $t['bow_id'] !== null ? (int)$t['bow_id'] : null;
+    $t['parcours_lanes_count'] = isset($t['parcours_lanes_count']) && $t['parcours_lanes_count'] !== null
+        ? (int)$t['parcours_lanes_count'] : null;
     if ($t['summary_score']   !== null) $t['summary_score']   = (int)$t['summary_score'];
     if ($t['distance_marked'] !== null) $t['distance_marked'] = (bool)$t['distance_marked'];
     $t['targets']      = $targets;
