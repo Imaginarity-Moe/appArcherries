@@ -57,6 +57,8 @@ export type Training = {
   discipline: Discipline;
   nfaa_mode?: boolean;
   bow_type: BowType;
+  bow_id?: number | null;
+  bow_name?: string | null;
   peg_color: PegColor | null;
   distance_marked: boolean | null;
   location: string | null;
@@ -76,6 +78,7 @@ export type Training = {
 export type TrainingListItem = Omit<Training, "targets"> & {
   is_shared?: boolean;
   owner_user_id?: number;
+  bow_name?: string | null;
 };
 
 export const DISCIPLINE_LABELS: Record<Discipline, string> = {

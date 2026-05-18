@@ -290,8 +290,8 @@ function TrainingOverview({
             <h1 className="font-display text-2xl font-semibold">
               {DISCIPLINE_LABELS[training.discipline]}
             </h1>
-            <div className="text-sm text-forest-700 dark:text-forest-300 mt-1">
-              {BOW_LABELS[training.bow_type]}
+            <div className="text-sm text-secondary mt-1">
+              {training.bow_name ? `${training.bow_name} · ${BOW_LABELS[training.bow_type]}` : BOW_LABELS[training.bow_type]}
               {training.peg_color && ` · ${PEG_LABELS[training.peg_color]}`}
               {training.distance_marked !== null &&
                 ` · ${training.distance_marked ? t("training:wizard.distance_marked") : t("training:wizard.distance_unmarked")}`}

@@ -160,6 +160,7 @@ export default function NewTraining() {
         discipline,
         nfaa_mode: isAnimal ? nfaaMode : false,
         bow_type: bowType,
+        bow_id: selectedBowId,
         peg_color: is3d && pegColor ? (pegColor as PegColor) : null,
         distance_marked: distanceMode === "" ? null : distanceMode === "marked",
         parcours_id: parcoursId,

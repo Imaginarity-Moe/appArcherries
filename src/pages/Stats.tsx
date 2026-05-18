@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Trophy } from "lucide-react";
 import { getStatsOverview, type StatsOverview } from "../api/stats";
 import { ScoreLineChart, ZoneDistributionBars, ArrowConsistencyBars } from "../components/charts";
 import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
 import { fmtDate } from "../lib/format";
+import { useSyncListener } from "../lib/useSyncListener";
 
 const DISCIPLINES = Object.keys(DISCIPLINE_LABELS) as Discipline[];
 const BOWS = Object.keys(BOW_LABELS) as BowType[];
@@ -16,7 +17,7 @@ export default function Stats() {
   const [discFilter, setDiscFilter] = useState<Discipline | "">("");
   const [bowFilter, setBowFilter] = useState<BowType | "">("");
 
-  useEffect(() => {
+  const loadStats = useCallback(() => {
     setLoading(true);
     getStatsOverview({
       discipline: discFilter || undefined,
@@ -25,6 +26,13 @@ export default function Stats() {
       .then(setData)
       .finally(() => setLoading(false));
   }, [discFilter, bowFilter]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  // Nach Outbox-Drain: Stats neu laden (neue Scores ggf. eingegangen)
+  useSyncListener(loadStats);
 
   const trendForChart = useMemo(() => {
     return (data?.trend ?? []).map((d) => ({

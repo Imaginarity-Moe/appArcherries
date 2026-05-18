@@ -153,11 +153,13 @@ function trainings_list(int $user_id): void
 
     // Trainings, in denen User Owner ODER Participant ist
     $stmt = db()->prepare(
-        'SELECT DISTINCT t.id, t.started_at, t.ended_at, t.discipline, t.nfaa_mode, t.bow_type, t.peg_color,
+        'SELECT DISTINCT t.id, t.started_at, t.ended_at, t.discipline, t.nfaa_mode, t.bow_type, t.bow_id, t.peg_color,
                 t.distance_marked, t.location, t.summary_score, t.parcours_id, p.name AS parcours_name,
+                b.name AS bow_name,
                 t.user_id AS owner_user_id
          FROM trainings t
          LEFT JOIN parcours p ON p.id = t.parcours_id
+         LEFT JOIN bows b ON b.id = t.bow_id
          LEFT JOIN training_participants tp ON tp.training_id = t.id AND tp.user_id = ?
          WHERE t.user_id = ? OR tp.user_id IS NOT NULL
          ORDER BY t.started_at DESC LIMIT ? OFFSET ?'
@@ -174,6 +176,7 @@ function trainings_list(int $user_id): void
         $it['owner_user_id'] = (int)$it['owner_user_id'];
         $it['is_shared']     = $it['owner_user_id'] !== $user_id;
         $it['nfaa_mode']     = (bool)(int)($it['nfaa_mode'] ?? 0);
+        $it['bow_id']        = isset($it['bow_id']) && $it['bow_id'] !== null ? (int)$it['bow_id'] : null;
         if ($it['summary_score'] !== null) $it['summary_score'] = (int)$it['summary_score'];
         if ($it['summary_score'] === null) {
             $it['total_score'] = participant_total($user_id, (int)$it['id']);
@@ -221,11 +224,20 @@ function trainings_create(int $user_id): void
         if ($s->fetch()) $parcours_id = $pid;
     }
 
+    // Optionaler Bogen-FK — muss dem User gehören
+    $bow_id = null;
+    if (isset($in['bow_id']) && $in['bow_id'] !== null && $in['bow_id'] !== '') {
+        $bid = (int)$in['bow_id'];
+        $s = db()->prepare('SELECT id FROM bows WHERE id = ? AND user_id = ?');
+        $s->execute([$bid, $user_id]);
+        if ($s->fetch()) $bow_id = $bid;
+    }
+
     db()->beginTransaction();
     try {
         $stmt = db()->prepare(
-            'INSERT INTO trainings (user_id, parcours_id, started_at, discipline, nfaa_mode, bow_type, peg_color, distance_marked, location, weather, notes, summary_score)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO trainings (user_id, parcours_id, started_at, discipline, nfaa_mode, bow_type, bow_id, peg_color, distance_marked, location, weather, notes, summary_score)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $user_id,
@@ -234,6 +246,7 @@ function trainings_create(int $user_id): void
             $discipline,
             !empty($in['nfaa_mode']) ? 1 : 0,
             $bow_type,
+            $bow_id,
             $peg_color,
             isset($in['distance_marked']) ? ($in['distance_marked'] ? 1 : 0) : null,
             isset($in['location']) ? (string)$in['location'] : null,
@@ -262,8 +275,10 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
     if (!user_can_access_training($user_id, $id)) res_error('Not found', 404);
 
     $stmt = db()->prepare(
-        'SELECT t.*, p.name AS parcours_name
-         FROM trainings t LEFT JOIN parcours p ON p.id = t.parcours_id
+        'SELECT t.*, p.name AS parcours_name, b.name AS bow_name
+         FROM trainings t
+         LEFT JOIN parcours p ON p.id = t.parcours_id
+         LEFT JOIN bows b ON b.id = t.bow_id
          WHERE t.id = ?'
     );
     $stmt->execute([$id]);
@@ -339,6 +354,7 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
     $t['my_participant_id'] = $own_pid;
     $t['nfaa_mode']              = (bool)(int)($t['nfaa_mode'] ?? 0);
     $t['published_to_highscore'] = (bool)(int)($t['published_to_highscore'] ?? 0);
+    $t['bow_id']         = isset($t['bow_id']) && $t['bow_id'] !== null ? (int)$t['bow_id'] : null;
     if ($t['summary_score']   !== null) $t['summary_score']   = (int)$t['summary_score'];
     if ($t['distance_marked'] !== null) $t['distance_marked'] = (bool)$t['distance_marked'];
     $t['targets']      = $targets;
