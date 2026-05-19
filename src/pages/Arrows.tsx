@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Star, Zap, AlertTriangle, Search, X, ExternalLink } fr
 import { listArrows, type Arrow } from "../api/arrows";
 import { usePageFooter } from "../components/FooterContext";
 import EquipmentTabs from "../components/EquipmentTabs";
+import { Spinner } from "../components/Spinner";
 
 type SortKey = "default" | "name" | "manufacturer" | "updated" | "stock";
 
@@ -20,7 +21,7 @@ export default function Arrows() {
   const [onlyDamaged, setOnlyDamaged] = useState(false);
 
   useEffect(() => {
-    listArrows()
+    listArrows((fresh) => setArrows(fresh.arrows))
       .then((r) => setArrows(r.arrows))
       .finally(() => setLoading(false));
   }, []);
@@ -99,7 +100,7 @@ export default function Arrows() {
         </label>
       </div>
 
-      {loading && <p className="text-secondary">Lade…</p>}
+      {loading && <Spinner className="py-2" />}
 
       {!loading && arrows.length === 0 && (
         <div className="card text-center py-10 space-y-3">

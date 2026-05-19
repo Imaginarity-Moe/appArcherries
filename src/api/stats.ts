@@ -1,4 +1,4 @@
-import { apiCached } from "./client";
+import { apiCached, apiSWR } from "./client";
 
 export type StatsOverview = {
   trend: Array<{ id: number; date: string; discipline: string; bow_type: string; score: number }>;
@@ -64,12 +64,16 @@ export type TrainingStats = {
   sets_legs?: SetsLegsRow[] | null;
 };
 
-export async function getStatsOverview(filters: { discipline?: string; bow?: string } = {}): Promise<StatsOverview> {
+export async function getStatsOverview(
+  filters: { discipline?: string; bow?: string } = {},
+  onRefresh?: (fresh: StatsOverview) => void
+): Promise<StatsOverview> {
   const qs = new URLSearchParams();
   if (filters.discipline) qs.set("discipline", filters.discipline);
   if (filters.bow) qs.set("bow", filters.bow);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
-  return apiCached(`/stats${suffix}`);
+  const path = `/stats${suffix}`;
+  return onRefresh ? apiSWR<StatsOverview>(path, onRefresh) : apiCached<StatsOverview>(path);
 }
 
 export async function getTrainingStats(trainingId: number): Promise<TrainingStats> {

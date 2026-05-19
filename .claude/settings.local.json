@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cmd /c \"deploy.bat 2>&1\" | Select-Object -Last 100)",
+      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 120)",
+      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 30)",
+      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 20)",
+      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 15)",
+      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 12)",
+      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 10)"
+    ]
+  }
+}

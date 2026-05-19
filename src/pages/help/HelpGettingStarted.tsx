@@ -13,9 +13,11 @@ export default function HelpGettingStarted() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold">2. Stationen schießen & eintragen</h2>
+        <h2 className="text-lg font-semibold">2. Stationen / Aufnahmen schießen &amp; eintragen</h2>
         <p className="text-forest-700 dark:text-forest-300 mt-1">
-          Tippe auf „<b>+ Station 1 hinzufügen</b>". Du landest auf dem <b>Bullseye-Pad</b> — tippe für jeden Pfeil einen Ring. Die Punkte werden live oben angezeigt. Mit „Station speichern" geht's zur nächsten Station.
+          Tippe auf „<b>+ Station 1 hinzufügen</b>" (bei 3D / Field) bzw. „<b>+ Aufnahme 1 hinzufügen</b>"
+          (beim Scheibenschießen). Du landest auf dem <b>Bullseye-Pad</b> — tippe für jeden Pfeil einen
+          Ring. Die Punkte werden live oben angezeigt. Mit „Speichern" geht's zur nächsten.
         </p>
         <p className="text-forest-700 dark:text-forest-300 mt-2 italic">
           Tipp: Auf dem Parcours funktioniert die App einhändig mit dem Daumen. Die Tap-Targets sind extra groß, auch mit Winterhandschuhen bedienbar.
@@ -25,7 +27,7 @@ export default function HelpGettingStarted() {
       <section>
         <h2 className="text-lg font-semibold">3. Training beenden</h2>
         <p className="text-forest-700 dark:text-forest-300 mt-1">
-          Wenn alle Stationen erfasst sind, tippe „Training beenden". Du siehst eine <b>Auswertungs-Seite</b> mit deinem Gesamt-Score, Stations-Verlauf und Trefferzonen-Analyse.
+          Wenn alle Durchgänge erfasst sind, tippe „Training beenden". Du siehst eine <b>Auswertungs-Seite</b> mit deinem Gesamt-Score, Verlauf und Trefferzonen-Analyse.
         </p>
       </section>
 

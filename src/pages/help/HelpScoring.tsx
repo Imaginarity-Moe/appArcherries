@@ -141,6 +141,33 @@ export default function HelpScoring() {
           Stations-Verwaltung. Ideal für schnelle Notizen oder Übungseinheiten.
         </p>
       </section>
+
+      <div className="hairline" />
+
+      <section>
+        <h2 className="eyebrow mb-3">Scheibenschießen</h2>
+        <p className="text-primary">
+          Frei konfigurierbar: Du wählst Pfeile pro <strong>Aufnahme</strong>, Anzahl Aufnahmen,
+          Distanz und Ringzahl der Scheibe.
+        </p>
+        <p className="text-primary mt-2">
+          Hierarchie der Begriffe:
+        </p>
+        <ul className="list-disc list-inside text-primary mt-1 space-y-1">
+          <li><strong>Pfeil</strong> — Einzelschuss in eine Zone</li>
+          <li><strong>Aufnahme</strong> — alle Pfeile, die du nacheinander an die Scheibe abgibst</li>
+          <li><strong>Leg</strong> — eine Reihe von Aufnahmen (im Match-Modus „Best of Legs")</li>
+          <li><strong>Set</strong> — eine Reihe von Legs (im Modus „Sets &amp; Legs")</li>
+        </ul>
+        <p className="text-primary mt-3">
+          Drei Wertungs-Varianten:
+        </p>
+        <ul className="list-disc list-inside text-primary mt-1 space-y-1">
+          <li><strong>Gesamtsumme</strong> — alle Punkte aller Aufnahmen addiert</li>
+          <li><strong>Best of Legs</strong> — höchster End-Score pro Leg gewinnt, wer am meisten Legs hat, gewinnt</li>
+          <li><strong>Sets &amp; Legs</strong> — Match-Modus wie Darts: wer zuerst X Legs hat, gewinnt ein Set, wer zuerst Y Sets hat, gewinnt das Match</li>
+        </ul>
+      </section>
     </div>
   );
 }

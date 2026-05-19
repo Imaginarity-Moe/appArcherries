@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Plus, Trash2, X, Check, Camera, Loader2, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { PageSpinner } from "../components/Spinner";
 import {
   getParcours,
   listParcoursLanes,
@@ -226,7 +227,7 @@ export default function ParcoursLanes() {
     }
   }
 
-  if (loading) return <p className="text-secondary p-8">Lade Bahnen…</p>;
+  if (loading) return <PageSpinner />;
   if (!parcours) return <p className="text-cherry-500 p-8">{error ?? "Parcours nicht gefunden"}</p>;
 
   const enabledPegs = {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, Check, Target, Crosshair, Hash, Bird, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Target, Crosshair, Hash, Bird, MapPin, Loader2 } from "lucide-react";
 import {
   BOW_LABELS,
   DISCIPLINE_LABELS,
@@ -32,7 +32,7 @@ const DISCIPLINE_BLURBS: Record<Discipline, string> = {
   "field_wa":       "6-5-4-3-2-1, 4 Pfeile pro Auflage, X separat (Tie-Break)",
   "field_ifaa":     "5-4-3, 4 Pfeile pro Scheibe",
   simple:           "Nur Gesamt-Score, keine Pfeile",
-  target_practice:  "Frei konfigurierbares Scheibenschießen mit Pfeile/Durchgänge/Distanz/Wertung",
+  target_practice:  "Frei konfigurierbares Scheibenschießen mit Pfeile/Aufnahmen/Distanz/Wertung",
 };
 
 const DISCIPLINE_ICONS: Record<Discipline, ReactNode> = {
@@ -76,7 +76,7 @@ export default function NewTraining() {
   const [tpScoringMode, setTpScoringMode] = useState<"points" | "legs" | "sets">("points");
   const [tpLegsToWin, setTpLegsToWin] = useState<string>("3");
   const [tpSetsToWin, setTpSetsToWin] = useState<string>("2");
-  const [tpSharedMode, setTpSharedMode] = useState<"solo" | "collab">("solo");
+  const [tpSharedMode, setTpSharedMode] = useState<"solo" | "collab" | "sync">("solo");
 
   // Hilfsfunktion: clamped Number aus String, fallback bei leer
   const clampInt = (v: string, min: number, max: number, fallback: number) => {
@@ -402,12 +402,12 @@ export default function NewTraining() {
               <h2 className="eyebrow flex items-center gap-1.5">Scheiben-Setup</h2>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-secondary mb-1 block">Pfeile pro Durchgang</label>
+                  <label className="text-xs text-secondary mb-1 block">Pfeile pro Aufnahme</label>
                   <input type="number" inputMode="numeric" min={1} max={20} className="input"
                     value={tpArrowsPerEnd} onChange={(e) => setTpArrowsPerEnd(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-xs text-secondary mb-1 block">Anzahl Durchgänge</label>
+                  <label className="text-xs text-secondary mb-1 block">Anzahl Aufnahmen</label>
                   <input type="number" inputMode="numeric" min={1} max={50} className="input"
                     value={tpNumEnds} onChange={(e) => setTpNumEnds(e.target.value)} />
                 </div>
@@ -459,8 +459,8 @@ export default function NewTraining() {
               )}
               <div>
                 <label className="text-xs text-secondary mb-1.5 block">Eingabe bei Multi-Player</label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(["solo", "collab"] as const).map((m) => (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["solo", "collab", "sync"] as const).map((m) => (
                     <button
                       key={m}
                       type="button"
@@ -471,14 +471,16 @@ export default function NewTraining() {
                           : "bg-surface text-secondary border border-hairline"
                       }`}
                     >
-                      {m === "solo" ? "Einer scort (Wechsel)" : "Jeder scort selbst"}
+                      {m === "solo" ? "Einer scort" : m === "collab" ? "Jeder selbst" : "Synchron"}
                     </button>
                   ))}
                 </div>
                 <p className="text-[11px] text-muted mt-1.5">
                   {tpSharedMode === "solo"
                     ? "Owner scort für alle Spieler — Reihenfolge wechselt pro Leg."
-                    : "Jeder Spieler scort am eigenen Handy. Alle sehen die Marker aller Schützen live."}
+                    : tpSharedMode === "collab"
+                    ? "Jeder Spieler scort am eigenen Handy. Alle sehen die Marker aller Schützen live."
+                  : "Alle sehen denselben Stand. Nur einer ist gleichzeitig dran — beim Speichern wechselt der Turn."}
                 </p>
               </div>
               <p className="text-xs text-muted">
@@ -673,8 +675,17 @@ export default function NewTraining() {
             <div className="rounded-xl bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm">{error}</div>
           )}
 
-          <button onClick={submit} className="btn w-full tap-large" disabled={busy}>
-            {busy ? t("training:wizard.starting") : t("training:wizard.start")} <Check size={18} />
+          <button onClick={submit} className="btn w-full tap-large inline-flex items-center justify-center gap-2 disabled:opacity-60" disabled={busy}>
+            {busy ? (
+              <>
+                <Loader2 size={18} strokeWidth={2.25} className="animate-spin" />
+                {t("training:wizard.starting")}
+              </>
+            ) : (
+              <>
+                {t("training:wizard.start")} <Check size={18} />
+              </>
+            )}
           </button>
         </div>
       )}

@@ -1,0 +1,113 @@
+- generic [ref=e35]:
+  - complementary [ref=e36]:
+    - generic [ref=e37]:
+      - link "Archerries" [ref=e38] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e39]:
+          - img [ref=e40]:
+            - generic "ARCHERRIES" [ref=e41]
+      - generic [ref=e73]:
+        - button "Online" [ref=e75] [cursor=pointer]:
+          - img [ref=e76]
+        - button "Benachrichtigungen" [ref=e81] [cursor=pointer]:
+          - img [ref=e82]
+    - navigation [ref=e85]:
+      - link "Übersicht" [ref=e86] [cursor=pointer]:
+        - /url: /
+        - img [ref=e87]
+        - generic [ref=e90]: Übersicht
+      - link "Statistik" [ref=e91] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e92]
+        - generic [ref=e94]: Statistik
+      - link "Parcours" [ref=e95] [cursor=pointer]:
+        - /url: /parcours
+        - img [ref=e96]
+        - generic [ref=e98]: Parcours
+      - link "Hilfe" [ref=e99] [cursor=pointer]:
+        - /url: /help
+        - img [ref=e100]
+        - generic [ref=e103]: Hilfe
+      - link "Profil" [ref=e104] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e105]
+        - generic [ref=e109]: Profil
+    - button "Neues Training" [ref=e111] [cursor=pointer]:
+      - img [ref=e112]
+      - text: Neues Training
+    - generic [ref=e113]:
+      - link "Claude Test claude-test@archerries.local" [ref=e114] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e115]: CT
+        - generic [ref=e116]:
+          - generic [ref=e117]: Claude Test
+          - generic [ref=e118]: claude-test@archerries.local
+      - button "Abmelden" [ref=e119] [cursor=pointer]:
+        - img [ref=e120]
+        - text: Abmelden
+      - generic "Build 2026-05-19 13:05" [ref=e123]: v2a91010 · 2026-05-19 13:05
+  - main [ref=e124]:
+    - generic [ref=e126]:
+      - generic [ref=e127]:
+        - heading "Hallo, Claude Test" [level=1] [ref=e128]
+        - paragraph [ref=e129]: Dienstag, 19. Mai
+      - generic [ref=e130]:
+        - generic [ref=e131]:
+          - generic [ref=e132]:
+            - img [ref=e134]
+            - generic [ref=e138]: Trainings
+          - generic [ref=e139]: "2"
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - img [ref=e143]
+            - generic [ref=e146]: Bestleistung
+          - generic [ref=e147]: "68"
+        - generic [ref=e148]:
+          - generic [ref=e149]:
+            - img [ref=e151]
+            - generic [ref=e153]: Ø letzte 4 Wochen
+          - generic [ref=e154]: "60"
+      - generic [ref=e155]:
+        - generic [ref=e156]:
+          - heading "Letzte Trainings" [level=2] [ref=e157]
+          - generic [ref=e158]:
+            - link "Archiv öffnen" [ref=e159] [cursor=pointer]:
+              - /url: /trainings/archive
+              - img [ref=e160]
+              - text: Archiv
+            - link "Neues Training" [ref=e163] [cursor=pointer]:
+              - /url: /trainings/new
+              - img [ref=e164]
+              - text: Neues Training
+        - list [ref=e165]:
+          - listitem [ref=e166]:
+            - link "19.05.2026 Beendet Scheibenschießen · Recurve Du, Moe 68 Pkt" [ref=e169] [cursor=pointer]:
+              - /url: /trainings/157
+              - generic [ref=e170]:
+                - generic [ref=e171]:
+                  - generic [ref=e172]: 19.05.2026
+                  - generic "Training abgeschlossen" [ref=e173]: Beendet
+                - generic [ref=e174]: Scheibenschießen · Recurve
+                - generic [ref=e175]:
+                  - img [ref=e176]
+                  - text: Du, Moe
+              - generic [ref=e181]:
+                - generic [ref=e182]: "68"
+                - generic [ref=e183]: Pkt
+          - listitem [ref=e184]:
+            - link "19.05.2026 Beendet Geteilt Scheibenschießen · Recurve Moe, Du 52 Pkt" [ref=e187] [cursor=pointer]:
+              - /url: /trainings/155
+              - generic [ref=e188]:
+                - generic [ref=e189]:
+                  - generic [ref=e190]: 19.05.2026
+                  - generic "Training abgeschlossen" [ref=e191]: Beendet
+                  - generic "Geteilte Runde — du bist Gast" [ref=e192]:
+                    - img [ref=e193]
+                    - text: Geteilt
+                - generic [ref=e198]: Scheibenschießen · Recurve
+                - generic [ref=e199]:
+                  - img [ref=e200]
+                  - text: Moe, Du
+              - generic [ref=e205]:
+                - generic [ref=e206]: "52"
+                - generic [ref=e207]: Pkt

@@ -1,10 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type AriaAttributes } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users } from "lucide-react";
+import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users, Bell } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import AvatarUploader from "../components/AvatarUploader";
 import { listFriends } from "../api/friends";
+import {
+  getNotificationPrefs,
+  saveNotificationPrefs,
+  type NotifPrefs,
+  type NotifCategory,
+  type NotifChannel,
+} from "../api/notificationPrefs";
+import { Spinner } from "../components/Spinner";
 
 type Theme = "light" | "dark" | "auto";
 
@@ -98,6 +106,8 @@ export default function Profile() {
         <ChevronRight size={18} strokeWidth={1.75} className="text-muted" />
       </Link>
 
+      <NotificationsSection />
+
       <Link to="/friends" className="card-interactive flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="relative w-9 h-9 rounded-full bg-surface flex items-center justify-center text-cherry-500">
@@ -185,4 +195,169 @@ function applyTheme(theme: Theme) {
       root.classList.add("dark");
     }
   }
+}
+
+// ── Benachrichtigungen ────────────────────────────────────────────────────────
+
+const CATEGORIES: Array<{
+  key: NotifCategory;
+  labelKey: string;
+  descKey: string;
+}> = [
+  { key: "social",      labelKey: "notif.cat_social_label",      descKey: "notif.cat_social_desc" },
+  { key: "invitations", labelKey: "notif.cat_invitations_label", descKey: "notif.cat_invitations_desc" },
+];
+
+function NotificationsSection() {
+  const { t } = useTranslation("profile");
+  const [prefs, setPrefs] = useState<NotifPrefs | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const sectionRef = useScrollToHash("notifications");
+
+  useEffect(() => {
+    getNotificationPrefs()
+      .then((r) => setPrefs(r.prefs))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggle = async (cat: NotifCategory, channel: NotifChannel) => {
+    if (!prefs) return;
+    const next: NotifPrefs = {
+      ...prefs,
+      [cat]: { ...prefs[cat], [channel]: !prefs[cat][channel] },
+    };
+    setPrefs(next); // optimistic
+    setSaving(true);
+    try {
+      const r = await saveNotificationPrefs(next);
+      setPrefs(r.prefs);
+      setSavedAt(Date.now());
+    } catch {
+      setPrefs(prefs); // rollback
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section ref={sectionRef} id="notifications" className="card scroll-mt-20">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="eyebrow flex items-center gap-2"><Bell size={13} strokeWidth={1.75} /> {t("notif.title")}</h2>
+        {saving ? (
+          <Spinner size={14} />
+        ) : savedAt ? (
+          <span className="text-[11px] text-muted">{t("notif.saved")}</span>
+        ) : null}
+      </div>
+      <p className="text-xs text-secondary mb-4">{t("notif.intro")}</p>
+
+      {/* Header-Zeile */}
+      <div className="grid grid-cols-[1fr_auto_auto] items-end gap-x-4 gap-y-1 mb-2">
+        <span className="text-[11px] uppercase tracking-wider text-muted">{t("notif.channel_header")}</span>
+        <span className="text-[11px] uppercase tracking-wider text-muted text-center w-14">{t("notif.col_in_app")}</span>
+        <span className="text-[11px] uppercase tracking-wider text-muted text-center w-14">{t("notif.col_email")}</span>
+      </div>
+
+      <div className="divide-y divide-hairline">
+        {/* Security-Zeile (gesperrt) */}
+        <PrefRow
+          label={t("notif.cat_security_label")}
+          desc={t("notif.cat_security_desc")}
+          inApp={true}
+          email={true}
+          locked
+        />
+
+        {loading || !prefs ? (
+          <div className="py-3"><Spinner /></div>
+        ) : (
+          CATEGORIES.map((c) => (
+            <PrefRow
+              key={c.key}
+              label={t(c.labelKey)}
+              desc={t(c.descKey)}
+              inApp={prefs[c.key].in_app}
+              email={prefs[c.key].email}
+              onToggleInApp={() => toggle(c.key, "in_app")}
+              onToggleEmail={() => toggle(c.key, "email")}
+            />
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PrefRow({
+  label, desc, inApp, email, locked, onToggleInApp, onToggleEmail,
+}: {
+  label: string;
+  desc: string;
+  inApp: boolean;
+  email: boolean;
+  locked?: boolean;
+  onToggleInApp?: () => void;
+  onToggleEmail?: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 py-3">
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-primary">{label}</div>
+        <div className="text-xs text-secondary leading-snug mt-0.5">{desc}</div>
+      </div>
+      <div className="w-14 flex justify-center">
+        <Switch checked={inApp} onChange={onToggleInApp} locked={locked} aria-label={label} />
+      </div>
+      <div className="w-14 flex justify-center">
+        <Switch checked={email} onChange={onToggleEmail} locked={locked} aria-label={label} />
+      </div>
+    </div>
+  );
+}
+
+function Switch({
+  checked, onChange, locked, ...aria
+}: {
+  checked: boolean;
+  onChange?: () => void;
+  locked?: boolean;
+} & AriaAttributes) {
+  const disabled = locked || !onChange;
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-disabled={disabled || undefined}
+      disabled={disabled}
+      onClick={onChange}
+      className={`relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-cherry-500/40 ${
+        checked
+          ? locked ? "bg-cherry-500/40" : "bg-cherry-500"
+          : "bg-surface border border-hairline"
+      } ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+      {...aria}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-cream shadow-sm transition-transform duration-150 ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
+/** Scrollt das ref-Element in den Viewport, wenn URL-Hash matched. */
+function useScrollToHash(hash: string) {
+  const ref = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (window.location.hash.replace("#", "") === hash) {
+      // RAF damit das DOM gerendert ist
+      requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  }, [hash]);
+  return ref;
 }

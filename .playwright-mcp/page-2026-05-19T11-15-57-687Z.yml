@@ -1,0 +1,85 @@
+- generic [ref=e9]:
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - link "Archerries" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e13]:
+          - img [ref=e14]:
+            - generic "ARCHERRIES" [ref=e15]
+      - generic [ref=e47]:
+        - button "Online" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - button "Benachrichtigungen" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+    - navigation [ref=e59]:
+      - link "Übersicht" [ref=e60] [cursor=pointer]:
+        - /url: /
+        - img [ref=e61]
+        - generic [ref=e64]: Übersicht
+      - link "Statistik" [ref=e65] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e66]
+        - generic [ref=e68]: Statistik
+      - link "Parcours" [ref=e69] [cursor=pointer]:
+        - /url: /parcours
+        - img [ref=e70]
+        - generic [ref=e72]: Parcours
+      - link "Hilfe" [ref=e73] [cursor=pointer]:
+        - /url: /help
+        - img [ref=e74]
+        - generic [ref=e77]: Hilfe
+      - link "Profil" [ref=e78] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e79]
+        - generic [ref=e83]: Profil
+    - button "Neues Training" [ref=e85] [cursor=pointer]:
+      - img [ref=e86]
+      - text: Neues Training
+    - generic [ref=e87]:
+      - link "Claude Test claude-test@archerries.local" [ref=e88] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e89]: CT
+        - generic [ref=e90]:
+          - generic [ref=e91]: Claude Test
+          - generic [ref=e92]: claude-test@archerries.local
+      - button "Abmelden" [ref=e93] [cursor=pointer]:
+        - img [ref=e94]
+        - text: Abmelden
+      - generic "Build 2026-05-19 13:05" [ref=e97]: v2a91010 · 2026-05-19 13:05
+  - main [ref=e98]:
+    - generic [ref=e358]:
+      - generic [ref=e360]:
+        - button "Close" [ref=e361] [cursor=pointer]:
+          - img [ref=e362]
+        - button "Station 1 / 10" [ref=e365] [cursor=pointer]:
+          - img [ref=e366]
+          - text: Station 1 / 10
+        - generic [ref=e368]:
+          - generic [ref=e369]: "0"
+          - button "Menu" [ref=e370] [cursor=pointer]:
+            - img [ref=e371]
+      - generic [ref=e375]:
+        - generic [ref=e376]:
+          - button "Pfeil 1 ·" [ref=e377] [cursor=pointer]:
+            - generic [ref=e378]: Pfeil 1
+            - generic [ref=e379]: ·
+          - button "Pfeil 2 ·" [ref=e380] [cursor=pointer]:
+            - generic [ref=e381]: Pfeil 2
+            - generic [ref=e382]: ·
+          - button "Pfeil 3 ·" [ref=e383] [cursor=pointer]:
+            - generic [ref=e384]: Pfeil 3
+            - generic [ref=e385]: ·
+        - img [ref=e389]:
+          - generic: "1"
+          - generic: "2"
+          - generic: "3"
+          - generic: "4"
+          - generic: "5"
+          - generic: "6"
+          - generic: "7"
+          - generic: "8"
+          - generic: "9"
+          - generic: "10"
+        - button "Speichern & nächster Spieler" [ref=e402] [cursor=pointer]:
+          - text: Speichern & nächster Spieler
+          - img [ref=e403]

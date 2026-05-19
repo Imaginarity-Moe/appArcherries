@@ -12,7 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
-import { LogoMark, Wordmark, _logoFullLightUrl, _logoFullDarkUrl } from "./Logo";
+import { Wordmark, _logoFullLightUrl, _logoFullDarkUrl } from "./Logo";
 import NetworkStatusIcon from "./NetworkStatusIcon";
 import NotificationBell from "./NotificationBell";
 import { useConfirm } from "./ConfirmDialog";
@@ -70,12 +70,11 @@ export default function Layout() {
     <div className="min-h-screen bg-canvas text-primary">
       {/* ─── Desktop-Sidebar ─────────────────────────────────────────── */}
       <aside className="hidden lg:flex fixed top-0 left-0 h-screen w-64 flex-col bg-surface border-r border-hairline z-20">
-        <div className="flex items-center justify-between px-6 pt-6 pb-2">
-          <Link to="/" className="block py-2 flex items-center gap-2" aria-label="Archerries">
-            <LogoMark size={36} />
-            <Wordmark className="h-5" />
+        <div className="flex items-center justify-between pl-6 pr-3 pt-6 pb-2">
+          <Link to="/" className="block py-2" aria-label="Archerries">
+            <Wordmark className="h-6" />
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <NetworkStatusIcon />
             <NotificationBell align="left" />
           </div>
@@ -139,7 +138,7 @@ export default function Layout() {
       {/* ─── Content ─────────────────────────────────────────────────── */}
       {/* pb-32: für die schwebende Mobile-Nav (h-14 + safe-area ≈ 100px)
           lg:pb-24: für die Desktop-Custom-Action-Bar (h-16 fixed bottom) */}
-      <main className={`lg:pl-64 ${hideMobileNav ? "lg:pb-8" : "pb-32"} ${customActions ? "lg:pb-24" : "lg:pb-8"}`}>
+      <main className={`lg:pl-64 ${hideMobileNav ? "lg:pb-8" : "pb-36"} ${customActions ? "lg:pb-24" : "lg:pb-8"}`}>
         <div className="container-app py-5 sm:py-7">
           <Outlet />
         </div>
@@ -164,13 +163,11 @@ export default function Layout() {
             an der Sidebar vorbei (lg:pl-64). ─ */}
       {customActions && customActions.length > 0 && (
         <div
-          className="hidden lg:block fixed inset-x-0 bottom-0 z-30 bg-canvas/85 backdrop-blur-xl supports-[backdrop-filter]:bg-canvas/75 border-t border-hairline"
+          className="hidden lg:block fixed bottom-0 right-0 left-64 z-30 bg-canvas/85 backdrop-blur-xl supports-[backdrop-filter]:bg-canvas/75 border-t border-hairline"
           aria-label="Page-Aktionen"
         >
-          <div className="lg:pl-64">
-            <div className="container-app flex items-center justify-end gap-2 py-3">
-              {customActions.map((a, i) => renderDesktopAction(a, i))}
-            </div>
+          <div className="container-app flex items-center justify-end gap-2 py-3">
+            {customActions.map((a, i) => renderDesktopAction(a, i))}
           </div>
         </div>
       )}

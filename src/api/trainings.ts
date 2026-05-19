@@ -1,4 +1,4 @@
-import { api, apiCached, getToken } from "./client";
+import { api, apiCached, apiSWR, getToken } from "./client";
 import { getCached, mutateCached, setCached, invalidateCache } from "../lib/cache";
 import { enqueue } from "../lib/outbox";
 import { isNetworkError } from "../lib/sync";
@@ -85,8 +85,16 @@ export type Training = {
   sets_to_win?: number | null;
   /** Multi-Player: training_participant_id, der Leg 1 eröffnet. Rotation pro Leg. */
   starting_participant_id?: number | null;
-  /** 'solo' = nur Owner scort für alle (Rotation), 'collab' = jeder am eigenen Gerät */
-  shared_scoring_mode?: "solo" | "collab" | null;
+  /**
+   * 'solo'   = nur Owner scort für alle (Rotation),
+   * 'collab' = jeder am eigenen Gerät, parallel,
+   * 'sync'   = Mutex; nur einer scort, andere sehen passiv zu.
+   */
+  shared_scoring_mode?: "solo" | "collab" | "sync" | null;
+  /** Im sync-Modus: training_participant_id, der gerade scoren darf. */
+  current_turn_participant_id?: number | null;
+  /** Im sync-Modus: aktuell aktives target_index (= Leg). Vom Backend rotiert. */
+  current_station_index?: number | null;
   targets?: Target[];
   participants?: Participant[];
   is_owner?: boolean;
@@ -97,6 +105,8 @@ export type TrainingListItem = Omit<Training, "targets"> & {
   is_shared?: boolean;
   owner_user_id?: number;
   bow_name?: string | null;
+  /** Anzahl Stationen, an denen mindestens ein Pfeil gewertet ist. */
+  done_targets?: number;
 };
 
 export const DISCIPLINE_LABELS: Record<Discipline, string> = {
@@ -200,9 +210,17 @@ export async function resolveId(id: number | string): Promise<number | string> {
 // READS
 // ============================================================
 
-export async function listTrainings(page = 1, limit = 20, archived = false): Promise<{ trainings: TrainingListItem[]; total: number }> {
+export type TrainingsListResponse = { trainings: TrainingListItem[]; total: number };
+
+export async function listTrainings(
+  page = 1,
+  limit = 20,
+  archived = false,
+  onRefresh?: (fresh: TrainingsListResponse) => void
+): Promise<TrainingsListResponse> {
   const suffix = archived ? "&archived=1" : "";
-  return apiCached(`/trainings?page=${page}&limit=${limit}${suffix}`);
+  const path = `/trainings?page=${page}&limit=${limit}${suffix}`;
+  return onRefresh ? apiSWR<TrainingsListResponse>(path, onRefresh) : apiCached<TrainingsListResponse>(path);
 }
 
 /** Training archivieren (archived_at = NOW()) oder Archiv aufheben (=null). */
@@ -228,7 +246,7 @@ export async function createTraining(body: Partial<Training> & {
   scoring_mode?: ScoringMode;
   legs_to_win?: number;
   sets_to_win?: number;
-  shared_scoring_mode?: "solo" | "collab";
+  shared_scoring_mode?: "solo" | "collab" | "sync";
 }): Promise<{ training: Training }> {
   if (navigator.onLine) {
     try {
@@ -284,6 +302,15 @@ export async function updateTraining(id: number | string, body: Partial<Training
   return cached ?? { training: { ...(body as Training), id: resolved } };
 }
 
+/** Sync-Modus: Owner setzt den Turn manuell auf einen Spieler. */
+export async function setTrainingTurn(id: number | string, participantId: number): Promise<{ training: Training }> {
+  const resolved = await resolveId(id);
+  return api(`/trainings/${resolved}/turn`, {
+    method: "POST",
+    body: JSON.stringify({ participant_id: participantId }),
+  });
+}
+
 export async function deleteTraining(id: number | string): Promise<{ ok: true }> {
   const resolved = await resolveId(id);
   if (navigator.onLine && typeof resolved === "number") {
@@ -313,6 +340,8 @@ type UpsertTargetBody = {
   shots?: Array<{ arrow_seq: number; zone: string | null; x_norm?: number | null; y_norm?: number | null }>;
   /** Owner-only: scorst für anderen Participant (z.B. Gast ohne Account) */
   for_participant_id?: number;
+  /** Sync-Modus: nach Speichern Turn zum nächsten Spieler weiterdrehen. */
+  yield?: boolean;
 };
 
 export async function upsertTarget(

@@ -1,0 +1,72 @@
+- generic [active] [ref=e2]:
+  - generic [ref=e3]:
+    - iframe [ref=e5]:
+      - banner [ref=f2e2]:
+        - generic [ref=f2e3]:
+          - generic [ref=f2e5]:
+            - heading [level=1]
+          - generic [ref=f2e6]:
+            - generic [ref=f2e8]:
+              - link "Gmail" [ref=f2e10] [cursor=pointer]:
+                - /url: https://mail.google.com/mail/?tab=rm&ogbl
+              - link "Nach Bildern suchen" [ref=f2e12] [cursor=pointer]:
+                - /url: https://www.google.com/imghp?hl=de&tab=ri&ogbl
+                - text: Bilder
+            - button "Google-Apps" [ref=f2e17] [cursor=pointer]:
+              - img [ref=f2e18]
+    - generic [ref=e10]:
+      - generic [ref=e12]:
+        - combobox "Suchbegriff oder URL eingeben" [expanded] [ref=e13]
+        - button "KI‑Modus" [ref=e16] [cursor=pointer]:
+          - img [ref=e17]
+          - generic [ref=e18]:
+            - generic: KI‑Modus
+      - listbox [ref=e20]:
+        - generic [ref=e22]:
+          - option "\"rückwärtssuche\" im Verlauf suchen – drücke die Tabulatortaste und dann die Eingabetaste, um den Vorschlag zu entfernen., Google-Suche" [ref=e24]:
+            - generic [ref=e32]:
+              - generic [ref=e33]: rückwärtssuche
+              - generic [ref=e34]: "-"
+              - generic [ref=e35]: Google-Suche
+          - heading "Trends bei Suchanfragen" [level=3] [ref=e36]:
+            - generic [ref=e37]: Trends bei Suchanfragen
+          - generic [ref=e38]:
+            - 'option "Suchvorschlag: nvidia aktie, Trends bei Suchanfragen" [ref=e39]':
+              - generic [ref=e48]: nvidia aktie
+            - 'option "Suchvorschlag: blutritt weingarten 2026, Trends bei Suchanfragen" [ref=e49]':
+              - generic [ref=e58]: blutritt weingarten 2026
+            - 'option "Suchvorschlag: eishockey wm deutschland finnland, Trends bei Suchanfragen" [ref=e59]':
+              - generic [ref=e68]: eishockey wm deutschland finnland
+            - option "Caroline Robens, Internetpersönlichkeit, Suchvorschlag, Trends bei Suchanfragen, Internetpersönlichkeit" [ref=e69]:
+              - generic [ref=e71]:
+                - img [ref=e74]
+                - generic [ref=e76]:
+                  - generic [ref=e77]: Caroline Robens
+                  - generic [ref=e78]: Internetpersönlichkeit
+            - 'option "Suchvorschlag: rollenspiel, Trends bei Suchanfragen" [ref=e79]':
+              - generic [ref=e88]: rollenspiel
+            - 'option "Suchvorschlag: rheinmetall aktie, Trends bei Suchanfragen" [ref=e89]':
+              - generic [ref=e98]: rheinmetall aktie
+            - 'option "Suchvorschlag: lufthansa athen evakuierung, Trends bei Suchanfragen" [ref=e99]':
+              - generic [ref=e108]: lufthansa athen evakuierung
+    - generic [ref=e110]:
+      - generic "Archerries" [ref=e111] [cursor=pointer]:
+        - link "Archerries" [ref=e112]:
+          - /url: https://archerries.mossig.de/login
+        - button "Weitere Aktionen für das Textkürzel „Archerries“" [ref=e113]
+        - generic [ref=e116]: Archerries
+      - generic "Web Store" [ref=e117] [cursor=pointer]:
+        - link "Web Store" [ref=e118]:
+          - /url: https://chrome.google.com/webstore?hl=de
+        - button "Weitere Aktionen für das Textkürzel „Web Store“" [ref=e119]
+        - generic [ref=e122]: Web Store
+      - button "Neue Verknüpfung" [ref=e123] [cursor=pointer]:
+        - generic [ref=e128]: Neue Verknüpfung
+      - generic:
+        - generic: Abbrechen
+        - generic: Fertig
+    - button "Chrome anpassen" [ref=e131] [cursor=pointer]:
+      - generic [ref=e132]:
+        - img
+      - generic [ref=e134]: Chrome anpassen
+  - img [ref=e136]

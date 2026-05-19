@@ -12,8 +12,48 @@ function handle_auth(string $method, string $path): void
         $method === 'POST' && $action === 'login'           => auth_login(),
         $method === 'POST' && $action === 'forgot-password' => auth_forgot(),
         $method === 'POST' && $action === 'reset-password'  => auth_reset(),
+        $method === 'POST' && $action === 'email-settings'  => auth_email_settings(),
         default => res_error('Not found', 404),
     };
+}
+
+/**
+ * Tauscht einen signed Mail-Settings-Token (purpose=email_settings, 24h)
+ * gegen ein vollwertiges 30-Tage-JWT. Nutzbar als Magic-Login von Mail-Footer-Links.
+ */
+function auth_email_settings(): void
+{
+    $in    = req_json();
+    $token = trim((string)($in['token'] ?? ''));
+    if (!$token) res_error('Kein Token', 400);
+
+    $claims = jwt_verify($token);
+    if (!$claims || ($claims['purpose'] ?? '') !== 'email_settings' || empty($claims['uid'])) {
+        res_error('Token ungültig oder abgelaufen', 400);
+    }
+    $user_id = (int)$claims['uid'];
+
+    $stmt = db()->prepare(
+        'SELECT id, email, display_name, status, role, avatar_path, pro_mode FROM users WHERE id = ?'
+    );
+    $stmt->execute([$user_id]);
+    $u = $stmt->fetch();
+    if (!$u)                           res_error('User nicht gefunden', 404);
+    if ($u['status'] !== 'active')     res_error('Konto nicht aktiv', 403);
+
+    $jwt = jwt_sign(['uid' => (int)$u['id'], 'role' => $u['role']]);
+    res_json([
+        'token' => $jwt,
+        'user' => [
+            'id'           => (int)$u['id'],
+            'email'        => $u['email'],
+            'display_name' => $u['display_name'],
+            'status'       => $u['status'],
+            'role'         => $u['role'],
+            'avatar_url'   => isset($u['avatar_path']) && $u['avatar_path'] ? (string)$u['avatar_path'] : null,
+            'pro_mode'     => (bool)($u['pro_mode'] ?? 0),
+        ],
+    ]);
 }
 
 function auth_register(): void

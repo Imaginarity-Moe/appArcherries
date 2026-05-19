@@ -1,0 +1,68 @@
+- generic [ref=e36]:
+  - complementary [ref=e37]:
+    - generic [ref=e38]:
+      - link "Archerries" [ref=e39] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e40]:
+          - img [ref=e41]:
+            - generic "ARCHERRIES" [ref=e42]
+      - generic [ref=e74]:
+        - button "Online" [ref=e76] [cursor=pointer]:
+          - img [ref=e77]
+        - button "Benachrichtigungen" [ref=e82] [cursor=pointer]:
+          - img [ref=e83]
+    - navigation [ref=e86]:
+      - link "Übersicht" [ref=e87] [cursor=pointer]:
+        - /url: /
+        - img [ref=e88]
+        - generic [ref=e91]: Übersicht
+      - link "Statistik" [ref=e92] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e93]
+        - generic [ref=e95]: Statistik
+      - link "Parcours" [ref=e96] [cursor=pointer]:
+        - /url: /parcours
+        - img [ref=e97]
+        - generic [ref=e99]: Parcours
+      - link "Hilfe" [ref=e100] [cursor=pointer]:
+        - /url: /help
+        - img [ref=e101]
+        - generic [ref=e104]: Hilfe
+      - link "Profil" [ref=e105] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e106]
+        - generic [ref=e110]: Profil
+    - button "Neues Training" [ref=e112] [cursor=pointer]:
+      - img [ref=e113]
+      - text: Neues Training
+    - generic [ref=e114]:
+      - link "Claude Test claude-test@archerries.local" [ref=e115] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e116]: CT
+        - generic [ref=e117]:
+          - generic [ref=e118]: Claude Test
+          - generic [ref=e119]: claude-test@archerries.local
+      - button "Abmelden" [ref=e120] [cursor=pointer]:
+        - img [ref=e121]
+        - text: Abmelden
+      - generic "Build 2026-05-19 14:27" [ref=e124]: v2a91010 · 2026-05-19 14:27
+  - main [ref=e125]:
+    - generic [ref=e127]:
+      - generic [ref=e128]:
+        - heading "Hallo, Claude Test" [level=1] [ref=e129]
+        - paragraph [ref=e130]: Dienstag, 19. Mai
+      - generic [ref=e131]:
+        - generic [ref=e132]:
+          - heading "Letzte Trainings" [level=2] [ref=e133]
+          - generic [ref=e134]:
+            - link "Archiv öffnen" [ref=e135] [cursor=pointer]:
+              - /url: /trainings/archive
+              - img [ref=e136]
+              - text: Archiv
+            - link "Neues Training" [ref=e139] [cursor=pointer]:
+              - /url: /trainings/new
+              - img [ref=e140]
+              - text: Neues Training
+        - status [ref=e141]:
+          - img [ref=e142]
+          - generic [ref=e144]: Lade…

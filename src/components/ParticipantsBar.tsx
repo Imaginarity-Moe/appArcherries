@@ -5,7 +5,8 @@ import Avatar from "./Avatar";
 type Props = {
   participants: Participant[];
   isOwner: boolean;
-  onInvite: () => void;
+  /** Optional: per QR/Token einladen. Bei undefined wird der QR-Button ausgeblendet (z.B. Training beendet). */
+  onInvite?: () => void;
   /** Optional: Freund 1-Tap-Hinzufügen. Wenn weggelassen, wird der Button ausgeblendet. */
   onAddFriend?: () => void;
   /** True wenn das Training mehr als einen Teilnehmer hat → Live-Indikator zeigen */
@@ -20,8 +21,9 @@ type Props = {
  * Nur sichtbar wenn mind. 2 Participants ODER User ist Owner.
  */
 export default function ParticipantsBar({ participants, isOwner, onInvite, onAddFriend, isLive, isPolling }: Props) {
-  const showInvite = isOwner;
-  if (participants.length <= 1 && !showInvite) return null;
+  const showInvite = isOwner && !!onInvite;
+  const showAddFriend = isOwner && !!onAddFriend;
+  if (participants.length <= 1 && !showInvite && !showAddFriend) return null;
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto -mx-2 px-2 py-2">
@@ -51,7 +53,7 @@ export default function ParticipantsBar({ participants, isOwner, onInvite, onAdd
           </span>
         </div>
       ))}
-      {showInvite && onAddFriend && (
+      {showAddFriend && (
         <button
           onClick={onAddFriend}
           className="flex-shrink-0 inline-flex items-center gap-1 rounded-2xl px-3 py-1.5 bg-cherry-500 text-cream text-sm font-medium hover:bg-cherry-600"

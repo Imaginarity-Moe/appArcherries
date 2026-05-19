@@ -1,0 +1,129 @@
+- generic [ref=e9]:
+  - banner [ref=e10]:
+    - generic [ref=e11]:
+      - link "Archerries" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e13]:
+          - img [ref=e14]:
+            - generic "ARCHERRIES" [ref=e15]
+        - generic "Revision 2a91010 · gebaut 2026-05-19 13:05" [ref=e47]: v2a91010
+      - generic [ref=e48]:
+        - button "Online" [ref=e50] [cursor=pointer]:
+          - img [ref=e51]
+        - button "Benachrichtigungen" [ref=e56] [cursor=pointer]:
+          - img [ref=e57]
+        - link "Profil" [ref=e60] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e61]: CT
+  - main [ref=e62]:
+    - generic [ref=e64]:
+      - heading "Profil" [level=1] [ref=e65]
+      - generic [ref=e66]:
+        - heading "Konto" [level=2] [ref=e67]
+        - generic [ref=e68]:
+          - generic [ref=e69]: CT
+          - button "Hochladen" [ref=e71] [cursor=pointer]:
+            - img [ref=e72]
+            - text: Hochladen
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - generic [ref=e78]: Anzeigename
+            - generic [ref=e79]: Claude Test
+          - generic [ref=e80]:
+            - generic [ref=e81]: E-Mail
+            - generic [ref=e82]: claude-test@archerries.local
+      - generic [ref=e83]:
+        - heading "Einstellungen" [level=2] [ref=e84]
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - generic [ref=e87]:
+              - img [ref=e88]
+              - text: Sprache
+            - generic [ref=e91]:
+              - button "Deutsch" [ref=e92] [cursor=pointer]
+              - button "English" [ref=e93] [cursor=pointer]
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - img [ref=e96]
+              - text: Erscheinungsbild
+            - generic [ref=e102]:
+              - button "Hell" [ref=e103] [cursor=pointer]:
+                - img [ref=e104]
+                - text: Hell
+              - button "Dunkel" [ref=e110] [cursor=pointer]:
+                - img [ref=e111]
+                - text: Dunkel
+              - button "A Automatisch" [ref=e113] [cursor=pointer]:
+                - generic [ref=e114]: A
+                - text: Automatisch
+      - link "Meine Bögen Bogen-Profile mit Setup-Daten verwalten" [ref=e115] [cursor=pointer]:
+        - /url: /bows
+        - generic [ref=e116]:
+          - img [ref=e118]
+          - generic [ref=e122]:
+            - generic [ref=e123]: Meine Bögen
+            - generic [ref=e124]: Bogen-Profile mit Setup-Daten verwalten
+        - img [ref=e125]
+      - link "Meine Pfeile Pfeil-Sets mit Spine, Befiederung & Bestand verwalten" [ref=e127] [cursor=pointer]:
+        - /url: /arrows
+        - generic [ref=e128]:
+          - img [ref=e130]
+          - generic [ref=e132]:
+            - generic [ref=e133]: Meine Pfeile
+            - generic [ref=e134]: Pfeil-Sets mit Spine, Befiederung & Bestand verwalten
+        - img [ref=e135]
+      - generic [ref=e137]:
+        - heading "Benachrichtigungen" [level=2] [ref=e139]:
+          - img [ref=e140]
+          - text: Benachrichtigungen
+        - paragraph [ref=e143]: Steuere getrennt, ob du Hinweise in der App siehst und per E-Mail erhältst.
+        - generic [ref=e144]:
+          - generic [ref=e145]: Kategorie
+          - generic [ref=e146]: App
+          - generic [ref=e147]: E-Mail
+        - generic [ref=e148]:
+          - generic [ref=e149]:
+            - generic [ref=e150]:
+              - generic [ref=e151]: Sicherheit & Konto
+              - generic [ref=e152]: Bestätigungsmails, Passwort-Reset. Erforderlich für Kontosicherheit.
+            - switch "Sicherheit & Konto" [checked] [disabled] [ref=e154]
+            - switch "Sicherheit & Konto" [checked] [disabled] [ref=e157]
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - generic [ref=e161]: Soziales
+              - generic [ref=e162]: Freundschaftsanfragen, Antworten, „Freund hat dich zu einem Training hinzugefügt“.
+            - switch "Soziales" [checked] [ref=e164] [cursor=pointer]
+            - switch "Soziales" [ref=e167] [cursor=pointer]
+          - generic [ref=e169]:
+            - generic [ref=e170]:
+              - generic [ref=e171]: Einladungen
+              - generic [ref=e172]: Einladungen zu geteilten Trainings (Token-Links).
+            - switch "Einladungen" [checked] [ref=e174] [cursor=pointer]
+            - switch "Einladungen" [ref=e177] [cursor=pointer]
+      - link "Freunde Anfragen senden, annehmen und Freundes-Liste verwalten" [ref=e179] [cursor=pointer]:
+        - /url: /friends
+        - generic [ref=e180]:
+          - img [ref=e182]
+          - generic [ref=e187]:
+            - generic [ref=e188]: Freunde
+            - generic [ref=e189]: Anfragen senden, annehmen und Freundes-Liste verwalten
+        - img [ref=e190]
+      - generic [ref=e192]:
+        - heading "Gefahrenzone" [level=2] [ref=e193]
+        - paragraph [ref=e194]: Konto wirklich löschen? Alle Trainings, Parcours und Daten werden unwiderruflich entfernt.
+        - button "Konto löschen" [disabled] [ref=e195]:
+          - img [ref=e196]
+          - text: Konto löschen
+  - navigation "Hauptnavigation":
+    - generic [ref=e200]:
+      - link "Zurück" [ref=e201] [cursor=pointer]:
+        - /url: /
+        - img [ref=e202]
+        - generic [ref=e204]: Zurück
+      - link "Bögen" [ref=e205] [cursor=pointer]:
+        - /url: /bows
+        - img [ref=e206]
+        - generic [ref=e210]: Bögen
+      - button "Logout" [ref=e211] [cursor=pointer]:
+        - img [ref=e212]
+        - generic [ref=e215]: Logout

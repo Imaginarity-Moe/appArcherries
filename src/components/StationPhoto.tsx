@@ -107,7 +107,7 @@ export default function StationPhoto({ trainingId, targetId, imagePath, onChange
           className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50"
         >
           {busy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
-          {busy ? "Lade hoch…" : "Foto"}
+          {busy ? "Hochladen…" : "Foto"}
         </button>
       )}
 

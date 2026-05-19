@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/Mailer.php';
+require_once __DIR__ . '/../lib/Notifications.php';
 require_once __DIR__ . '/notifications.php';
 
 /**
@@ -222,6 +223,7 @@ function friend_user_row(int $user_id): array
 
 function notify_friend_request(array $target, array $requester): void
 {
+    if (!should_notify((int)$target['id'], 'social', 'email')) return;
     $base = rtrim((string)config()['app_url'], '/');
     $name_req    = $requester['display_name'] ?: $requester['email'];
     $name_target = $target['display_name'] ?: $target['email'];
@@ -229,13 +231,15 @@ function notify_friend_request(array $target, array $requester): void
           . "<p><strong>" . htmlspecialchars($name_req) . "</strong> (" . htmlspecialchars($requester['email'])
           . ") möchte dein Freund in Archerries werden.</p>"
           . "<p><a href=\"$base/friends\">Anfrage in Archerries öffnen</a></p>"
-          . "<p style=\"color:#888;font-size:12px\">Du kannst die Anfrage annehmen, ablehnen oder den Anfrager blockieren.</p>";
+          . "<p style=\"color:#888;font-size:12px\">Du kannst die Anfrage annehmen, ablehnen oder den Anfrager blockieren.</p>"
+          . mail_footer_html((int)$target['id'], 'soziale Benachrichtigungen');
     @send_mail($target['email'], 'Archerries: Neue Freundes-Anfrage', $html);
 }
 
 function notify_friend_response(array $requester, array $responder, string $action): void
 {
     if (!$requester['email']) return;
+    if (!should_notify((int)$requester['id'], 'social', 'email')) return;
     $base = rtrim((string)config()['app_url'], '/');
     $name_res = $responder['display_name'] ?: $responder['email'];
     $name_req = $requester['display_name'] ?: $requester['email'];
@@ -252,5 +256,6 @@ function notify_friend_response(array $requester, array $responder, string $acti
               . "</strong> wurde abgelehnt.</p>"
               . "<p>Du kannst es später erneut versuchen.</p>";
     }
+    $html .= mail_footer_html((int)$requester['id'], 'soziale Benachrichtigungen');
     @send_mail($requester['email'], $subject, $html);
 }

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, X, Check, Loader2, Star, Camera, Trash2, ExternalLink, History, Plus } from "lucide-react";
+import { PageSpinner } from "../components/Spinner";
 import {
   createArrow,
   createArrowEvent,
@@ -323,7 +324,7 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
     }
   }
 
-  if (loading) return <p className="text-secondary p-8">Lade…</p>;
+  if (loading) return <PageSpinner />;
   if (mode === "edit" && !arrow) return <p className="text-cherry-500 p-8">{error ?? "Pfeil-Set nicht gefunden"}</p>;
 
   return (

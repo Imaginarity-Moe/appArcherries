@@ -1,0 +1,74 @@
+- generic [ref=e9]:
+  - banner [ref=e10]:
+    - generic [ref=e11]:
+      - link "Archerries" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e13]:
+          - img [ref=e14]:
+            - generic "ARCHERRIES" [ref=e15]
+        - generic "Revision 2a91010 · gebaut 2026-05-19 13:05" [ref=e47]: v2a91010
+      - generic [ref=e48]:
+        - button "Online" [ref=e50] [cursor=pointer]:
+          - img [ref=e51]
+        - button "Benachrichtigungen" [ref=e56] [cursor=pointer]:
+          - img [ref=e57]
+        - link "Profil" [ref=e60] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e61]: CT
+  - main [ref=e62]:
+    - generic [ref=e64]:
+      - link "Zurück" [ref=e65] [cursor=pointer]:
+        - /url: /
+        - img [ref=e66]
+        - text: Zurück
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - generic [ref=e70]:
+            - heading "Scheibenschießen" [level=1] [ref=e71]
+            - generic [ref=e72]: Demo-Recurve 36 lbs · Recurve
+            - generic [ref=e73]: 19.05.2026, 13:13
+          - generic [ref=e74]:
+            - generic [ref=e75]: "30"
+            - generic [ref=e76]: 1 Station
+        - generic [ref=e78]:
+          - button "1" [ref=e79] [cursor=pointer]
+          - button "2" [ref=e80] [cursor=pointer]
+          - button "3" [ref=e81] [cursor=pointer]
+          - button "4" [ref=e82] [cursor=pointer]
+          - button "5" [ref=e83] [cursor=pointer]
+          - button "6" [ref=e84] [cursor=pointer]
+          - button "7" [ref=e85] [cursor=pointer]
+          - button "8" [ref=e86] [cursor=pointer]
+          - button "9" [ref=e87] [cursor=pointer]
+          - button "10" [ref=e88] [cursor=pointer]
+        - button "Löschen" [ref=e90] [cursor=pointer]:
+          - img [ref=e91]
+          - text: Löschen
+      - generic [ref=e95]:
+        - button "Karten" [ref=e96] [cursor=pointer]
+        - button "Tabelle" [ref=e97] [cursor=pointer]
+      - table [ref=e99]:
+        - rowgroup [ref=e100]:
+          - row "# P1 P2 P3 Du" [ref=e101]:
+            - columnheader "#" [ref=e102]
+            - columnheader "P1" [ref=e103]
+            - columnheader "P2" [ref=e104]
+            - columnheader "P3" [ref=e105]
+            - columnheader "Du" [ref=e106]
+        - rowgroup [ref=e107]:
+          - row "1 10 10 10 30" [ref=e108] [cursor=pointer]:
+            - cell "1" [ref=e109]
+            - cell "10" [ref=e110]
+            - cell "10" [ref=e111]
+            - cell "10" [ref=e112]
+            - cell "30" [ref=e113]
+  - navigation "Hauptnavigation":
+    - generic [ref=e115]:
+      - link "Zurück" [ref=e116] [cursor=pointer]:
+        - /url: /
+        - img [ref=e117]
+        - generic [ref=e119]: Zurück
+      - link "Auswertung" [ref=e120] [cursor=pointer]:
+        - /url: /trainings/158/summary
+        - img [ref=e121]
+        - generic [ref=e123]: Auswertung

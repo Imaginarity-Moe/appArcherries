@@ -15,5 +15,19 @@
   "logout": "Abmelden",
   "danger_zone": "Gefahrenzone",
   "delete_account": "Konto löschen",
-  "delete_account_confirm": "Konto wirklich löschen? Alle Trainings, Parcours und Daten werden unwiderruflich entfernt."
+  "delete_account_confirm": "Konto wirklich löschen? Alle Trainings, Parcours und Daten werden unwiderruflich entfernt.",
+  "notif": {
+    "title": "Benachrichtigungen",
+    "intro": "Steuere getrennt, ob du Hinweise in der App siehst und per E-Mail erhältst.",
+    "channel_header": "Kategorie",
+    "col_in_app": "App",
+    "col_email": "E-Mail",
+    "saved": "Gespeichert",
+    "cat_security_label": "Sicherheit & Konto",
+    "cat_security_desc": "Bestätigungsmails, Passwort-Reset. Erforderlich für Kontosicherheit.",
+    "cat_social_label": "Soziales",
+    "cat_social_desc": "Freundschaftsanfragen, Antworten, „Freund hat dich zu einem Training hinzugefügt“.",
+    "cat_invitations_label": "Einladungen",
+    "cat_invitations_desc": "Einladungen zu geteilten Trainings (Token-Links)."
+  }
 }

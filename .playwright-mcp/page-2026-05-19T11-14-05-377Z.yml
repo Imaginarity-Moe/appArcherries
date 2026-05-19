@@ -1,0 +1,95 @@
+- generic [ref=e9]:
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - link "Archerries" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e13]:
+          - img [ref=e14]:
+            - generic "ARCHERRIES" [ref=e15]
+      - generic [ref=e47]:
+        - button "Online" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - button "Benachrichtigungen" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+    - navigation [ref=e59]:
+      - link "Übersicht" [ref=e60] [cursor=pointer]:
+        - /url: /
+        - img [ref=e61]
+        - generic [ref=e64]: Übersicht
+      - link "Statistik" [ref=e65] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e66]
+        - generic [ref=e68]: Statistik
+      - link "Parcours" [ref=e69] [cursor=pointer]:
+        - /url: /parcours
+        - img [ref=e70]
+        - generic [ref=e72]: Parcours
+      - link "Hilfe" [ref=e73] [cursor=pointer]:
+        - /url: /help
+        - img [ref=e74]
+        - generic [ref=e77]: Hilfe
+      - link "Profil" [ref=e78] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e79]
+        - generic [ref=e83]: Profil
+    - button "Neues Training" [ref=e85] [cursor=pointer]:
+      - img [ref=e86]
+      - text: Neues Training
+    - generic [ref=e87]:
+      - link "Claude Test claude-test@archerries.local" [ref=e88] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e89]: CT
+        - generic [ref=e90]:
+          - generic [ref=e91]: Claude Test
+          - generic [ref=e92]: claude-test@archerries.local
+      - button "Abmelden" [ref=e93] [cursor=pointer]:
+        - img [ref=e94]
+        - text: Abmelden
+      - generic "Build 2026-05-19 13:05" [ref=e97]: v2a91010 · 2026-05-19 13:05
+  - main [ref=e98]:
+    - generic [ref=e309]:
+      - link "Zurück" [ref=e310] [cursor=pointer]:
+        - /url: /
+        - img [ref=e311]
+        - text: Zurück
+      - generic [ref=e313]:
+        - generic [ref=e314]:
+          - generic [ref=e315]:
+            - heading "Scheibenschießen" [level=1] [ref=e316]
+            - generic [ref=e317]: Demo-Recurve 36 lbs · Recurve
+            - generic [ref=e318]: 19.05.2026, 13:13
+          - generic [ref=e319]:
+            - generic [ref=e320]: "0"
+            - generic [ref=e321]: Pkt
+        - generic [ref=e322]:
+          - generic [ref=e323]:
+            - generic [ref=e324]: CT
+            - img [ref=e325]
+            - generic [ref=e327]: Claude Test
+            - generic [ref=e328]: "0"
+          - button "Freund hinzufügen" [ref=e329] [cursor=pointer]:
+            - img [ref=e330]
+            - text: Freund
+          - button "Per QR-Code einladen" [ref=e335] [cursor=pointer]:
+            - img [ref=e336]
+            - text: QR
+        - generic [ref=e339]:
+          - button "Training beenden" [ref=e340] [cursor=pointer]:
+            - img [ref=e341]
+            - text: Training beenden
+          - button "Löschen" [ref=e343] [cursor=pointer]:
+            - img [ref=e344]
+            - text: Löschen
+      - button "Training starten" [ref=e347] [cursor=pointer]
+  - generic "Page-Aktionen" [ref=e348]:
+    - generic [ref=e349]:
+      - link "Zurück" [ref=e350] [cursor=pointer]:
+        - /url: /
+        - img [ref=e351]
+        - text: Zurück
+      - button "Starten" [ref=e353] [cursor=pointer]:
+        - img [ref=e354]
+        - text: Starten
+      - button "Beenden" [ref=e355] [cursor=pointer]:
+        - img [ref=e356]
+        - text: Beenden

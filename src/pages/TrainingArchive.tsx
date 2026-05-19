@@ -12,6 +12,7 @@ import {
 import SwipeableCard from "../components/SwipeableCard";
 import { useConfirm } from "../components/ConfirmDialog";
 import { usePageFooter } from "../components/FooterContext";
+import { Spinner } from "../components/Spinner";
 import { fmtDate } from "../lib/format";
 
 export default function TrainingArchive() {
@@ -47,7 +48,7 @@ export default function TrainingArchive() {
         </p>
       </header>
 
-      {loading && <p className="text-secondary">Lade …</p>}
+      {loading && <Spinner className="py-2" />}
       {!loading && items.length === 0 && (
         <div className="card text-center py-10 text-secondary text-sm">
           Keine archivierten Trainings. Wische auf der Übersicht eine Karte nach rechts um sie hier abzulegen.

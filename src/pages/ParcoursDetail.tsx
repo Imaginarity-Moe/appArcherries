@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import { Icon } from "leaflet";
+import { PageSpinner } from "../components/Spinner";
 import {
   deleteParcours,
   getParcours,
@@ -89,7 +90,7 @@ export default function ParcoursDetail() {
   }, [p, isOwner]);
   usePageFooter(footerActions);
 
-  if (loading) return <p className="text-secondary p-8">{t("common:actions.loading")}</p>;
+  if (loading) return <PageSpinner />;
   if (!p) return <p className="text-cherry-500 p-8">Not found</p>;
 
   const terrainKeys = (p.terrain ?? "")

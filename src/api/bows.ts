@@ -1,4 +1,4 @@
-import { api, apiCached, getToken } from "./client";
+import { api, apiCached, apiSWR, getToken } from "./client";
 import type { BowType } from "./trainings";
 
 export type LinkedArrow = {
@@ -29,8 +29,8 @@ export type Bow = {
   linked_arrows?: LinkedArrow[];
 };
 
-export async function listBows(): Promise<{ bows: Bow[] }> {
-  return apiCached(`/bows`);
+export async function listBows(onRefresh?: (fresh: { bows: Bow[] }) => void): Promise<{ bows: Bow[] }> {
+  return onRefresh ? apiSWR(`/bows`, onRefresh) : apiCached(`/bows`);
 }
 
 export async function getBow(id: number): Promise<{ bow: Bow }> {

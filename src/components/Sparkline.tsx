@@ -9,6 +9,8 @@ type Props = {
 /**
  * Mini-Sparkline ohne externe Library — sehr leichter SVG-Path.
  * Zeigt z.B. Stations-Scores eines Trainings als visueller Hook in der Liste.
+ * Bei weniger als 2 Werten rendert nichts — ein einzelner Punkt zeigt keine
+ * Entwicklung und verwirrt mehr, als er informiert.
  */
 export default function Sparkline({
   values,
@@ -17,14 +19,7 @@ export default function Sparkline({
   className = "",
   stroke = "#C97B4B",
 }: Props) {
-  if (values.length === 0) return null;
-  if (values.length === 1) {
-    return (
-      <svg width={width} height={height} className={className}>
-        <circle cx={width / 2} cy={height / 2} r="2" fill={stroke} />
-      </svg>
-    );
-  }
+  if (values.length < 2) return null;
   const max = Math.max(...values);
   const min = Math.min(...values);
   const range = max - min || 1;

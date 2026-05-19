@@ -7,6 +7,7 @@ import { StationSparkline, ZoneDistributionBars, ArrowConsistencyBars } from "..
 import { BOW_LABELS, DISCIPLINE_LABELS, getTraining, updateTraining, type BowType, type Discipline, type Training } from "../api/trainings";
 import { fmtDate } from "../lib/format";
 import { usePageFooter } from "../components/FooterContext";
+import { PageSpinner } from "../components/Spinner";
 
 /**
  * End-of-Training-Auswertung. Wird nach „Training beenden" angesteuert.
@@ -54,7 +55,7 @@ export default function TrainingSummary() {
     }
   }
 
-  if (loading || !data) return <p className="text-forest-700">{t("common:actions.loading")}</p>;
+  if (loading || !data) return <PageSpinner />;
 
   return (
     <div className="space-y-5 animate-fade-in max-w-2xl mx-auto">
@@ -158,7 +159,7 @@ export default function TrainingSummary() {
       {data.stations.length > 0 && (
         <div className="card">
           <h2 className="font-display text-lg font-semibold mb-2">
-            Stations-Verlauf
+            {data.training.discipline === "target_practice" ? "Aufnahmen-Verlauf" : "Stations-Verlauf"}
           </h2>
           <StationSparkline data={data.stations} />
         </div>

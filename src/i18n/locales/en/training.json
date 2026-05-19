@@ -33,14 +33,19 @@
     "delete_training": "Delete",
     "delete_confirm": "Really delete this training?",
     "add_station": "Add target {{n}}",
+    "add_end": "Add end {{n}}",
     "stations_title": "Targets",
+    "ends_title": "Ends",
     "summary_score": "Total score",
     "save": "Save",
-    "no_stations_yet": "No targets yet. Tap the big button to record your first."
+    "no_stations_yet": "No targets yet. Tap the big button to record your first.",
+    "no_ends_yet": "No ends yet. Tap the big button to record your first."
   },
   "live": {
     "station_of_total": "Target {{current}} / {{total}}",
+    "end_of_total": "End {{current}} / {{total}}",
     "station_n": "Target {{n}}",
+    "end_n": "End {{n}}",
     "animal_or_face": "Animal / face",
     "animal_placeholder": "e.g. Deer, 80 cm",
     "distance_m": "Distance (m)",

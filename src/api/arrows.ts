@@ -1,4 +1,4 @@
-import { api, apiCached, getToken } from "./client";
+import { api, apiCached, apiSWR, getToken } from "./client";
 
 export type ArrowMaterial = "carbon" | "aluminium" | "carbon_aluminium" | "wood" | "fiberglass";
 export type FletchingType = "natural" | "vane" | "spin_vane";
@@ -82,8 +82,8 @@ export type Arrow = {
   linked_bows?: LinkedBow[];
 };
 
-export async function listArrows(): Promise<{ arrows: Arrow[] }> {
-  return apiCached(`/arrows`);
+export async function listArrows(onRefresh?: (fresh: { arrows: Arrow[] }) => void): Promise<{ arrows: Arrow[] }> {
+  return onRefresh ? apiSWR(`/arrows`, onRefresh) : apiCached(`/arrows`);
 }
 
 export async function getArrow(id: number): Promise<{ arrow: Arrow }> {

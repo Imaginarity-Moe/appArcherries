@@ -1,7 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, BarChart3, Check, Grid3x3, Loader2, MoreHorizontal, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BarChart3, Check, Grid3x3, Loader2, MoreHorizontal, Plus, Trash2, Users, X } from "lucide-react";
 import {
   BOW_LABELS,
   DISCIPLINE_LABELS,
@@ -11,7 +11,9 @@ import {
   getTraining,
   updateTraining,
   upsertTarget,
+  setTrainingTurn,
   type Discipline,
+  type Participant,
   type Target,
   type Training,
 } from "../api/trainings";
@@ -20,7 +22,8 @@ import TargetPad from "../components/TargetPad";
 import ParticipantsBar from "../components/ParticipantsBar";
 import StationPhoto from "../components/StationPhoto";
 import PhotoMarkers from "../components/PhotoMarkers";
-import { fmtDateTime } from "../lib/format";
+import { PageSpinner } from "../components/Spinner";
+import { fmtDateTime, endLabel } from "../lib/format";
 import { useLivePolling } from "../lib/useLivePolling";
 import { useSyncListener } from "../lib/useSyncListener";
 import { useConfirm } from "../components/ConfirmDialog";
@@ -147,7 +150,6 @@ function previewArrowPoints(
 
 export default function TrainingDetail() {
   const { id } = useParams();
-  const { t } = useTranslation(["training", "common"]);
   const nav = useNavigate();
   // ID kann eine temp-ID sein (offline angelegtes Training, "tmp_…")
   const trainingId: number | string = id?.startsWith("tmp_") ? id : Number(id);
@@ -177,12 +179,31 @@ export default function TrainingDetail() {
   // Live-Sync für geteilte Runden: pollt alle 5s wenn Training offen und shared
   const isShared = (training?.participants?.length ?? 0) > 1;
   const isOpenPoll = training !== null && !training.ended_at;
-  const { isPolling } = useLivePolling(refresh, isOpenPoll && isShared, 5000);
+  // Sync-Modus: 5s-Polling (zeitkritisch für Turn-Wechsel + Live-Mirror).
+  // Solo/Collab in geteilten Trainings: 10s reicht — schont IONOS-PHP-Worker.
+  const pollInterval = training?.shared_scoring_mode === "sync" ? 5000 : 10000;
+  const { isPolling } = useLivePolling(refresh, isOpenPoll && isShared, pollInterval);
 
   // Nach erfolgreichem Outbox-Drain: frische Server-Daten holen
   useSyncListener(refresh);
 
-  if (loading) return <p className="text-forest-700">{t("common:actions.loading")}</p>;
+  // Sync-Modus: GAST-Auto-Open. Nur Mitspieler (nicht-Owner) springen automatisch
+  // zur Live-Eingabe — Owner bleibt in der Übersicht, um Freunde einzuladen und
+  // bewusst per "Training starten" loszulegen.
+  useEffect(() => {
+    if (!training) return;
+    if (training.shared_scoring_mode !== "sync") return;
+    if (training.ended_at) return;
+    if (focusedStation !== null) return; // schon im Live-Modus
+    if (training.discipline === "simple") return;
+    if (training.is_owner) return; // Owner-Setup-Phase NICHT abkürzen
+    const serverStation = training.current_station_index;
+    if (serverStation && serverStation >= 1) {
+      setSearchParams({ station: String(serverStation) }, { replace: true });
+    }
+  }, [training, focusedStation, setSearchParams]);
+
+  if (loading) return <PageSpinner />;
   if (error || !training) return <p className="text-red-700">{error ?? "Not found"}</p>;
 
   // Live-Eingabe-Modus: ?station=N → Fokus auf eine Station
@@ -221,8 +242,12 @@ function TrainingOverview({
   const [, setSearchParams] = useSearchParams();
   const [showInvite, setShowInvite] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
-  const [showAllInTable, setShowAllInTable] = useState(false);
+  // Beendetes Training: Tabelle + alle Teilnehmer als Default — User möchte direkt
+  // den Vergleich sehen, ohne erst umzuschalten.
+  const [viewMode, setViewMode] = useState<"cards" | "table">(
+    training.ended_at ? "table" : "cards"
+  );
+  const [showAllInTable, setShowAllInTable] = useState(!!training.ended_at);
   const isSimple = training.discipline === "simple";
   // Nur eigene Targets anzeigen — andere Participants haben ihre eigenen
   const myTargets = (training.targets ?? []).filter(
@@ -251,7 +276,7 @@ function TrainingOverview({
           kind: "button",
           onClick: () => setSearchParams({ station: String(nextIndex) }),
           icon: <Plus size={20} strokeWidth={2} />,
-          label: firstStation ? "Starten" : `Station ${nextIndex}`,
+          label: firstStation ? "Starten" : `${endLabel(training.discipline, 1)} ${nextIndex}`,
           primary: true,
         });
       }
@@ -323,7 +348,9 @@ function TrainingOverview({
           <div className="text-right shrink-0">
             <div className="score text-score-xl leading-none animate-count-up">{training.total_score}</div>
             <div className="text-[10px] uppercase tracking-wider text-forest-300 mt-1">
-              {myTargets.length > 0 ? t("training:detail.n_stations", { count: myTargets.length }) : "Pkt"}
+              {myTargets.length > 0
+                ? `${myTargets.length} ${endLabel(training.discipline, myTargets.length)}`
+                : "Pkt"}
             </div>
           </div>
         </div>
@@ -332,8 +359,8 @@ function TrainingOverview({
           <ParticipantsBar
             participants={training.participants}
             isOwner={!!training.is_owner}
-            onInvite={() => setShowInvite(true)}
-            onAddFriend={() => setShowAddFriend(true)}
+            onInvite={isOpen ? () => setShowInvite(true) : undefined}
+            onAddFriend={isOpen ? () => setShowAddFriend(true) : undefined}
             isLive={isShared}
             isPolling={isPolling}
           />
@@ -392,7 +419,7 @@ function TrainingOverview({
               >
                 {myTargets.length === 0
                   ? "Training starten"
-                  : t("training:detail.add_station", { n: nextIndex })}
+                  : `${endLabel(training.discipline, 1)} ${nextIndex} hinzufügen`}
               </button>
             );
           })()}
@@ -545,19 +572,19 @@ function StationsTable({
     t ? t.shots.reduce((s, sh) => s + (sh.points ?? 0), 0) : null;
 
   return (
-    <div className="card overflow-x-auto p-0">
+    <div className="card overflow-x-auto px-3 sm:px-5 py-3">
       <table className="w-full text-sm border-collapse">
         <thead>
-          <tr className="text-[10px] uppercase tracking-wider text-muted bg-surface">
-            <th className="text-left px-2 py-2 font-medium">#</th>
+          <tr className="text-[10px] uppercase tracking-[0.08em] text-secondary/60 border-b border-hairline">
+            <th className="text-left px-3 py-3 font-semibold">#</th>
             {Array.from({ length: slotsPerStation }, (_, i) => (
-              <th key={i} className="px-1.5 py-2 font-medium text-center">P{i + 1}</th>
+              <th key={i} className="px-2 py-3 font-semibold text-center">P{i + 1}</th>
             ))}
-            <th className="px-2 py-2 font-medium text-right">{me?.is_self ? "Du" : me?.display_name ?? "—"}</th>
+            <th className="px-3 py-3 font-semibold text-right">{me?.is_self ? "Du" : me?.display_name ?? "—"}</th>
             {showAll && otherPlayers.map((p) => (
-              <th key={p.id} className="px-2 py-2 font-medium text-right">
+              <th key={p.id} className="px-3 py-3 font-semibold text-right">
                 {p.is_self ? "Du" : p.display_name ?? "—"}
-                {p.user_role === "guest" && <span className="text-muted font-normal"> (Gast)</span>}
+                {p.user_role === "guest" && <span className="opacity-70 font-normal"> (Gast)</span>}
               </th>
             ))}
           </tr>
@@ -572,11 +599,11 @@ function StationsTable({
                 onClick={() => onPickStation(idx)}
                 className="cursor-pointer hover:bg-surface transition"
               >
-                <td className="px-2 py-2 font-medium text-secondary">{idx}</td>
+                <td className="px-3 py-2.5 font-medium text-secondary">{idx}</td>
                 {Array.from({ length: slotsPerStation }, (_, i) => {
                   const sh = own?.shots.find((s) => s.arrow_seq === i + 1);
                   return (
-                    <td key={i} className="px-1.5 py-2 text-center font-mono tabular-nums">
+                    <td key={i} className="px-2 py-2.5 text-center font-mono tabular-nums">
                       {sh ? (
                         <span className={sh.points && sh.points > 0 ? "text-primary" : "text-muted"}>
                           {sh.zone ?? "—"}
@@ -587,14 +614,14 @@ function StationsTable({
                     </td>
                   );
                 })}
-                <td className="px-2 py-2 text-right font-mono tabular-nums font-bold text-cherry-600 dark:text-cherry-400">
+                <td className="px-3 py-2.5 text-right font-mono tabular-nums font-bold text-cherry-600 dark:text-cherry-400">
                   {ownTotal ?? "·"}
                 </td>
                 {showAll && otherPlayers.map((p) => {
                   const t = allTargets.find((tt) => tt.target_index === idx && tt.participant_id === p.id);
                   const total = sumShots(t);
                   return (
-                    <td key={p.id} className="px-2 py-2 text-right font-mono tabular-nums text-secondary">
+                    <td key={p.id} className="px-3 py-2.5 text-right font-mono tabular-nums text-secondary">
                       {total ?? "·"}
                     </td>
                   );
@@ -820,15 +847,49 @@ function StationLiveEntry({
   useEffect(() => {
     if (scoringForPid === null && myPid !== null) setScoringForPid(myPid);
   }, [myPid, scoringForPid]);
+  // Sync-Modus: scoringForPid zwingen auf den aktuellen Turn-Spieler. Damit zeigt
+  // jeder das gleiche Target — Owner-Switcher entfällt.
+  useEffect(() => {
+    if (training.shared_scoring_mode === "sync" && training.current_turn_participant_id != null) {
+      setScoringForPid(training.current_turn_participant_id);
+    }
+  }, [training.shared_scoring_mode, training.current_turn_participant_id]);
+  // Sync-Modus: stationIndex mit Server-Wert (current_station_index) synchronisieren.
+  // Wenn Backend rotiert (alle Spieler durch → station++), springt URL auf B's Gerät automatisch.
+  // Nach ended_at NICHT automatisch zurück zur Übersicht — User soll noch korrigieren können.
+  useEffect(() => {
+    if (training.shared_scoring_mode !== "sync") return;
+    if (training.ended_at) return;
+    const serverStation = training.current_station_index;
+    if (serverStation != null && serverStation !== stationIndex) {
+      onNavigate(serverStation);
+    }
+  }, [training.shared_scoring_mode, training.current_station_index, training.ended_at, stationIndex, onNavigate]);
   // Andere scoring-bare Participants. Im collab-Mode: jeder scort nur für sich.
   // Im solo-Mode: Owner kann für alle scoren (mit Switcher), nicht-Owner nur self.
   const isOwner = !!training.is_owner;
   const isCollabMode = training.discipline === "target_practice" && training.shared_scoring_mode === "collab";
+  // sync-Modus: Mutex auf das Scoring. Nur current_turn_participant_id darf eingeben;
+  // alle anderen sehen das Pad read-only und denselben Stand.
+  const isSyncMode = training.shared_scoring_mode === "sync";
+  const currentTurnPid = training.current_turn_participant_id ?? null;
+  const isMyTurn =
+    !isSyncMode ||
+    allParticipants.length <= 1 ||
+    currentTurnPid === null ||
+    currentTurnPid === myPid;
+  const currentTurnPlayer = isSyncMode && currentTurnPid
+    ? allParticipants.find((p) => p.id === currentTurnPid) ?? null
+    : null;
   const baseScoringParticipants = isCollabMode
     ? allParticipants.filter((p) => p.id === myPid)
-    : isOwner
-      ? allParticipants.filter((p) => p.role !== "viewer")
-      : allParticipants.filter((p) => p.id === myPid);
+    : isSyncMode
+      ? allParticipants.filter((p) => p.id === currentTurnPid).length > 0
+        ? allParticipants.filter((p) => p.id === currentTurnPid)
+        : allParticipants.filter((p) => p.role !== "viewer").slice(0, 1)
+      : isOwner
+        ? allParticipants.filter((p) => p.role !== "viewer")
+        : allParticipants.filter((p) => p.id === myPid);
 
   // Start-Player-Rotation pro Leg/Set: bei target_practice mit Multi-Player
   // bestimmt starting_participant_id, wer Leg 1 startet. Leg N (1-indexed)
@@ -911,8 +972,60 @@ function StationLiveEntry({
     }
     setZonesPicked(zArr);
     setMarkers(mArr);
+    // existing?.id BEWUSST nicht in deps: im sync-Mode würde sonst der debounced
+    // POST → Polling-Refresh den lokalen State direkt nach dem ersten Pfeil
+    // überschreiben (zonesPicked auf [shot1] gesetzt → kurz danach re-init aus
+    // gerade gespeichertem existing → Slot wird wieder „aktiv" → erster Pfeil
+    // muss doppelt geklickt werden). Initialisierung erfolgt nur bei echtem
+    // Kontext-Wechsel: andere Station oder anderer scoringForPid.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stationIndex, existing?.id, slots, scoringForPid]);
+  }, [stationIndex, slots, scoringForPid]);
+
+  // Sync-Mirror: wenn ich NICHT dran bin, läuft das Display passiv aus existing.shots —
+  // jeder Polling-Refresh, der A's neuen Pfeil bringt, wird sofort gerendert.
+  // Signature über (arrow_seq, zone) damit ein Polling-Tick mit gleicher length+zones
+  // keinen Re-Render macht.
+  const existingShotsSig = useMemo(
+    () => (existing?.shots ?? []).map((s) => `${s.arrow_seq}:${s.zone ?? ""}`).join(","),
+    [existing?.shots]
+  );
+  useEffect(() => {
+    if (!isSyncMode || isMyTurn) return;
+    const zArr: (string | null)[] = Array(slots).fill(null);
+    const mArr: ({ x: number; y: number } | null)[] = Array(slots).fill(null);
+    if (existing) {
+      for (const s of existing.shots) {
+        if (s.arrow_seq >= 1 && s.arrow_seq <= slots) {
+          zArr[s.arrow_seq - 1] = s.zone;
+          if (s.x_norm != null && s.y_norm != null) {
+            mArr[s.arrow_seq - 1] = { x: s.x_norm, y: s.y_norm };
+          }
+        }
+      }
+    }
+    setZonesPicked(zArr);
+    setMarkers(mArr);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSyncMode, isMyTurn, slots, existingShotsSig]);
+
+  // Sync-Live-Push: wenn ICH dran bin, schiebe jeden Pfeil-Click auf den Server
+  // (debounced 1.2s). Längeres Debounce reduziert API-Last auf IONOS-Shared —
+  // der Mirror auf dem Gegner-Gerät kommt durch das nächste Live-Poll-Tick.
+  const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!isSyncMode || !isMyTurn) return;
+    // Beim Mount/Reset (keine Pfeile) nicht pushen — sonst würden wir gleich
+    // beim Turn-Empfang ein leeres Target speichern.
+    if (zonesPicked.every((z) => z === null)) return;
+    if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = setTimeout(() => {
+      void save({ yieldTurn: false }).catch(() => {});
+    }, 1200);
+    return () => {
+      if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zonesPicked, markers, isSyncMode, isMyTurn]);
 
   // Beim Pfeil-Tap: nächsten leeren Slot aktivieren
   function handleZoneSelect(code: string) {
@@ -931,7 +1044,7 @@ function StationLiveEntry({
     return zonesPicked.reduce((sum, z, i) => sum + previewArrowPoints(training.discipline, z, i, zonesPicked, nfaa), 0);
   }, [zonesPicked, training.discipline, training.nfaa_mode]);
 
-  async function save() {
+  async function save(opts: { yieldTurn?: boolean } = {}) {
     setBusy(true);
     try {
       const shots = zonesPicked
@@ -949,6 +1062,7 @@ function StationLiveEntry({
         shots,
         // Owner kann für anderen Participant (Gast) scoren
         ...(scoringForPid && scoringForPid !== myPid ? { for_participant_id: scoringForPid } : {}),
+        ...(opts.yieldTurn ? { yield: true } : {}),
       });
       await onChange();
     } finally {
@@ -957,6 +1071,13 @@ function StationLiveEntry({
   }
 
   async function saveAndNext() {
+    // sync-Modus: Speichern + Turn an nächsten Spieler weiterreichen.
+    // Nicht selbst zur nächsten Station navigieren — Backend rotiert den Turn,
+    // beim Polling auf B's Gerät springt das Display dann automatisch.
+    if (isSyncMode) {
+      await save({ yieldTurn: true });
+      return;
+    }
     await save();
     // Auto-Cycle bei mehreren Schützen mit Leg-Start-Rotation:
     // Innerhalb des aktuellen Ends: nächster Spieler in der rotierten Liste.
@@ -994,9 +1115,10 @@ function StationLiveEntry({
 
   async function deleteStation() {
     if (!existing) return;
+    const unitS = endLabel(training.discipline, 1);
     const ok = await confirm({
-      title: `Station ${stationIndex} löschen?`,
-      message: "Alle Pfeile dieser Station werden entfernt.",
+      title: `${unitS} ${stationIndex} löschen?`,
+      message: `Alle Pfeile dieser ${unitS} werden entfernt.`,
       confirmLabel: "Löschen",
       variant: "danger",
     });
@@ -1065,7 +1187,7 @@ function StationLiveEntry({
             className="flex items-center gap-1.5 font-display text-base font-semibold no-tap-highlight"
           >
             <Grid3x3 size={16} strokeWidth={1.75} />
-            {t("training:live.station_of_total", { current: stationIndex, total: totalStations })}
+            {`${endLabel(training.discipline, 1)} ${stationIndex} / ${totalStations}`}
           </button>
           <div className="flex items-center gap-1">
             <div className="score text-lg leading-none tabular-nums pr-2 text-cherry-600 dark:text-cherry-400" key={previewTotal}>
@@ -1079,6 +1201,50 @@ function StationLiveEntry({
       </header>
 
       <div className="container-app py-2 space-y-2.5">
+        {/* Sync-Modus: Turn-Status-Banner. Sichtbar nur wenn ≥2 Spieler dabei sind. */}
+        {isSyncMode && allParticipants.length > 1 && (
+          <div
+            className={`rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-sm ${
+              isMyTurn
+                ? "bg-cherry-50 dark:bg-cherry-900/30 border border-cherry-500/40 text-cherry-700 dark:text-cherry-300"
+                : "bg-elevated border border-hairline text-secondary"
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Users size={15} strokeWidth={1.75} className="shrink-0" />
+              <span className="font-semibold truncate">
+                {isMyTurn ? "Du bist dran" : `${currentTurnPlayer?.display_name ?? "Anderer Spieler"} scort gerade`}
+              </span>
+            </div>
+            {!isMyTurn && isOwner && myPid !== null && (
+              <button
+                onClick={async () => {
+                  await setTrainingTurn(training.id, myPid);
+                  await onChange();
+                }}
+                className="text-[11px] uppercase tracking-wider font-bold px-2 py-1 rounded-md bg-cherry-500 text-cream hover:bg-cherry-600 shrink-0"
+              >
+                Übernehmen
+              </button>
+            )}
+            {!isMyTurn && !isOwner && (
+              <span className="text-[10px] uppercase tracking-wider opacity-80 shrink-0">Sync</span>
+            )}
+          </div>
+        )}
+
+        {/* Darts-Style-Übersicht: aktueller Leg-Score, Legs (im aktuellen Set), Sets pro Spieler.
+            Sichtbar sobald ≥2 scoring-fähige Spieler dabei sind — unabhängig vom Lock-Modus
+            (sync zeigt nur 1 in scoringParticipants, deswegen direkt allParticipants prüfen). */}
+        {training.discipline === "target_practice" &&
+          allParticipants.filter((p) => p.role !== "viewer").length >= 2 && (
+          <DartsStandings
+            training={training}
+            stationIndex={stationIndex}
+            participants={allParticipants.filter((p) => p.role !== "viewer")}
+          />
+        )}
+
         {/* Participant-Switcher: nur bei ≥2 scoring-Participants. Owner kann
             zwischen sich und Gästen wechseln; Score-Save geht dann an den
             gewählten Participant. */}
@@ -1162,7 +1328,7 @@ function StationLiveEntry({
         )}
 
         {/* Pfeil-Slots — kompakter ohne große Punkte-Anzeige (Live-Score steht oben rechts) */}
-        <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${slots}, 1fr)` }}>
+        <div className={`grid gap-1.5 ${!isMyTurn ? "opacity-60 pointer-events-none" : ""}`} style={{ gridTemplateColumns: `repeat(${slots}, 1fr)` }}>
           {Array.from({ length: slots }).map((_, i) => {
             const z = zonesPicked[i];
             const isActive = activeSlot === i;
@@ -1172,6 +1338,7 @@ function StationLiveEntry({
               <button
                 key={i}
                 onClick={() => setActiveSlot(i)}
+                disabled={!isMyTurn}
                 className={`py-2 rounded-xl flex flex-col items-center justify-center transition active:scale-[0.98] ${
                   isActive
                     ? "bg-cherry-50 dark:bg-cherry-900/30 border-2 border-cherry-500"
@@ -1183,7 +1350,7 @@ function StationLiveEntry({
                 <div className="text-[9px] uppercase tracking-wider text-muted leading-none">
                   {t("training:live.shot_n", { n: i + 1 })}
                 </div>
-                <div className={`leading-tight mt-0.5 ${z ? "score text-lg" : "text-base text-muted font-bold"}`}>
+                <div className={`leading-tight mt-0.5 ${z ? "score text-xl font-bold" : "text-base text-muted font-bold"}`}>
                   {z ?? "·"}
                 </div>
                 {/* Punkte nur anzeigen wenn die Zone nicht identisch zum Punktwert ist
@@ -1201,7 +1368,7 @@ function StationLiveEntry({
             target_practice darf aus dem container-app-Padding ausbrechen
             damit die Scheibe so groß wie möglich ist (100vw - 20px). */}
         {training.discipline === "target_practice" ? (
-          <div className="-mx-5 sm:-mx-6">
+          <div className={`-mx-5 sm:-mx-6 ${!isMyTurn ? "opacity-60 pointer-events-none" : ""}`}>
           <TargetPad
             rings={training.target_rings ?? 10}
             activeSlot={activeSlot}
@@ -1233,12 +1400,14 @@ function StationLiveEntry({
           />
           </div>
         ) : (
-          <BullseyePad
-            discipline={training.discipline}
-            selectedZone={zonesPicked[activeSlot] ?? null}
-            onZoneSelect={(code) => handleZoneSelect(code)}
-            disabled={firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx}
-          />
+          <div className={!isMyTurn ? "opacity-60 pointer-events-none" : ""}>
+            <BullseyePad
+              discipline={training.discipline}
+              selectedZone={zonesPicked[activeSlot] ?? null}
+              onZoneSelect={(code) => handleZoneSelect(code)}
+              disabled={(firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx) || !isMyTurn}
+            />
+          </div>
         )}
 
         {/* Aktionen: Speichern + (optional) Vorherige */}
@@ -1247,8 +1416,8 @@ function StationLiveEntry({
             <button
               onClick={() => onNavigate(stationIndex - 1)}
               className="btn-icon shrink-0"
-              aria-label="Vorherige Station"
-              title="Vorherige Station"
+              aria-label={`Vorherige ${endLabel(training.discipline, 1)}`}
+              title={`Vorherige ${endLabel(training.discipline, 1)}`}
             >
               <ArrowLeft size={20} strokeWidth={1.75} />
             </button>
@@ -1261,11 +1430,21 @@ function StationLiveEntry({
               scoringParticipants[scoringParticipants.length - 1].id === scoringForPid;
             const isFinalSave = isLastEnd && isLastScorer;
             return (
-              <button onClick={saveAndNext} className="btn-accent flex-1 inline-flex items-center justify-center gap-2" disabled={busy}>
+              <button
+                onClick={saveAndNext}
+                className="btn-accent flex-1 inline-flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={busy || !isMyTurn}
+                title={!isMyTurn ? "Du bist gerade nicht dran" : undefined}
+              >
                 {busy ? (
                   <>
                     <Loader2 size={18} strokeWidth={2} className="animate-spin" />
                     {t("training:live.saving")}
+                  </>
+                ) : isSyncMode ? (
+                  <>
+                    Speichern & nächster Spieler
+                    <ArrowRight size={18} strokeWidth={2} />
                   </>
                 ) : (
                   <>
@@ -1282,7 +1461,7 @@ function StationLiveEntry({
       {/* Stations-Grid (Bottom-Sheet-Style) */}
       {showStationGrid && (
         <BottomSheet onClose={() => setShowStationGrid(false)}>
-          <h3 className="font-display text-lg font-semibold mb-3">{t("training:detail.stations_title")}</h3>
+          <h3 className="font-display text-lg font-semibold mb-3">{endLabel(training.discipline, 2)}</h3>
           <StationStatusGrid
             targets={myTargets}
             onPick={(idx) => {
@@ -1307,6 +1486,112 @@ function StationLiveEntry({
           </button>
         </BottomSheet>
       )}
+    </div>
+  );
+}
+
+/**
+ * Darts-Style-Anzeige: pro Spieler aktueller Leg-Score, Legs (im aktuellen Set)
+ * und Sets. Iteriert chronologisch über alle Stations, vergibt Leg-Sieger pro
+ * End. Bei scoring_mode='sets': legs_to_win Legs → 1 Set gewonnen + Legs zurücksetzen.
+ */
+function DartsStandings({
+  training,
+  stationIndex,
+  participants,
+}: {
+  training: Training;
+  stationIndex: number;
+  participants: Participant[];
+}) {
+  const standings = useMemo(() => {
+    const numEnds = training.num_ends ?? 0;
+    const legsToWin = training.legs_to_win ?? 0;
+    const setsToWin = training.sets_to_win ?? 0;
+    const mode = training.scoring_mode;
+    const targets = training.targets ?? [];
+
+    // Pro Participant: Punkte pro Leg (target_index 1..numEnds)
+    const perLeg = participants.map((p) => {
+      const ts = targets.filter((t) => t.participant_id === p.id);
+      return {
+        pid: p.id,
+        isSelf: !!p.is_self,
+        name: p.display_name ?? "—",
+        scores: Array.from({ length: numEnds }, (_, i) => {
+          const t = ts.find((tt) => tt.target_index === i + 1);
+          return t ? t.shots.reduce((s, sh) => s + (sh.points ?? 0), 0) : null;
+        }),
+        currentLegScore: (() => {
+          const t = ts.find((tt) => tt.target_index === stationIndex);
+          return t ? t.shots.reduce((s, sh) => s + (sh.points ?? 0), 0) : 0;
+        })(),
+      };
+    });
+
+    // Iterate Legs in Reihenfolge — Leg-Gewinner + Set-Logik
+    const legsInSet = new Map<number, number>();
+    const sets = new Map<number, number>();
+    for (let i = 0; i < numEnds; i++) {
+      const scores = perLeg.map((p) => ({ pid: p.pid, total: p.scores[i] }));
+      if (scores.some((s) => s.total === null)) continue;
+      const max = Math.max(...scores.map((s) => s.total as number));
+      const winners = scores.filter((s) => s.total === max);
+      if (winners.length !== 1) continue;
+      const wpid = winners[0].pid;
+      legsInSet.set(wpid, (legsInSet.get(wpid) ?? 0) + 1);
+      if (mode === "sets" && legsToWin > 0 && (legsInSet.get(wpid) ?? 0) >= legsToWin) {
+        sets.set(wpid, (sets.get(wpid) ?? 0) + 1);
+        legsInSet.clear();
+      }
+    }
+
+    return perLeg.map((p) => ({
+      pid: p.pid,
+      name: p.isSelf ? "Du" : p.name,
+      currentLegScore: p.currentLegScore,
+      legsInSet: legsInSet.get(p.pid) ?? 0,
+      setsWon: sets.get(p.pid) ?? 0,
+      isSelf: p.isSelf,
+      legsToWin,
+      setsToWin,
+      showSets: mode === "sets",
+      showLegs: mode === "legs" || mode === "sets",
+    }));
+  }, [training, stationIndex, participants]);
+
+  if (standings.length === 0) return null;
+  const showLegs = standings[0].showLegs;
+  const showSets = standings[0].showSets;
+
+  return (
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(standings.length, 2)}, minmax(0, 1fr))` }}>
+      {standings.map((s) => (
+        <div
+          key={s.pid}
+          className={`rounded-xl border px-3 py-2 ${
+            s.isSelf
+              ? "border-cherry-500/50 bg-cherry-50/40 dark:bg-cherry-900/20"
+              : "border-hairline bg-elevated"
+          }`}
+        >
+          <div className="text-[10px] uppercase tracking-wider text-muted truncate">{s.name}</div>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className="score text-2xl tabular-nums leading-none">{s.currentLegScore}</span>
+            <span className="text-[10px] text-muted">Leg</span>
+          </div>
+          {(showLegs || showSets) && (
+            <div className="text-[11px] text-secondary mt-1 flex items-center gap-2 font-mono tabular-nums">
+              {showLegs && (
+                <span>L <strong className="text-primary">{s.legsInSet}</strong>{showSets ? <span className="opacity-50">/{s.legsToWin}</span> : null}</span>
+              )}
+              {showSets && (
+                <span>S <strong className="text-primary">{s.setsWon}</strong><span className="opacity-50">/{s.setsToWin}</span></span>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

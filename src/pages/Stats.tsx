@@ -6,6 +6,7 @@ import { ScoreLineChart, ZoneDistributionBars, ArrowConsistencyBars } from "../c
 import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
 import { fmtDate } from "../lib/format";
 import { useSyncListener } from "../lib/useSyncListener";
+import { Spinner } from "../components/Spinner";
 
 const DISCIPLINES = Object.keys(DISCIPLINE_LABELS) as Discipline[];
 const BOWS = Object.keys(BOW_LABELS) as BowType[];
@@ -19,10 +20,10 @@ export default function Stats() {
 
   const loadStats = useCallback(() => {
     setLoading(true);
-    getStatsOverview({
-      discipline: discFilter || undefined,
-      bow: bowFilter || undefined,
-    })
+    getStatsOverview(
+      { discipline: discFilter || undefined, bow: bowFilter || undefined },
+      (fresh) => setData(fresh)
+    )
       .then(setData)
       .finally(() => setLoading(false));
   }, [discFilter, bowFilter]);
@@ -74,7 +75,7 @@ export default function Stats() {
         ))}
       </div>
 
-      {loading && <p className="text-forest-700">{t("common:actions.loading")}</p>}
+      {loading && <Spinner className="py-2" />}
 
       {!loading && !hasData && (
         <div className="card text-center py-10">

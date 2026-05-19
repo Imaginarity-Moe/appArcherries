@@ -8,6 +8,7 @@ import { listParcours, type Parcours, type ParcoursListMode } from "../api/parco
 import FavoriteButton from "../components/FavoriteButton";
 import Avatar from "../components/Avatar";
 import { useAuth } from "../auth/AuthContext";
+import { Spinner } from "../components/Spinner";
 
 const OsmImportModal = lazy(() => import("../components/OsmImportModal"));
 
@@ -38,7 +39,7 @@ export default function ParcoursList() {
 
   useEffect(() => {
     setLoading(true);
-    listParcours(mode)
+    listParcours(mode, (fresh) => setItems(fresh.parcours))
       .then((r) => setItems(r.parcours))
       .finally(() => setLoading(false));
   }, [mode]);
@@ -130,7 +131,7 @@ export default function ParcoursList() {
         </div>
       </div>
 
-      {loading && <p className="text-secondary">{t("common:actions.loading")}</p>}
+      {loading && <Spinner className="py-2" />}
 
       {!loading && filtered.length === 0 && (
         <div className="card text-center py-10">

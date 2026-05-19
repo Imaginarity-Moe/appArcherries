@@ -37,9 +37,11 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
       } catch {/* ignore */}
     };
     fetchNow();
+    // 90s-Polling (war 30s): IONOS-Shared-PHP-Worker schonen — Notifications sind
+    // nicht zeitkritisch. Bei Tab-Aktivierung wird sofort einmalig nachgepollt.
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") fetchNow();
-    }, 30000);
+    }, 90000);
     const onVis = () => { if (document.visibilityState === "visible") fetchNow(); };
     document.addEventListener("visibilitychange", onVis);
     return () => { alive = false; clearInterval(interval); document.removeEventListener("visibilitychange", onVis); };

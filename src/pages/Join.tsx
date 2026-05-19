@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Users, Calendar, Target } from "lucide-react";
+import { PageSpinner } from "../components/Spinner";
 import { acceptJoin, getJoinPreview, type JoinPreview } from "../api/invitations";
 import { setToken } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -52,7 +53,7 @@ export default function Join() {
     }
   };
 
-  if (loading) return <p className="text-forest-700 p-8">Lade…</p>;
+  if (loading) return <PageSpinner />;
   if (error || !preview) {
     return (
       <div className="min-h-screen bg-canvas dark:bg-canvas-dark flex items-center justify-center p-6">

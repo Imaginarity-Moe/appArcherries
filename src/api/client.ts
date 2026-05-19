@@ -82,3 +82,36 @@ export async function apiCached<T>(path: string): Promise<T> {
   if (cached !== null) return cached;
   throw new ApiError(0, "Offline und kein Cache verfügbar", null);
 }
+
+/**
+ * Stale-While-Revalidate: Wenn Cache vorhanden, sofort zurückgeben und parallel im Hintergrund
+ * vom Netzwerk frisch holen. `onRefresh` wird aufgerufen sobald die frische Antwort eintrifft —
+ * UI kann dann ihren State updaten. Bei fehlendem Cache identisch zu apiCached (Network-First).
+ *
+ * Backend-Fehler (ApiError) in der Hintergrund-Revalidate werden geschluckt — der Cache-Wert
+ * bleibt sichtbar. Vor allem für Listen-Endpoints (Dashboard, Stats) gedacht.
+ */
+export async function apiSWR<T>(
+  path: string,
+  onRefresh?: (fresh: T) => void
+): Promise<T> {
+  const cached = await getCached<T>(path);
+
+  if (cached !== null) {
+    if (navigator.onLine) {
+      // Im Hintergrund refreshen — nicht awaiten
+      api<T>(path)
+        .then(async (fresh) => {
+          await setCached(path, fresh);
+          if (onRefresh) onRefresh(fresh);
+        })
+        .catch(() => {
+          // Stale-Cache bleibt sichtbar — Background-Fehler wird verschluckt.
+        });
+    }
+    return cached;
+  }
+
+  // Kein Cache → wie apiCached: Netzwerk versuchen.
+  return apiCached<T>(path);
+}

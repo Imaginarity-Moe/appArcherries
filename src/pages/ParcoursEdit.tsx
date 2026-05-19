@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Upload as UploadIcon, X, Check, List as ListIcon } from "lucide-react";
+import { PageSpinner } from "../components/Spinner";
 import { getParcours, updateParcours, uploadParcoursImage, type Parcours } from "../api/parcours";
 import ParcoursForm, { initialFormState, formStateToBody, type ParcoursFormState } from "../components/ParcoursForm";
 import { usePageFooter } from "../components/FooterContext";
@@ -81,7 +82,7 @@ export default function ParcoursEdit() {
     }
   }
 
-  if (loading) return <p className="text-secondary p-8">Lade…</p>;
+  if (loading) return <PageSpinner />;
   if (!parcours) return <p className="text-cherry-500 p-8">{error ?? "Parcours nicht gefunden"}</p>;
 
   const currentImage = parcours.image_url ?? null;

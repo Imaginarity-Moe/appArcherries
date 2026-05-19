@@ -1,0 +1,129 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e9]:
+    - complementary [ref=e10]:
+      - generic [ref=e11]:
+        - link "Archerries" [ref=e12] [cursor=pointer]:
+          - /url: /
+          - img "Archerries" [ref=e13]:
+            - img [ref=e14]:
+              - generic "ARCHERRIES" [ref=e15]
+        - generic [ref=e47]:
+          - button "Online" [ref=e49] [cursor=pointer]:
+            - img [ref=e50]
+          - button "Benachrichtigungen" [ref=e55] [cursor=pointer]:
+            - img [ref=e56]
+      - navigation [ref=e59]:
+        - link "Übersicht" [ref=e60] [cursor=pointer]:
+          - /url: /
+          - img [ref=e61]
+          - generic [ref=e64]: Übersicht
+        - link "Statistik" [ref=e65] [cursor=pointer]:
+          - /url: /stats
+          - img [ref=e66]
+          - generic [ref=e68]: Statistik
+        - link "Parcours" [ref=e69] [cursor=pointer]:
+          - /url: /parcours
+          - img [ref=e70]
+          - generic [ref=e72]: Parcours
+        - link "Hilfe" [ref=e73] [cursor=pointer]:
+          - /url: /help
+          - img [ref=e74]
+          - generic [ref=e77]: Hilfe
+        - link "Profil" [ref=e78] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e79]
+          - generic [ref=e83]: Profil
+      - button "Neues Training" [ref=e85] [cursor=pointer]:
+        - img [ref=e86]
+        - text: Neues Training
+      - generic [ref=e87]:
+        - link "Claude Test claude-test@archerries.local" [ref=e88] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e89]: CT
+          - generic [ref=e90]:
+            - generic [ref=e91]: Claude Test
+            - generic [ref=e92]: claude-test@archerries.local
+        - button "Abmelden" [ref=e93] [cursor=pointer]:
+          - img [ref=e94]
+          - text: Abmelden
+        - generic "Build 2026-05-19 13:05" [ref=e97]: v2a91010 · 2026-05-19 13:05
+    - main [ref=e98]:
+      - generic [ref=e175]:
+        - link "Zurück" [ref=e176] [cursor=pointer]:
+          - /url: /trainings/158
+          - img [ref=e177]
+          - text: Zurück
+        - generic [ref=e179]:
+          - generic [ref=e180]: Auswertung
+          - generic [ref=e181]: "30"
+          - generic [ref=e182]: 19.05.2026 · Scheibenschießen · Recurve
+        - generic [ref=e183]:
+          - generic [ref=e184]:
+            - generic [ref=e185]: Stationen
+            - generic [ref=e186]: "1"
+          - generic [ref=e187]:
+            - generic [ref=e188]: Ø pro Station
+            - generic [ref=e189]: "30"
+          - generic [ref=e190]:
+            - generic [ref=e191]: Beste Station
+            - generic [ref=e192]: "30"
+          - generic [ref=e193]:
+            - generic [ref=e194]: Schwächste Station
+            - generic [ref=e195]: "30"
+        - generic [ref=e196]:
+          - heading "Stations-Verlauf" [level=2] [ref=e197]
+          - application [ref=e200]:
+            - generic [ref=e209]: "1"
+        - generic [ref=e210]:
+          - heading "Nach Trefferzone" [level=2] [ref=e211]
+          - application [ref=e214]:
+            - generic [ref=e223]:
+              - generic [ref=e224]:
+                - generic [ref=e226]: "0"
+                - generic [ref=e228]: "0.75"
+                - generic [ref=e230]: "1.5"
+                - generic [ref=e232]: "2.25"
+                - generic [ref=e234]: "3"
+              - generic [ref=e237]: "10"
+        - generic [ref=e238]:
+          - heading "Nach Pfeilreihenfolge" [level=2] [ref=e239]
+          - application [ref=e242]:
+            - generic [ref=e254]:
+              - generic [ref=e255]:
+                - generic [ref=e257]: Pfeil 1
+                - generic [ref=e259]: Pfeil 2
+                - generic [ref=e261]: Pfeil 3
+              - generic [ref=e262]:
+                - generic [ref=e264]: "0"
+                - generic [ref=e266]: "3"
+                - generic [ref=e268]: "6"
+                - generic [ref=e270]: "9"
+                - generic [ref=e272]: "12"
+        - generic [ref=e273]:
+          - heading "Treffer-Heatmap (alle Spieler)" [level=2] [ref=e274]
+          - img [ref=e276]
+          - generic [ref=e292]:
+            - generic [ref=e294]: Du
+            - generic [ref=e295]: · 3 Pfeile · 30 Pkt
+        - generic [ref=e296]:
+          - link "Übersicht" [ref=e297] [cursor=pointer]:
+            - /url: /
+          - link "Statistik" [ref=e298] [cursor=pointer]:
+            - /url: /stats
+            - img [ref=e299]
+            - text: Statistik
+            - img [ref=e301]
+    - generic "Page-Aktionen" [ref=e303]:
+      - generic [ref=e304]:
+        - link "Training" [ref=e305] [cursor=pointer]:
+          - /url: /trainings/158
+          - img [ref=e306]
+          - text: Training
+        - link "Statistik" [ref=e308] [cursor=pointer]:
+          - /url: /stats
+          - img [ref=e309]
+          - text: Statistik
+        - button "Neu" [ref=e311] [cursor=pointer]:
+          - img [ref=e312]
+          - text: Neu
+  - generic [ref=e313]: "6"

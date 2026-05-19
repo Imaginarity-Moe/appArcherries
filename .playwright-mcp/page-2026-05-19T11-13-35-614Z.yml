@@ -1,0 +1,73 @@
+- generic [ref=e9]:
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - link "Archerries" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e13]:
+          - img [ref=e14]:
+            - generic "ARCHERRIES" [ref=e15]
+      - generic [ref=e47]:
+        - button "Online" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - button "Benachrichtigungen" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+    - navigation [ref=e59]:
+      - link "Übersicht" [ref=e60] [cursor=pointer]:
+        - /url: /
+        - img [ref=e61]
+        - generic [ref=e64]: Übersicht
+      - link "Statistik" [ref=e65] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e66]
+        - generic [ref=e68]: Statistik
+      - link "Parcours" [ref=e69] [cursor=pointer]:
+        - /url: /parcours
+        - img [ref=e70]
+        - generic [ref=e72]: Parcours
+      - link "Hilfe" [ref=e73] [cursor=pointer]:
+        - /url: /help
+        - img [ref=e74]
+        - generic [ref=e77]: Hilfe
+      - link "Profil" [ref=e78] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e79]
+        - generic [ref=e83]: Profil
+    - button "Neues Training" [ref=e85] [cursor=pointer]:
+      - img [ref=e86]
+      - text: Neues Training
+    - generic [ref=e87]:
+      - link "Claude Test claude-test@archerries.local" [ref=e88] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e89]: CT
+        - generic [ref=e90]:
+          - generic [ref=e91]: Claude Test
+          - generic [ref=e92]: claude-test@archerries.local
+      - button "Abmelden" [ref=e93] [cursor=pointer]:
+        - img [ref=e94]
+        - text: Abmelden
+      - generic "Build 2026-05-19 13:05" [ref=e97]: v2a91010 · 2026-05-19 13:05
+  - main [ref=e98]:
+    - generic [ref=e100]:
+      - button "Back" [ref=e102] [cursor=pointer]:
+        - img [ref=e103]
+      - generic [ref=e293]:
+        - generic [ref=e294]:
+          - heading "Kontext (optional)" [level=1] [ref=e295]
+          - paragraph [ref=e296]: Ort, Wetter, Notiz — kann auch nachher rein.
+        - generic [ref=e297]:
+          - generic [ref=e298]: Ort
+          - textbox "z.B. Parcours Eichwald" [ref=e299]
+        - generic [ref=e300]:
+          - generic [ref=e301]: Notiz
+          - textbox "Wind, Stimmung, Ausrüstungs-Setup, …" [ref=e302]
+        - button "Training starten" [ref=e303] [cursor=pointer]:
+          - text: Training starten
+          - img [ref=e304]
+  - generic "Page-Aktionen" [ref=e231]:
+    - generic [ref=e232]:
+      - button "Zurück" [ref=e285] [cursor=pointer]:
+        - img [ref=e234]
+        - text: Zurück
+      - button "Starten" [ref=e306] [cursor=pointer]:
+        - img [ref=e307]
+        - text: Starten

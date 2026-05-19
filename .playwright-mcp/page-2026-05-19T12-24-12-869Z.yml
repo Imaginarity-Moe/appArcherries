@@ -1,0 +1,334 @@
+- generic [ref=e1]:
+  - link [ref=e2] [cursor=pointer]: Zu den Hauptinhalten springen
+  - link [ref=e3] [cursor=pointer]:
+    - /url: https://support.google.com/websearch/answer/181196?hl=de
+    - text: Hilfe zur Barrierefreiheit
+  - link [ref=e4] [cursor=pointer]: Feedback zur Barrierefreiheit
+  - dialog "Bevor Sie zur Google Suche weitergehen" [active]:
+    - generic [ref=e11]:
+      - generic [ref=e13]:
+        - img "Google" [ref=e14]
+        - generic [ref=e15]:
+          - 'button "Sprache: ‪Deutsch‬" [ref=e17] [cursor=pointer]':
+            - generic [ref=e18]:
+              - img
+              - generic [ref=e19]: de
+          - link "Anmelden" [ref=e20] [cursor=pointer]
+      - generic [ref=e21]:
+        - heading "Bevor Sie zu Google weitergehen" [level=1] [ref=e22]
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - text: Wir verwenden
+            - link "Cookies" [ref=e25] [cursor=pointer]:
+              - /url: https://policies.google.com/technologies/cookies?utm_source=ucbs&hl=de
+            - text: und Daten, um
+            - list [ref=e26]:
+              - listitem [ref=e27]: Google-Dienste zu erbringen und zu betreiben
+              - listitem [ref=e28]: Ausfälle zu prüfen und Maßnahmen gegen Spam, Betrug und Missbrauch zu ergreifen
+              - listitem [ref=e29]: Daten zu Zielgruppeninteraktionen und Websitestatistiken zu erheben. Mit den gewonnenen Informationen möchten wir verstehen, wie unsere Dienste verwendet werden, und die Qualität dieser Dienste verbessern.
+          - generic [ref=e30]:
+            - text: Wenn Sie „Alle akzeptieren“ auswählen, verwenden wir Cookies und Daten auch, um
+            - list [ref=e31]:
+              - listitem [ref=e32]: neue Dienste zu entwickeln und zu verbessern
+              - listitem [ref=e33]: Werbung auszuliefern und ihre Effektivität zu messen
+              - listitem [ref=e34]: je nach Ihren Einstellungen personalisierte Inhalte anzuzeigen
+              - listitem [ref=e35]: personalisierte Werbung anzuzeigen, abhängig von Ihren Einstellungen
+            - generic [ref=e36]: Wenn Sie „Alle ablehnen“ auswählen, verwenden wir Cookies nicht für diese zusätzlichen Zwecke.
+          - generic [ref=e37]: Nicht personalisierte Inhalte werden u. a. von Inhalten, die Sie sich gerade ansehen, Aktivitäten in Ihrer aktiven Suchsitzung und Ihrem Standort beeinflusst. Nicht personalisierte Werbung wird von den Inhalten, die Sie sich gerade ansehen, und Ihrem allgemeinen Standort beeinflusst. Personalisierte Inhalte und Werbung können auch relevantere Ergebnisse, Empfehlungen und individuelle Werbung enthalten, die auf früheren Aktivitäten in diesem Browser, etwa Suchanfragen bei Google, beruhen. Sofern relevant, verwenden wir Cookies und Daten außerdem, um Inhalte und Werbung altersgerecht zu gestalten.
+          - generic [ref=e38]: Wählen Sie „Weitere Optionen“ aus, um sich zusätzliche Informationen anzusehen, einschließlich Details zum Verwalten Ihrer Datenschutzeinstellungen. Sie können auch jederzeit g.co/privacytools besuchen.
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - button "Alle ablehnen" [ref=e41] [cursor=pointer]
+          - button "Alle akzeptieren" [ref=e42] [cursor=pointer]
+        - link "Weitere Optionen für Personalisierungseinstellungen und Cookies" [ref=e44] [cursor=pointer]:
+          - generic "Weitere Optionen für Personalisierungseinstellungen und Cookies" [ref=e45]: Weitere Optionen
+      - generic [ref=e46]:
+        - link "Datenschutz" [ref=e47] [cursor=pointer]:
+          - /url: https://policies.google.com/privacy?hl=de&fg=1&utm_source=ucbs
+        - generic [ref=e48]: ·
+        - link "Nutzungsbedingungen" [ref=e49] [cursor=pointer]:
+          - /url: https://policies.google.com/terms?hl=de&fg=1&utm_source=ucbs
+  - generic [ref=e54]:
+    - search [ref=e55]:
+      - generic [ref=e57]:
+        - link [ref=e59] [cursor=pointer]:
+          - /url: https://www.google.com/webhp?hl=de&sa=X&ved=0ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQPAhq
+          - img [ref=e60]
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - combobox [ref=e70]: rückwärtssuche rückwärtssuche
+            - generic [ref=e71]:
+              - button [ref=e73] [cursor=pointer]:
+                - img [ref=e75]
+              - generic [ref=e78]:
+                - button [ref=e79] [cursor=pointer]:
+                  - img [ref=e80]
+                - button [ref=e82] [cursor=pointer]:
+                  - img [ref=e83]
+          - button [ref=e85] [cursor=pointer]:
+            - img [ref=e88]
+    - generic [ref=e90]:
+      - button [ref=e92] [cursor=pointer]
+      - generic [ref=e93]:
+        - button [ref=e95] [cursor=pointer]:
+          - img [ref=e96]
+        - link [ref=e100] [cursor=pointer]:
+          - /url: https://accounts.google.com/ServiceLogin?hl=de&passive=true&continue=https://www.google.com/search%3Fq%3Dr%25C3%25BCckw%25C3%25A4rtssuche%26oq%3Dr%25C3%25BC%26gs_lcrp%3DEgZjaHJvbWUqCggBEAAYsQMYgAQyBggAEEUYOTIKCAEQABixAxiABDIKCAIQABixAxiABDIHCAMQABiABDIKCAQQABixAxiABDIHCAUQABiABDIKCAYQLhixAxiABDIKCAcQLhixAxiABDINCAgQLhiDARixAxiABDIQCAkQABiDARixAxiABBiKBdIBCDE1MzVqMGoyqAIAsAIA%26sourceid%3Dchrome%26ie%3DUTF-8%26sei%3DalYMapDMBJCGxc8PvK3Z8A0&ec=futura_srp_og_si_72236_p
+          - text: Anmelden
+  - generic [ref=e102]:
+    - navigation [ref=e109]:
+      - list [ref=e112]:
+        - listitem [ref=e113]:
+          - link [ref=e116] [cursor=pointer]:
+            - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&udm=50&fbs=ADc_l-YGrpJMQtvjQ6h14rj-dfIrbPkd_Upq68wJVnEIgo2Pwxu679PACFfTKv4n_1_FsyWcmsJ_9bzoaht0GJmpTAK6EUhXKyXhB5BaMxx7N7PXnjT6vetkPdmJCHpPkOvZ-28oQ58--U1IOS8BFzW_Bar3fApOnlzuOI_bzr8pFbD32ZIfD0Rdg4B4GNAP-tMHdDrDvR42&aep=1&ntc=1&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ2J8OegQIExAD
+            - generic [ref=e119]: KI‑Modus
+        - listitem [ref=e120]:
+          - link [disabled] [ref=e121]:
+            - generic [ref=e123]: Alle
+        - listitem [ref=e124]:
+          - link [ref=e125] [cursor=pointer]:
+            - /url: /search?sca_esv=2abb055a4a46eae3&udm=2&fbs=ADc_l-YGrpJMQtvjQ6h14rj-dfIrbPkd_Upq68wJVnEIgo2Pwxu679PACFfTKv4n_1_FsyWcmsJ_9bzoaht0GJmpTAK6EUhXKyXhB5BaMxx7N7PXnjT6vetkPdmJCHpPkOvZ-28oQ58--U1IOS8BFzW_Bar3fApOnlzuOI_bzr8pFbD32ZIfD0Rdg4B4GNAP-tMHdDrDvR42&q=r%C3%BCckw%C3%A4rtssuche&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQtKgLegQIGBAB
+            - generic [ref=e127]: Bilder
+        - listitem [ref=e128]:
+          - link [ref=e129] [cursor=pointer]:
+            - /url: /search?sca_esv=2abb055a4a46eae3&udm=7&fbs=ADc_l-YGrpJMQtvjQ6h14rj-dfIrbPkd_Upq68wJVnEIgo2Pwxu679PACFfTKv4n_1_FsyWcmsJ_9bzoaht0GJmpTAK6EUhXKyXhB5BaMxx7N7PXnjT6vetkPdmJCHpPkOvZ-28oQ58--U1IOS8BFzW_Bar3fApOnlzuOI_bzr8pFbD32ZIfD0Rdg4B4GNAP-tMHdDrDvR42&q=r%C3%BCckw%C3%A4rtssuche&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQtKgLegQIFhAB
+            - generic [ref=e131]: Videos
+        - listitem [ref=e132]:
+          - link [ref=e133] [cursor=pointer]:
+            - /url: /search?sca_esv=2abb055a4a46eae3&udm=39&fbs=ADc_l-YGrpJMQtvjQ6h14rj-dfIrbPkd_Upq68wJVnEIgo2Pwxu679PACFfTKv4n_1_FsyWcmsJ_9bzoaht0GJmpTAK6EUhXKyXhB5BaMxx7N7PXnjT6vetkPdmJCHpPkOvZ-28oQ58--U1IOS8BFzW_Bar3fApOnlzuOI_bzr8pFbD32ZIfD0Rdg4B4GNAP-tMHdDrDvR42&q=r%C3%BCckw%C3%A4rtssuche&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQs6gLegQIFBAB
+            - generic [ref=e135]: Kurze Videos
+        - listitem [ref=e136]:
+          - link [ref=e137] [cursor=pointer]:
+            - /url: /search?sca_esv=2abb055a4a46eae3&q=r%C3%BCckw%C3%A4rtssuche&tbm=nws&source=lnms&fbs=ADc_l-YGrpJMQtvjQ6h14rj-dfIrbPkd_Upq68wJVnEIgo2Pwxu679PACFfTKv4n_1_FsyWcmsJ_9bzoaht0GJmpTAK6EUhXKyXhB5BaMxx7N7PXnjT6vetkPdmJCHpPkOvZ-28oQ58--U1IOS8BFzW_Bar3fApOnlzuOI_bzr8pFbD32ZIfD0Rdg4B4GNAP-tMHdDrDvR42&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ0pQJegQIFxAB
+            - generic [ref=e139]: News
+        - listitem [ref=e140]:
+          - link [ref=e141] [cursor=pointer]:
+            - /url: /search?sca_esv=2abb055a4a46eae3&udm=web&fbs=ADc_l-YGrpJMQtvjQ6h14rj-dfIrbPkd_Upq68wJVnEIgo2Pwxu679PACFfTKv4n_1_FsyWcmsJ_9bzoaht0GJmpTAK6EUhXKyXhB5BaMxx7N7PXnjT6vetkPdmJCHpPkOvZ-28oQ58--U1IOS8BFzW_Bar3fApOnlzuOI_bzr8pFbD32ZIfD0Rdg4B4GNAP-tMHdDrDvR42&q=r%C3%BCckw%C3%A4rtssuche&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQs6gLegQIFRAB
+            - generic [ref=e143]: Web
+        - listitem [ref=e144]:
+          - button [ref=e145] [cursor=pointer]:
+            - generic [ref=e147]:
+              - generic [ref=e148]: Mehr
+              - img [ref=e150]
+    - heading [level=1] [ref=e153]: Suchergebnisse
+    - main [ref=e159]:
+      - generic [ref=e163]:
+        - generic [ref=e166]:
+          - heading [level=2] [ref=e167]: Webergebnisse
+          - generic [ref=e168]:
+            - generic [ref=e171]:
+              - link [ref=e173] [cursor=pointer]:
+                - /url: https://www.dasoertliche.de/rueckwaertssuche/
+                - heading [level=3] [ref=e174]: Rückwärtssuche mit Telefonnummer und Adresse
+                - generic [ref=e179]:
+                  - generic [ref=e181]: Das Örtliche
+                  - generic [ref=e183]: https://www.dasoertliche.de › rueckwaertssuche
+              - button [ref=e184] [cursor=pointer]:
+                - img [ref=e187]
+            - generic [ref=e191]:
+              - text: Wer hat mich angerufen? - Die kostenlose
+              - emphasis [ref=e192]: Rückwärtssuche
+              - text: (auch Inverssuche genannt) im Telefonbuch Das Örtliche hilft dir herauszufinden, wem eine bestimmte ...
+        - generic [ref=e193]:
+          - generic [ref=e197]:
+            - generic [ref=e200]:
+              - link [ref=e202] [cursor=pointer]:
+                - /url: https://www.dastelefonbuch.de/R%C3%BCckw%C3%A4rts-Suche
+                - heading [level=3] [ref=e203]: "Rückwärtssuche: Über Telefonnummer Anrufer herausfinden"
+                - generic [ref=e208]:
+                  - generic [ref=e210]: Das Telefonbuch
+                  - generic [ref=e212]: https://www.dastelefonbuch.de › Rückwärts-Suche
+              - button [ref=e213] [cursor=pointer]:
+                - img [ref=e216]
+            - generic [ref=e220]:
+              - text: Wer ruft an?
+              - emphasis [ref=e221]: Festnetz- oder Handynummer eingeben & Anrufer ☎ identifizieren
+              - text: . Jetzt kostenlos Rückwärtssuche starten. ▻ Auskunft für unbekannte Nummern.
+          - generic [ref=e225]:
+            - generic [ref=e228]:
+              - link [ref=e230] [cursor=pointer]:
+                - /url: https://www.chip.de/ratgeber/wifi-dsl-internet/handynummer-rueckwaertssuche-die-besten-links_8dbbacb6-312f-4898-8d25-3199f0ce841b.html
+                - heading [level=3] [ref=e231]: Handynummer-Rückwärtssuche - die besten Links
+                - generic [ref=e236]:
+                  - generic [ref=e238]: CHIP
+                  - generic [ref=e240]: https://www.chip.de › Ratgeber
+              - button [ref=e241] [cursor=pointer]:
+                - img [ref=e244]
+            - generic [ref=e247]:
+              - generic [ref=e248]: 23.08.2024 —
+              - generic [ref=e249]:
+                - text: Wenn Sie von einer unbekannten Handynummer angerufen wurden, können Sie den Besitzer per
+                - emphasis [ref=e250]: Rückwärtssuche
+                - text: ermitteln und so einen Rückruf ...
+          - generic [ref=e254]:
+            - generic [ref=e257]:
+              - link [ref=e259] [cursor=pointer]:
+                - /url: https://www.simdiscount.de/ruckwartssuche-handynummer/
+                - heading [level=3] [ref=e260]: Rückwärtssuche einer Festnetz- oder Handynummer
+                - generic [ref=e265]:
+                  - generic [ref=e267]: SimDiscount
+                  - generic [ref=e269]: https://www.simdiscount.de › ruckwartssuche-handynum...
+              - button [ref=e270] [cursor=pointer]:
+                - img [ref=e273]
+            - generic [ref=e277]:
+              - text: Die Rückwärtssuche dient dazu,
+              - emphasis [ref=e278]: unbekannte oder verpasste Anrufe zuordnen zu können
+              - text: ", vor Spam und Betrug zu schützen und gegebenenfalls weitere Kontaktdaten zu ..."
+          - generic [ref=e282]:
+            - generic [ref=e285]:
+              - link [ref=e287] [cursor=pointer]:
+                - /url: https://www.focus.de/digital/praxistipps/rueckwaertssuche-im-telefonbuch-so-finden-sie-die-person-hinter-einer-telefonnummer_539aad3d-03fa-44cd-bb03-682d0cf55947.html
+                - heading [level=3] [ref=e288]: So finden Sie die Person hinter der Telefonnummer
+                - generic [ref=e293]:
+                  - generic [ref=e295]: FOCUS online
+                  - generic [ref=e297]: https://www.focus.de › Digital › Praxistipps
+              - button [ref=e298] [cursor=pointer]:
+                - img [ref=e301]
+            - generic [ref=e304]:
+              - generic [ref=e305]: 24.10.2018 —
+              - generic [ref=e306]:
+                - text: Die
+                - emphasis [ref=e307]: Rückwärtssuche
+                - text: im Telefonbuch ist das einfachste Instrument, wenn Sie bei einem verpassten Anruf von einer unbekannten Telefonnummer ...
+          - generic [ref=e311]:
+            - generic [ref=e314]:
+              - link [ref=e316] [cursor=pointer]:
+                - /url: https://de.wikipedia.org/wiki/Inverssuche
+                - heading [level=3] [ref=e317]: Inverssuche
+                - generic [ref=e322]:
+                  - generic [ref=e324]: Wikipedia
+                  - generic [ref=e326]: https://de.wikipedia.org › wiki › Inverssuche
+              - button [ref=e327] [cursor=pointer]:
+                - img [ref=e330]
+            - generic [ref=e334]:
+              - text: Als Inverssuche oder auch
+              - emphasis [ref=e335]: Rückwärtssuche
+              - text: bezeichnet man eine Art der Telefonauskunft, bei der nicht wie im herkömmlichen Sinne eine zu einer Kombination aus ...
+          - generic [ref=e339]:
+            - generic [ref=e342]:
+              - link [ref=e344] [cursor=pointer]:
+                - /url: https://web.arbeitsagentur.de/taetigkeitsschluessel/rueckwaertssuche
+                - heading [level=3] [ref=e345]: Tätigkeitsschlüssel online | Bundesagentur für Arbeit - eServices
+                - generic [ref=e350]:
+                  - generic [ref=e352]: Bundesagentur für Arbeit
+                  - generic [ref=e354]: https://web.arbeitsagentur.de › rueckwaertssuche
+              - button [ref=e355] [cursor=pointer]:
+                - img [ref=e358]
+            - generic [ref=e362]:
+              - text: Die Rückwärtssuche
+              - emphasis [ref=e363]: hilft herauszufinden, welche Informationen im Tätigkeitsschlüssel verortet sind
+              - text: . Einfach den gesuchten 9-stelligen Tätigkeitsschlüssel ...
+          - generic [ref=e367]:
+            - generic [ref=e370]:
+              - link [ref=e372] [cursor=pointer]:
+                - /url: https://www.sparhandy.de/info/ratgeber/rueckwaertssuche?srsltid=AfmBOoqd-gsaDyf8O3Iia1nuzemnqldePPYYMyK_89hyqtzlJpS1yW3L
+                - heading [level=3] [ref=e373]: "Rückwärtssuche einer Telefonnummer: So klappt es"
+                - generic [ref=e378]:
+                  - generic [ref=e380]: Sparhandy
+                  - generic [ref=e382]: https://www.sparhandy.de › Info › Ratgeber
+              - button [ref=e383] [cursor=pointer]:
+                - img [ref=e386]
+            - generic [ref=e390]:
+              - text: Wie funktioniert die Rückwärtssuche? ·
+              - emphasis [ref=e391]: Gib die Telefonnummer in das Suchfeld ein
+              - text: . · Der jeweilige Rückwärtssuchdienst durchsucht öffentliche Telefonbücher und ...
+          - generic [ref=e395]:
+            - generic [ref=e398]:
+              - link [ref=e400] [cursor=pointer]:
+                - /url: https://www.editus.lu/de/ruckwartssuche
+                - heading [level=3] [ref=e401]: Rückwärtssuche über Telefonnummern Luxemburg
+                - generic [ref=e406]:
+                  - generic [ref=e408]: Editus
+                  - generic [ref=e410]: https://www.editus.lu › ruckwartssuche
+              - button [ref=e411] [cursor=pointer]:
+                - img [ref=e414]
+            - generic [ref=e418]:
+              - emphasis [ref=e419]: Die Rückwärtssuche hilft Ihnen herauszufinden wem die Telefonnummer gehört
+              - text: "! Das umgekehrte Verzeichnis ist eine kostenlose Online Dienstleistung die von Editus ..."
+          - generic [ref=e423]:
+            - generic [ref=e426]:
+              - link [ref=e428] [cursor=pointer]:
+                - /url: https://www.telefonbuch.de/
+                - heading [level=3] [ref=e429]: "Adressauskunft für Deutschland: Ihr Telefon- & Adressbuch ..."
+                - generic [ref=e434]:
+                  - generic [ref=e436]: telefonbuch.de
+                  - generic [ref=e438]: https://www.telefonbuch.de
+              - button [ref=e439] [cursor=pointer]:
+                - img [ref=e442]
+            - generic [ref=e445]: Rufnummern & Adressen finden ✓ über 30 Mio. Einträge ✓ von Personen, Firmen u. a. m. ✓ Deutschlands beliebtes Adressbuch. Jetzt Adressauskunft nutzen!
+      - generic [ref=e447]:
+        - generic [ref=e452]:
+          - heading [level=2] [ref=e454]: Wird auch oft gesucht
+          - generic [ref=e456]:
+            - generic [ref=e457]:
+              - link [ref=e461] [cursor=pointer]:
+                - /url: /search?sca_esv=2abb055a4a46eae3&q=R%C3%BCckw%C3%A4rtssuche+Handynummer&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ1QJ6BAgwEAE
+                - generic [ref=e462]:
+                  - generic [ref=e467]: Rückwärtssuche Handynummer
+                  - img [ref=e471]
+              - link [ref=e476] [cursor=pointer]:
+                - /url: /search?sca_esv=2abb055a4a46eae3&q=R%C3%BCckw%C3%A4rtssuche+Telefonnummer+suchen&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ1QJ6BAg1EAE
+                - generic [ref=e477]:
+                  - generic [ref=e482]: Rückwärtssuche Telefonnummer suchen
+                  - img [ref=e486]
+              - link [ref=e491] [cursor=pointer]:
+                - /url: /search?sca_esv=2abb055a4a46eae3&q=Vorwahl+Telefonnummer+R%C3%BCckw%C3%A4rtssuche&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ1QJ6BAg0EAE
+                - generic [ref=e492]:
+                  - generic [ref=e497]: Vorwahl Telefonnummer Rückwärtssuche
+                  - img [ref=e501]
+              - link [ref=e506] [cursor=pointer]:
+                - /url: /search?sca_esv=2abb055a4a46eae3&q=Das+%C3%96rtliche+R%C3%BCckw%C3%A4rtssuche+Telefonnummer&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ1QJ6BAgyEAE
+                - generic [ref=e507]:
+                  - generic [ref=e512]: Das Örtliche Rückwärtssuche Telefonnummer
+                  - img [ref=e516]
+            - generic [ref=e518]:
+              - link [ref=e522] [cursor=pointer]:
+                - /url: /search?sca_esv=2abb055a4a46eae3&q=Handynummer+R%C3%BCckw%C3%A4rtssuche+kostenlos&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ1QJ6BAgzEAE
+                - generic [ref=e523]:
+                  - generic [ref=e528]: Handynummer Rückwärtssuche kostenlos
+                  - img [ref=e532]
+              - link [ref=e537] [cursor=pointer]:
+                - /url: /search?sca_esv=2abb055a4a46eae3&q=Tellows+R%C3%BCckw%C3%A4rtssuche&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ1QJ6BAguEAE
+                - generic [ref=e538]:
+                  - generic [ref=e543]: Tellows Rückwärtssuche
+                  - img [ref=e547]
+              - link [ref=e552] [cursor=pointer]:
+                - /url: /search?sca_esv=2abb055a4a46eae3&q=Handynummer-R%C3%BCckw%C3%A4rtssuche+kostenlos+0151&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ1QJ6BAgvEAE
+                - generic [ref=e553]:
+                  - generic [ref=e558]: Handynummer-Rückwärtssuche kostenlos 0151
+                  - img [ref=e562]
+              - link [ref=e567] [cursor=pointer]:
+                - /url: /search?sca_esv=2abb055a4a46eae3&q=Telefonnummer+R%C3%BCckw%C3%A4rtssuche+international+kostenlos&sa=X&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ1QJ6BAgxEAE
+                - generic [ref=e568]:
+                  - generic [ref=e573]: Telefonnummer Rückwärtssuche international kostenlos
+                  - img [ref=e577]
+        - navigation [ref=e579]:
+          - heading [level=1] [ref=e580]: Seitennavigation
+          - text: "1"
+          - link [ref=e583] [cursor=pointer]:
+            - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&ei=alYMaubEC7yCxc8P0NqOsQg&start=10&sa=N&sstk=AU9db-C1vvgRFzhVTdDxmDYp-LyRXhI9D_EghzsS3cb1o_AmARM6fMLAWoSJd2UkFmdORP78XMBgvcrRGjXFmjrm-pbrdInVK3lsqA&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ8tMDegQILBAE
+            - text: "2"
+          - link [ref=e585] [cursor=pointer]:
+            - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&ei=alYMaubEC7yCxc8P0NqOsQg&start=20&sa=N&sstk=AU9db-C1vvgRFzhVTdDxmDYp-LyRXhI9D_EghzsS3cb1o_AmARM6fMLAWoSJd2UkFmdORP78XMBgvcrRGjXFmjrm-pbrdInVK3lsqA&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ8tMDegQILBAG
+            - text: "3"
+          - link [ref=e587] [cursor=pointer]:
+            - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&ei=alYMaubEC7yCxc8P0NqOsQg&start=30&sa=N&sstk=AU9db-C1vvgRFzhVTdDxmDYp-LyRXhI9D_EghzsS3cb1o_AmARM6fMLAWoSJd2UkFmdORP78XMBgvcrRGjXFmjrm-pbrdInVK3lsqA&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ8tMDegQILBAI
+            - text: "4"
+          - link [ref=e589] [cursor=pointer]:
+            - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&ei=alYMaubEC7yCxc8P0NqOsQg&start=40&sa=N&sstk=AU9db-C1vvgRFzhVTdDxmDYp-LyRXhI9D_EghzsS3cb1o_AmARM6fMLAWoSJd2UkFmdORP78XMBgvcrRGjXFmjrm-pbrdInVK3lsqA&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ8tMDegQILBAK
+            - text: "5"
+          - link [ref=e591] [cursor=pointer]:
+            - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&ei=alYMaubEC7yCxc8P0NqOsQg&start=50&sa=N&sstk=AU9db-C1vvgRFzhVTdDxmDYp-LyRXhI9D_EghzsS3cb1o_AmARM6fMLAWoSJd2UkFmdORP78XMBgvcrRGjXFmjrm-pbrdInVK3lsqA&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ8tMDegQILBAM
+            - text: "6"
+          - link [ref=e593] [cursor=pointer]:
+            - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&ei=alYMaubEC7yCxc8P0NqOsQg&start=60&sa=N&sstk=AU9db-C1vvgRFzhVTdDxmDYp-LyRXhI9D_EghzsS3cb1o_AmARM6fMLAWoSJd2UkFmdORP78XMBgvcrRGjXFmjrm-pbrdInVK3lsqA&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ8tMDegQILBAO
+            - text: "7"
+          - link [ref=e595] [cursor=pointer]:
+            - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&ei=alYMaubEC7yCxc8P0NqOsQg&start=70&sa=N&sstk=AU9db-C1vvgRFzhVTdDxmDYp-LyRXhI9D_EghzsS3cb1o_AmARM6fMLAWoSJd2UkFmdORP78XMBgvcrRGjXFmjrm-pbrdInVK3lsqA&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ8tMDegQILBAQ
+            - text: "8"
+          - heading [level=2] [ref=e597]:
+            - link [ref=e598] [cursor=pointer]:
+              - /url: /search?q=r%C3%BCckw%C3%A4rtssuche&sca_esv=2abb055a4a46eae3&ei=alYMaubEC7yCxc8P0NqOsQg&start=10&sa=N&sstk=AU9db-C1vvgRFzhVTdDxmDYp-LyRXhI9D_EghzsS3cb1o_AmARM6fMLAWoSJd2UkFmdORP78XMBgvcrRGjXFmjrm-pbrdInVK3lsqA&ved=2ahUKEwjmodeMrMWUAxU8QfEDHVCtI4YQ8NMDegQILBAW
+              - generic [ref=e600]: Weiter
+    - contentinfo [ref=e601]:
+      - heading [level=1] [ref=e602]: Fußzeilenlinks

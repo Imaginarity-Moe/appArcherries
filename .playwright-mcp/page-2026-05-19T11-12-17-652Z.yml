@@ -1,0 +1,105 @@
+- generic [ref=e9]:
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - link "Archerries" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e13]:
+          - img [ref=e14]:
+            - generic "ARCHERRIES" [ref=e15]
+      - generic [ref=e47]:
+        - button "Online" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - button "Benachrichtigungen" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+    - navigation [ref=e59]:
+      - link "Übersicht" [ref=e60] [cursor=pointer]:
+        - /url: /
+        - img [ref=e61]
+        - generic [ref=e64]: Übersicht
+      - link "Statistik" [ref=e65] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e66]
+        - generic [ref=e68]: Statistik
+      - link "Parcours" [ref=e69] [cursor=pointer]:
+        - /url: /parcours
+        - img [ref=e70]
+        - generic [ref=e72]: Parcours
+      - link "Hilfe" [ref=e73] [cursor=pointer]:
+        - /url: /help
+        - img [ref=e74]
+        - generic [ref=e77]: Hilfe
+      - link "Profil" [ref=e78] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e79]
+        - generic [ref=e83]: Profil
+    - button "Neues Training" [ref=e85] [cursor=pointer]:
+      - img [ref=e86]
+      - text: Neues Training
+    - generic [ref=e87]:
+      - link "Claude Test claude-test@archerries.local" [ref=e88] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e89]: CT
+        - generic [ref=e90]:
+          - generic [ref=e91]: Claude Test
+          - generic [ref=e92]: claude-test@archerries.local
+      - button "Abmelden" [ref=e93] [cursor=pointer]:
+        - img [ref=e94]
+        - text: Abmelden
+      - generic "Build 2026-05-19 13:05" [ref=e97]: v2a91010 · 2026-05-19 13:05
+  - main [ref=e98]:
+    - generic [ref=e100]:
+      - button "Back" [ref=e102] [cursor=pointer]:
+        - img [ref=e103]
+      - generic [ref=e241]:
+        - generic [ref=e242]:
+          - heading "Bogen & Einstellungen" [level=1] [ref=e243]
+          - paragraph [ref=e244]: Welche Ausrüstung, welche Distanz?
+        - generic [ref=e245]:
+          - generic [ref=e246]:
+            - generic [ref=e247]: Mein Bogen
+            - link "Verwalten →" [ref=e248] [cursor=pointer]:
+              - /url: /bows
+          - button "Demo-Recurve 36 lbs· Recurve" [ref=e250] [cursor=pointer]:
+            - text: Demo-Recurve 36 lbs
+            - generic [ref=e251]: · Recurve
+        - button "Andere Bogenklasse wählen…" [ref=e252] [cursor=pointer]
+        - generic [ref=e253]:
+          - heading "Scheiben-Setup" [level=2] [ref=e254]
+          - generic [ref=e255]:
+            - generic [ref=e256]:
+              - generic [ref=e257]: Pfeile pro Durchgang
+              - spinbutton [ref=e258]: "3"
+            - generic [ref=e259]:
+              - generic [ref=e260]: Anzahl Durchgänge
+              - spinbutton [ref=e261]: "10"
+            - generic [ref=e262]:
+              - generic [ref=e263]: Distanz (m)
+              - spinbutton [ref=e264]: "18"
+            - generic [ref=e265]:
+              - generic [ref=e266]: Ringe der Scheibe
+              - spinbutton [ref=e267]: "10"
+          - generic [ref=e268]:
+            - generic [ref=e269]: Wertung
+            - generic [ref=e270]:
+              - button "Gesamtsumme" [ref=e271] [cursor=pointer]
+              - button "Best of Legs" [ref=e272] [cursor=pointer]
+              - button "Sets & Legs" [ref=e273] [cursor=pointer]
+          - generic [ref=e274]:
+            - generic [ref=e275]: Eingabe bei Multi-Player
+            - generic [ref=e276]:
+              - button "Einer scort" [ref=e277] [cursor=pointer]
+              - button "Jeder selbst" [ref=e278] [cursor=pointer]
+              - button "Synchron" [ref=e279] [cursor=pointer]
+            - paragraph [ref=e280]: Owner scort für alle Spieler — Reihenfolge wechselt pro Leg.
+          - paragraph [ref=e281]: Multi-Player über Freund hinzufügen oder QR-Code im Training-Detail.
+        - button "Weiter" [ref=e282] [cursor=pointer]:
+          - text: Weiter
+          - img [ref=e283]
+  - generic "Page-Aktionen" [ref=e231]:
+    - generic [ref=e232]:
+      - button "Zurück" [ref=e285] [cursor=pointer]:
+        - img [ref=e234]
+        - text: Zurück
+      - button "Weiter" [ref=e236] [cursor=pointer]:
+        - img [ref=e237]
+        - text: Weiter

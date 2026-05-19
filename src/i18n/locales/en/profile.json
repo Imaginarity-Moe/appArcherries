@@ -15,5 +15,19 @@
   "logout": "Sign out",
   "danger_zone": "Danger zone",
   "delete_account": "Delete account",
-  "delete_account_confirm": "Really delete account? All trainings, courses and data will be permanently removed."
+  "delete_account_confirm": "Really delete account? All trainings, courses and data will be permanently removed.",
+  "notif": {
+    "title": "Notifications",
+    "intro": "Control independently whether you receive in-app hints and email messages.",
+    "channel_header": "Category",
+    "col_in_app": "App",
+    "col_email": "Email",
+    "saved": "Saved",
+    "cat_security_label": "Security & account",
+    "cat_security_desc": "Verification and password-reset emails. Required for account safety.",
+    "cat_social_label": "Social",
+    "cat_social_desc": "Friend requests, responses, “added to a training by a friend”.",
+    "cat_invitations_label": "Invitations",
+    "cat_invitations_desc": "Invitations to shared trainings (token links)."
+  }
 }

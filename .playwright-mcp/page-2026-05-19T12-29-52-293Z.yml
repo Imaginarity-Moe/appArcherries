@@ -1,0 +1,28 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - img "Archerries" [ref=e7]
+    - main [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - heading "Willkommen zurück" [level=2] [ref=e11]
+          - generic [ref=e12]:
+            - generic [ref=e13]:
+              - generic [ref=e14]: E-Mail
+              - textbox [ref=e15]: claude-test@archerries.local
+            - generic [ref=e16]:
+              - generic [ref=e17]: Passwort
+              - generic [ref=e18]:
+                - textbox [ref=e19]: ClaudeTest_2026!
+                - button "Show password" [ref=e20] [cursor=pointer]:
+                  - img [ref=e21]
+            - button "Anmelden…" [disabled] [ref=e35]
+          - generic [ref=e25]:
+            - link "Passwort vergessen?" [ref=e26] [cursor=pointer]:
+              - /url: /forgot-password
+            - generic [ref=e29]: oder
+            - link "Noch kein Konto? Konto erstellen" [ref=e31] [cursor=pointer]:
+              - /url: /register
+        - generic [ref=e32]:
+          - button "DE" [ref=e33] [cursor=pointer]
+          - text: ·
+          - button "EN" [ref=e34] [cursor=pointer]

@@ -1,0 +1,141 @@
+- generic [ref=e9]:
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - link "Archerries" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e13]:
+          - img [ref=e14]:
+            - generic "ARCHERRIES" [ref=e15]
+      - generic [ref=e47]:
+        - button "Online" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - button "Benachrichtigungen" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+    - navigation [ref=e59]:
+      - link "Übersicht" [ref=e60] [cursor=pointer]:
+        - /url: /
+        - img [ref=e61]
+        - generic [ref=e64]: Übersicht
+      - link "Statistik" [ref=e65] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e66]
+        - generic [ref=e68]: Statistik
+      - link "Parcours" [ref=e69] [cursor=pointer]:
+        - /url: /parcours
+        - img [ref=e70]
+        - generic [ref=e72]: Parcours
+      - link "Hilfe" [ref=e73] [cursor=pointer]:
+        - /url: /help
+        - img [ref=e74]
+        - generic [ref=e77]: Hilfe
+      - link "Profil" [ref=e78] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e79]
+        - generic [ref=e83]: Profil
+    - button "Neues Training" [ref=e85] [cursor=pointer]:
+      - img [ref=e86]
+      - text: Neues Training
+    - generic [ref=e87]:
+      - link "Claude Test claude-test@archerries.local" [ref=e88] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e89]: CT
+        - generic [ref=e90]:
+          - generic [ref=e91]: Claude Test
+          - generic [ref=e92]: claude-test@archerries.local
+      - button "Abmelden" [ref=e93] [cursor=pointer]:
+        - img [ref=e94]
+        - text: Abmelden
+      - generic "Build 2026-05-19 13:05" [ref=e97]: v2a91010 · 2026-05-19 13:05
+  - main [ref=e98]:
+    - generic [ref=e100]:
+      - button "Back" [ref=e102] [cursor=pointer]:
+        - img [ref=e103]
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - heading "Was schießt du heute?" [level=1] [ref=e111]
+          - paragraph [ref=e112]: Wähle dein Wertungssystem.
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - button "3D · IFAA Standard Inner/Outer/Wound — 3 Pfeile, nur Erstpfeil. 20/18/16 → 14/12/10 → 8/6/4" [ref=e115] [cursor=pointer]:
+              - generic [ref=e116]:
+                - img [ref=e118]
+                - generic [ref=e122]: 3D · IFAA Standard
+              - generic [ref=e123]: Inner/Outer/Wound — 3 Pfeile, nur Erstpfeil. 20/18/16 → 14/12/10 → 8/6/4
+            - button "Favorit entfernen" [ref=e124] [cursor=pointer]:
+              - img [ref=e125]
+          - generic [ref=e127]:
+            - button "Scheibenschießen Frei konfigurierbares Scheibenschießen mit Pfeile/Durchgänge/Distanz/Wertung" [active] [ref=e128] [cursor=pointer]:
+              - generic [ref=e129]:
+                - img [ref=e131]
+                - generic [ref=e135]: Scheibenschießen
+                - img [ref=e239]
+              - generic [ref=e136]: Frei konfigurierbares Scheibenschießen mit Pfeile/Durchgänge/Distanz/Wertung
+            - button "Favorit entfernen" [ref=e137] [cursor=pointer]:
+              - img [ref=e138]
+          - generic [ref=e140]:
+            - button "3D · WA / DSB 11/10/8/5, 2 Pfeile, beide zählen" [ref=e141] [cursor=pointer]:
+              - generic [ref=e142]:
+                - img [ref=e144]
+                - generic [ref=e148]: 3D · WA / DSB
+              - generic [ref=e151]: 11/10/8/5, 2 Pfeile, beide zählen
+            - button "Als Favorit speichern" [ref=e152] [cursor=pointer]:
+              - img [ref=e153]
+          - generic [ref=e155]:
+            - button "3D · IFAA Hunter Inner 20 · Outer 17 · Wound 10 — 1 Pfeil pro Ziel" [ref=e156] [cursor=pointer]:
+              - generic [ref=e157]:
+                - img [ref=e159]
+                - generic [ref=e161]: 3D · IFAA Hunter
+              - generic [ref=e162]: Inner 20 · Outer 17 · Wound 10 — 1 Pfeil pro Ziel
+            - button "Als Favorit speichern" [ref=e163] [cursor=pointer]:
+              - img [ref=e164]
+          - generic [ref=e166]:
+            - button "3D · IFAA Animal Kill/Wound 20/18 → 16/14 → 12/10, optional NFAA-Bonus +1" [ref=e167] [cursor=pointer]:
+              - generic [ref=e168]:
+                - img [ref=e170]
+                - generic [ref=e174]: 3D · IFAA Animal
+              - generic [ref=e175]: Kill/Wound 20/18 → 16/14 → 12/10, optional NFAA-Bonus +1
+            - button "Als Favorit speichern" [ref=e176] [cursor=pointer]:
+              - img [ref=e177]
+          - generic [ref=e179]:
+            - 'button "3D · Bowhunter (Liga) Liga-Variante: 5/4/3, 3 Pfeile, nur Erstpfeil" [ref=e180] [cursor=pointer]':
+              - generic [ref=e181]:
+                - img [ref=e183]
+                - generic [ref=e185]: 3D · Bowhunter (Liga)
+              - generic [ref=e186]: "Liga-Variante: 5/4/3, 3 Pfeile, nur Erstpfeil"
+            - button "Als Favorit speichern" [ref=e187] [cursor=pointer]:
+              - img [ref=e188]
+          - generic [ref=e190]:
+            - button "Feldbogen · WA 6-5-4-3-2-1, 4 Pfeile pro Auflage, X separat (Tie-Break)" [ref=e191] [cursor=pointer]:
+              - generic [ref=e192]:
+                - img [ref=e194]
+                - generic [ref=e198]: Feldbogen · WA
+              - generic [ref=e199]: 6-5-4-3-2-1, 4 Pfeile pro Auflage, X separat (Tie-Break)
+            - button "Als Favorit speichern" [ref=e200] [cursor=pointer]:
+              - img [ref=e201]
+          - generic [ref=e203]:
+            - button "Feldbogen · IFAA 5-4-3, 4 Pfeile pro Scheibe" [ref=e204] [cursor=pointer]:
+              - generic [ref=e205]:
+                - img [ref=e207]
+                - generic [ref=e211]: Feldbogen · IFAA
+              - generic [ref=e212]: 5-4-3, 4 Pfeile pro Scheibe
+            - button "Als Favorit speichern" [ref=e213] [cursor=pointer]:
+              - img [ref=e214]
+          - generic [ref=e216]:
+            - button "Einfach (nur Score) Nur Gesamt-Score, keine Pfeile" [ref=e217] [cursor=pointer]:
+              - generic [ref=e218]:
+                - img [ref=e220]
+                - generic [ref=e223]: Einfach (nur Score)
+              - generic [ref=e224]: Nur Gesamt-Score, keine Pfeile
+            - button "Als Favorit speichern" [ref=e225] [cursor=pointer]:
+              - img [ref=e226]
+        - button "Weiter" [ref=e228] [cursor=pointer]:
+          - text: Weiter
+          - img [ref=e229]
+  - generic "Page-Aktionen" [ref=e231]:
+    - generic [ref=e232]:
+      - button "Abbrechen" [ref=e233] [cursor=pointer]:
+        - img [ref=e234]
+        - text: Abbrechen
+      - button "Weiter" [ref=e236] [cursor=pointer]:
+        - img [ref=e237]
+        - text: Weiter

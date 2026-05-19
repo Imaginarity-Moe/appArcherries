@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import Layout from "./components/Layout";
+import { PageSpinner } from "./components/Spinner";
 
 // Eager: Auth-Pages und Haupt-Flow (Dashboard, neues Training, TrainingDetail) bleiben im Main-Bundle
 import Login from "./pages/Login";
@@ -15,6 +16,7 @@ import TrainingDetail from "./pages/TrainingDetail";
 import Profile from "./pages/Profile";
 import HelpHub from "./pages/Help";
 import Join from "./pages/Join";
+import EmailSettings from "./pages/EmailSettings";
 
 // Lazy: Pages mit schweren Deps werden erst geladen wenn die Route besucht wird
 const TrainingSummary = lazy(() => import("./pages/TrainingSummary"));   // Recharts
@@ -33,13 +35,13 @@ const TrainingArchive = lazy(() => import("./pages/TrainingArchive"));    // Arc
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="p-8 text-forest-700">Lade…</div>;
+  if (loading) return <PageSpinner />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function LazyFallback() {
-  return <div className="p-8 text-forest-700">Lade…</div>;
+  return <PageSpinner />;
 }
 
 function L({ children }: { children: JSX.Element }) {
@@ -57,6 +59,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/join/:token" element={<Join />} />
+        <Route path="/email-settings" element={<EmailSettings />} />
 
         {/* Hauptbereich */}
         <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />

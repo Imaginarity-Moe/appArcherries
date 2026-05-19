@@ -40,3 +40,25 @@ export function fmtRelative(iso: string | Date): string {
 export function fmtNumber(n: number, opts?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(locale(), opts).format(n);
 }
+
+/**
+ * Disziplin-abhängige Benennung des „Durchgangs":
+ *   3D / Field / Default → "Station" / "Stationen" (= Bahn am Parcours)
+ *   target_practice      → "Aufnahme" / "Aufnahmen" (= ein End mit N Pfeilen)
+ *
+ * Hierarchie bei Scheibenschießen:
+ *   Set → besteht aus mehreren Legs
+ *   Leg → besteht aus mehreren Aufnahmen
+ *   Aufnahme → besteht aus N Pfeilen
+ *
+ * @param discipline Trainings-Disziplin
+ * @param count      Singular (=1) vs Plural (≠1)
+ * @param caps       Großschreibung am Anfang (Default: true)
+ */
+export function endLabel(discipline: string, count: number = 2, caps = true): string {
+  const isPractice = discipline === "target_practice";
+  const singular = isPractice ? "aufnahme" : "station";
+  const plural   = isPractice ? "aufnahmen" : "stationen";
+  const word = count === 1 ? singular : plural;
+  return caps ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+}

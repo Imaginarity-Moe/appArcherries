@@ -14,8 +14,9 @@ import {
 import { listFriends } from "../api/friends";
 import SwipeableCard from "../components/SwipeableCard";
 import { useConfirm } from "../components/ConfirmDialog";
-import Sparkline from "../components/Sparkline";
 import { LogoMark } from "../components/Logo";
+import { Spinner } from "../components/Spinner";
+import { endLabel } from "../lib/format";
 import { fmtDate } from "../lib/format";
 import { useSyncListener } from "../lib/useSyncListener";
 
@@ -29,7 +30,9 @@ export default function Dashboard() {
   const confirm = useConfirm();
 
   const loadTrainings = () => {
-    listTrainings(1, 50)
+    // SWR: zeigt sofort den IDB-Cache (wenn vorhanden), refresht im Hintergrund.
+    // Erstbesuch in einem Browser geht direkt aufs Netz und füllt den Cache.
+    listTrainings(1, 50, false, (fresh) => setItems(fresh.trainings))
       .then((r) => setItems(r.trainings))
       .catch((e) => setError(e instanceof Error ? e.message : "Fehler beim Laden"))
       .finally(() => setLoading(false));
@@ -180,7 +183,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {loading && <p className="text-forest-700">{t("common:actions.loading")}</p>}
+        {loading && <Spinner className="py-4" />}
         {error && <p className="text-red-700">{error}</p>}
 
         {!loading && !error && items.length === 0 && <EmptyState />}
@@ -260,6 +263,10 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
   const participantLabels = participants.map((p) =>
     p.is_self ? "Du" : (p.display_name ?? "—") + (p.user_role === "guest" ? " (Gast)" : "")
   );
+  // Fortschritt nur sinnvoll bei laufenden Trainings MIT bekannter Bahnen-Gesamtzahl.
+  const totalLanes = item.parcours_lanes_count ?? 0;
+  const doneLanes = item.done_targets ?? 0;
+  const showProgress = !isEnded && totalLanes > 0;
   return (
     <Link to={`/trainings/${item.id}`} className="card-interactive flex items-center justify-between gap-4">
       <div className="min-w-0 flex-1">
@@ -274,6 +281,9 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
             title={isEnded ? "Training abgeschlossen" : "Training läuft noch"}
           >
             {isEnded ? "Beendet" : "Läuft"}
+            {showProgress && (
+              <span className="font-mono tabular-nums opacity-90">· {doneLanes}/{totalLanes}</span>
+            )}
           </span>
           {item.is_shared && (
             <span
@@ -287,6 +297,21 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
         <div className="font-semibold truncate">
           {DISCIPLINE_LABELS[item.discipline]} · {BOW_LABELS[item.bow_type]}
         </div>
+        {/* Scheibenschießen-Setup als sekundäre Metadaten-Zeile: Pfeile/Aufnahme,
+            Distanz, Ringe, Wertungsmodus mit den jeweiligen Schwellen. */}
+        {item.discipline === "target_practice" && (
+          <div className="text-xs text-secondary truncate mt-0.5 font-mono tabular-nums">
+            {item.arrows_per_end ?? 3} Pfeile · {item.num_ends ?? 10} Aufnahmen
+            {item.target_distance_m && <> · {item.target_distance_m}m</>}
+            {item.target_rings && <> · {item.target_rings} Ringe</>}
+            {item.scoring_mode === "legs" && item.legs_to_win && (
+              <> · Best of {item.legs_to_win} Legs</>
+            )}
+            {item.scoring_mode === "sets" && item.sets_to_win && item.legs_to_win && (
+              <> · {item.sets_to_win} Sets × {item.legs_to_win} Legs</>
+            )}
+          </div>
+        )}
         {participantLabels.length > 1 && (
           <div className="text-xs text-secondary truncate flex items-center gap-1 mt-0.5">
             <Users size={11} strokeWidth={1.75} /> {participantLabels.join(", ")}
@@ -298,10 +323,14 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
           </div>
         )}
       </div>
-      <div className="flex flex-col items-end gap-1 shrink-0">
+      <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-[64px]">
         <div className="score text-score-md leading-none">{item.total_score}</div>
         <div className="text-[10px] text-forest-300 uppercase tracking-wider">Pkt</div>
-        <Sparkline values={[item.total_score]} width={60} height={16} className="mt-1" />
+        {isEnded && doneLanes > 0 && (
+          <div className="text-[10px] text-secondary mt-1 font-mono tabular-nums">
+            {doneLanes} {endLabel(item.discipline, doneLanes)}
+          </div>
+        )}
       </div>
     </Link>
   );

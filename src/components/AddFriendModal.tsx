@@ -3,6 +3,7 @@ import { X, UserPlus, Check, Loader2, UserCircle2 } from "lucide-react";
 import { listFriends, type Friendship } from "../api/friends";
 import { addFriendToTraining, addGuestToTraining } from "../api/invitations";
 import Avatar from "./Avatar";
+import { Spinner } from "./Spinner";
 
 /**
  * Picker für 1-Tap-Add zu Training. Zwei Tabs:
@@ -118,7 +119,7 @@ export default function AddFriendModal({
             </button>
           </form>
         ) : loading ? (
-          <div className="py-8 text-center text-secondary text-sm">Lade Freunde …</div>
+          <div className="py-8 flex justify-center"><Spinner /></div>
         ) : friends.length === 0 ? (
           <div className="py-8 text-center text-secondary text-sm">
             Noch keine Freunde — füge erst welche im Profil hinzu, oder nutze den Gast-Tab.

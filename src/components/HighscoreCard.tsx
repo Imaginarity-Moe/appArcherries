@@ -3,6 +3,7 @@ import { Trophy, Medal, Globe, Users } from "lucide-react";
 import { listHighscores, type HighscoreGroup } from "../api/highscore";
 import { BOW_LABELS, DISCIPLINE_LABELS } from "../api/trainings";
 import Avatar from "./Avatar";
+import { Spinner } from "./Spinner";
 
 type Props = {
   parcoursId: number;
@@ -41,7 +42,7 @@ export default function HighscoreCard({ parcoursId }: Props) {
           </TabBtn>
         </div>
       </div>
-      {loading && <p className="text-sm text-muted">Lade …</p>}
+      {loading && <Spinner />}
       {!loading && groups.length === 0 && (
         <p className="text-sm text-muted">
           {tab === "friends"

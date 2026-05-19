@@ -1,4 +1,4 @@
-import { api, apiCached, getToken } from "./client";
+import { api, apiCached, apiSWR, getToken } from "./client";
 
 export type Parcours = {
   id: number;
@@ -67,11 +67,15 @@ export const TERRAIN_LABELS: Record<TerrainKey, string> = {
 
 export type ParcoursListMode = "mine" | "public" | "all";
 
-export async function listParcours(modeOrInclude: ParcoursListMode | boolean = "mine"): Promise<{ parcours: Parcours[] }> {
+export async function listParcours(
+  modeOrInclude: ParcoursListMode | boolean = "mine",
+  onRefresh?: (fresh: { parcours: Parcours[] }) => void
+): Promise<{ parcours: Parcours[] }> {
   // Legacy: boolean wird auf "all" / "mine" abgebildet
   const mode: ParcoursListMode =
     typeof modeOrInclude === "boolean" ? (modeOrInclude ? "all" : "mine") : modeOrInclude;
-  return apiCached(`/parcours?mode=${mode}`);
+  const path = `/parcours?mode=${mode}`;
+  return onRefresh ? apiSWR(path, onRefresh) : apiCached(path);
 }
 
 export async function getParcours(id: number): Promise<{ parcours: Parcours }> {

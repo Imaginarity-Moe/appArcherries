@@ -25,6 +25,21 @@ export default function HelpDisciplines() {
       </section>
 
       <section>
+        <h2 className="text-lg font-semibold mt-4">Scheibenschießen</h2>
+        <p className="text-forest-700 dark:text-forest-300 mt-1">
+          Frei konfigurierbares Format für Halle, Outdoor oder Training. Du wählst Distanz,
+          Ringzahl der Scheibe, Pfeile pro <b>Aufnahme</b> und Anzahl Aufnahmen. Wertung
+          wahlweise als Gesamtsumme, „Best of Legs" (Darts-Style) oder „Sets &amp; Legs"
+          (Match-Modus).
+        </p>
+        <p className="text-forest-700 dark:text-forest-300 mt-2">
+          <b>Begrifflichkeit:</b> Ein <b>Set</b> besteht aus mehreren <b>Legs</b>. Ein Leg
+          besteht aus mehreren <b>Aufnahmen</b>. Eine Aufnahme besteht aus den N Pfeilen,
+          die du in einem Durchgang an die Scheibe abgibst.
+        </p>
+      </section>
+
+      <section>
         <h2 className="text-lg font-semibold mt-4">Halle / FITA Outdoor</h2>
         <p className="text-forest-700 dark:text-forest-300 mt-1">
           Diese klassischen Wettkampf-Disziplinen sind in der App derzeit als „Einfach"-Modus

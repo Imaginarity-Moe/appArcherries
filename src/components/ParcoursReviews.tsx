@@ -9,6 +9,7 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import Avatar from "./Avatar";
 import { useConfirm } from "./ConfirmDialog";
+import { Spinner } from "./Spinner";
 
 type Props = {
   parcoursId: number;
@@ -99,7 +100,7 @@ export default function ParcoursReviews({ parcoursId, onAggregateChange }: Props
     }
   }
 
-  if (loading) return <div className="text-sm text-muted py-4">Lade Bewertungen…</div>;
+  if (loading) return <Spinner className="py-4" />;
 
   return (
     <section className="card space-y-4">

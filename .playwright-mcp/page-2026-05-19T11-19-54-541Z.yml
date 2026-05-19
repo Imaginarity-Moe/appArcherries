@@ -1,0 +1,105 @@
+- generic [ref=e9]:
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - link "Archerries" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img "Archerries" [ref=e13]:
+          - img [ref=e14]:
+            - generic "ARCHERRIES" [ref=e15]
+      - generic [ref=e47]:
+        - button "Online" [ref=e49] [cursor=pointer]:
+          - img [ref=e50]
+        - button "Benachrichtigungen" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+    - navigation [ref=e59]:
+      - link "Übersicht" [ref=e60] [cursor=pointer]:
+        - /url: /
+        - img [ref=e61]
+        - generic [ref=e64]: Übersicht
+      - link "Statistik" [ref=e65] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e66]
+        - generic [ref=e68]: Statistik
+      - link "Parcours" [ref=e69] [cursor=pointer]:
+        - /url: /parcours
+        - img [ref=e70]
+        - generic [ref=e72]: Parcours
+      - link "Hilfe" [ref=e73] [cursor=pointer]:
+        - /url: /help
+        - img [ref=e74]
+        - generic [ref=e77]: Hilfe
+      - link "Profil" [ref=e78] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e79]
+        - generic [ref=e83]: Profil
+    - button "Neues Training" [ref=e85] [cursor=pointer]:
+      - img [ref=e86]
+      - text: Neues Training
+    - generic [ref=e87]:
+      - link "Claude Test claude-test@archerries.local" [ref=e88] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e89]: CT
+        - generic [ref=e90]:
+          - generic [ref=e91]: Claude Test
+          - generic [ref=e92]: claude-test@archerries.local
+      - button "Abmelden" [ref=e93] [cursor=pointer]:
+        - img [ref=e94]
+        - text: Abmelden
+      - generic "Build 2026-05-19 13:05" [ref=e97]: v2a91010 · 2026-05-19 13:05
+  - main [ref=e98]:
+    - generic [ref=e100]:
+      - link "Zurück" [ref=e101] [cursor=pointer]:
+        - /url: /
+        - img [ref=e102]
+        - text: Zurück
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - generic [ref=e106]:
+            - heading "Scheibenschießen" [level=1] [ref=e107]
+            - generic [ref=e108]: Demo-Recurve 36 lbs · Recurve
+            - generic [ref=e109]: 19.05.2026, 13:13
+          - generic [ref=e110]:
+            - generic [ref=e111]: "30"
+            - generic [ref=e112]: 1 Station
+        - generic [ref=e114]:
+          - button "1" [ref=e115] [cursor=pointer]
+          - button "2" [ref=e116] [cursor=pointer]
+          - button "3" [ref=e117] [cursor=pointer]
+          - button "4" [ref=e118] [cursor=pointer]
+          - button "5" [ref=e119] [cursor=pointer]
+          - button "6" [ref=e120] [cursor=pointer]
+          - button "7" [ref=e121] [cursor=pointer]
+          - button "8" [ref=e122] [cursor=pointer]
+          - button "9" [ref=e123] [cursor=pointer]
+          - button "10" [ref=e124] [cursor=pointer]
+        - button "Löschen" [ref=e126] [cursor=pointer]:
+          - img [ref=e127]
+          - text: Löschen
+      - generic [ref=e131]:
+        - button "Karten" [ref=e132] [cursor=pointer]
+        - button "Tabelle" [ref=e133] [cursor=pointer]
+      - table [ref=e135]:
+        - rowgroup [ref=e136]:
+          - row "# P1 P2 P3 Du" [ref=e137]:
+            - columnheader "#" [ref=e138]
+            - columnheader "P1" [ref=e139]
+            - columnheader "P2" [ref=e140]
+            - columnheader "P3" [ref=e141]
+            - columnheader "Du" [ref=e142]
+        - rowgroup [ref=e143]:
+          - row "1 10 10 10 30" [ref=e144] [cursor=pointer]:
+            - cell "1" [ref=e145]
+            - cell "10" [ref=e146]
+            - cell "10" [ref=e147]
+            - cell "10" [ref=e148]
+            - cell "30" [ref=e149]
+  - generic "Page-Aktionen" [ref=e150]:
+    - generic [ref=e151]:
+      - link "Zurück" [ref=e152] [cursor=pointer]:
+        - /url: /
+        - img [ref=e153]
+        - text: Zurück
+      - link "Auswertung" [ref=e155] [cursor=pointer]:
+        - /url: /trainings/158/summary
+        - img [ref=e156]
+        - text: Auswertung

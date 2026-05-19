@@ -5,6 +5,7 @@ import { listBows, type Bow } from "../api/bows";
 import { BOW_LABELS } from "../api/trainings";
 import { usePageFooter } from "../components/FooterContext";
 import EquipmentTabs from "../components/EquipmentTabs";
+import { Spinner } from "../components/Spinner";
 
 type SortKey = "default" | "name" | "updated";
 
@@ -15,7 +16,7 @@ export default function Bows() {
   const [sort, setSort] = useState<SortKey>("default");
 
   useEffect(() => {
-    listBows()
+    listBows((fresh) => setBows(fresh.bows))
       .then((r) => setBows(r.bows))
       .finally(() => setLoading(false));
   }, []);
@@ -77,7 +78,7 @@ export default function Bows() {
         </select>
       </div>
 
-      {loading && <p className="text-secondary">Lade…</p>}
+      {loading && <Spinner className="py-2" />}
 
       {!loading && bows.length === 0 && (
         <div className="card text-center py-10 space-y-3">

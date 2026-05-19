@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/Uploads.php';
+require_once __DIR__ . '/../lib/Notifications.php';
 
 const AVATARS_UPLOAD_DIR = '/uploads/avatars';
 const AVATAR_MAX_BYTES   = 1 * 1024 * 1024; // 1 MB
@@ -28,8 +29,30 @@ function handle_me(string $method, string $path = '/me'): void
         };
         return;
     }
+    if ($path === '/me/notification-prefs') {
+        match ($method) {
+            'GET' => me_notif_prefs_get($user_id),
+            'PUT' => me_notif_prefs_put($user_id),
+            default => res_error('Method not allowed', 405),
+        };
+        return;
+    }
 
     res_error('Not found', 404);
+}
+
+function me_notif_prefs_get(int $user_id): void
+{
+    res_json(['prefs' => notification_prefs_for($user_id)]);
+}
+
+function me_notif_prefs_put(int $user_id): void
+{
+    $in = req_json();
+    $prefs = $in['prefs'] ?? null;
+    if (!is_array($prefs)) res_error('Ungültige prefs');
+    set_notification_prefs($user_id, $prefs);
+    res_json(['prefs' => notification_prefs_for($user_id)]);
 }
 
 function me_get(int $user_id): void

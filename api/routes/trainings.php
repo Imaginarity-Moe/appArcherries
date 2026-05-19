@@ -86,6 +86,13 @@ function handle_trainings(string $method, string $path): void
         return;
     }
 
+    if (preg_match('#^/(\d+)/turn$#', $sub, $m)) {
+        $id = (int)$m[1];
+        if ($method !== 'POST') res_error('Method not allowed', 405);
+        trainings_set_turn($user['id'], $id);
+        return;
+    }
+
     if (preg_match('#^/(\d+)/targets/(\d+)$#', $sub, $m)) {
         $id  = (int)$m[1];
         $tid = (int)$m[2];
@@ -169,6 +176,7 @@ function trainings_list(int $user_id): void
     $stmt = db()->prepare(
         "SELECT DISTINCT t.id, t.started_at, t.ended_at, t.discipline, t.nfaa_mode, t.bow_type, t.bow_id, t.peg_color,
                 t.distance_marked, t.location, t.summary_score, t.archived_at, t.parcours_id, p.name AS parcours_name,
+                p.lanes_count AS parcours_lanes_count,
                 b.name AS bow_name,
                 t.user_id AS owner_user_id
          FROM trainings t
@@ -211,18 +219,50 @@ function trainings_list(int $user_id): void
         }
     }
 
+    // Live-Totals (für Trainings ohne summary_score) + done_targets-Count
+    // (für ALLE Trainings — beendete brauchen es für die Sekundär-Info "X Stationen"
+    // in der Trainings-Card). EIN Query statt N+1 Roundtrips.
+    $all_ids = array_map('intval', array_column($items, 'id'));
+    $totals_by_training = [];
+    $done_by_training   = [];
+    if ($all_ids) {
+        $place = implode(',', array_fill(0, count($all_ids), '?'));
+        $q = db()->prepare(
+            "SELECT t.training_id,
+                    COALESCE(SUM(s.points), 0) AS total,
+                    COUNT(DISTINCT t.id)       AS done_targets
+             FROM shots s
+             JOIN training_targets t ON t.id = s.target_id
+             JOIN training_participants tp ON tp.id = t.participant_id
+             WHERE t.training_id IN ($place) AND tp.user_id = ?
+             GROUP BY t.training_id"
+        );
+        $params = $all_ids;
+        $params[] = $user_id;
+        $q->execute($params);
+        foreach ($q->fetchAll() as $row) {
+            $tid = (int)$row['training_id'];
+            $totals_by_training[$tid] = (int)$row['total'];
+            $done_by_training[$tid]   = (int)$row['done_targets'];
+        }
+    }
+
     foreach ($items as &$it) {
         $it['id']            = (int)$it['id'];
         $it['owner_user_id'] = (int)$it['owner_user_id'];
         $it['is_shared']     = $it['owner_user_id'] !== $user_id;
         $it['nfaa_mode']     = (bool)(int)($it['nfaa_mode'] ?? 0);
         $it['bow_id']        = isset($it['bow_id']) && $it['bow_id'] !== null ? (int)$it['bow_id'] : null;
-        if ($it['summary_score'] !== null) $it['summary_score'] = (int)$it['summary_score'];
-        if ($it['summary_score'] === null) {
-            $it['total_score'] = participant_total($user_id, (int)$it['id']);
+        if ($it['summary_score'] !== null) {
+            $it['summary_score'] = (int)$it['summary_score'];
+            $it['total_score']   = $it['summary_score'];
         } else {
-            $it['total_score'] = (int)$it['summary_score'];
+            $it['total_score']   = $totals_by_training[(int)$it['id']] ?? 0;
         }
+        $it['done_targets']         = $done_by_training[(int)$it['id']] ?? 0;
+        $it['parcours_lanes_count'] = isset($it['parcours_lanes_count']) && $it['parcours_lanes_count'] !== null
+            ? (int)$it['parcours_lanes_count']
+            : null;
         $it['participants'] = $participants_by_training[(int)$it['id']] ?? [];
     }
     unset($it);
@@ -299,7 +339,7 @@ function trainings_create(int $user_id): void
             $tp_sets_to_win = max(1, min(10, (int)($in['sets_to_win'] ?? 2)));
         }
         $ssm = (string)($in['shared_scoring_mode'] ?? 'solo');
-        $tp_shared_mode = in_array($ssm, ['solo','collab'], true) ? $ssm : 'solo';
+        $tp_shared_mode = in_array($ssm, ['solo','collab','sync'], true) ? $ssm : 'solo';
     }
 
     db()->beginTransaction();
@@ -342,6 +382,13 @@ function trainings_create(int $user_id): void
             'INSERT INTO training_participants (training_id, user_id, role) VALUES (?, ?, ?)'
         )->execute([$id, $user_id, 'owner']);
         $owner_participant_id = (int)db()->lastInsertId();
+
+        // sync-Modus: Turn startet beim Owner (Default) — kann später beim
+        // Einladen/Startbahn-Picker auf starting_participant_id rotieren.
+        if ($tp_shared_mode === 'sync') {
+            db()->prepare('UPDATE trainings SET current_turn_participant_id = ? WHERE id = ?')
+                ->execute([$owner_participant_id, $id]);
+        }
 
         // Vorgenerierte Stations aus parcours_lanes — wenn Parcours Bahnen-Daten
         // hat, werden alle als training_targets mit Tier+Distanz angelegt.
@@ -491,7 +538,7 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
     if ($t['summary_score']   !== null) $t['summary_score']   = (int)$t['summary_score'];
     if ($t['distance_marked'] !== null) $t['distance_marked'] = (bool)$t['distance_marked'];
     // target_practice-Felder als int casten (sonst kommen sie als String aus PDO)
-    foreach (['arrows_per_end','num_ends','target_distance_m','target_rings','legs_to_win','sets_to_win','starting_participant_id'] as $f) {
+    foreach (['arrows_per_end','num_ends','target_distance_m','target_rings','legs_to_win','sets_to_win','starting_participant_id','current_turn_participant_id','current_station_index'] as $f) {
         if (isset($t[$f]) && $t[$f] !== null) $t[$f] = (int)$t[$f];
     }
     $t['targets']      = $targets;
@@ -671,6 +718,22 @@ function targets_create(int $user_id, int $training_id): void
     $target_index = (int)($in['target_index'] ?? 0);
     if ($target_index < 1) res_error('target_index erforderlich (>=1)');
 
+    // Sync-Modus: nur der aktuelle Turn-Inhaber darf scoren. Validiert anhand
+    // des effektiven participant_id (für_pid, falls Owner für jemand anderen scort).
+    $sync_check = db()->prepare(
+        'SELECT shared_scoring_mode, current_turn_participant_id FROM trainings WHERE id = ?'
+    );
+    $sync_check->execute([$training_id]);
+    $sync_row = $sync_check->fetch();
+    $is_sync = $sync_row && $sync_row['shared_scoring_mode'] === 'sync';
+    if ($is_sync) {
+        $turn_pid = $sync_row['current_turn_participant_id'] !== null
+            ? (int)$sync_row['current_turn_participant_id'] : null;
+        if ($turn_pid !== null && $turn_pid !== $pid) {
+            res_error('Du bist gerade nicht dran (Sync-Modus)', 423); // 423 Locked
+        }
+    }
+
     db()->beginTransaction();
     try {
         $stmt = db()->prepare(
@@ -702,6 +765,12 @@ function targets_create(int $user_id, int $training_id): void
             replace_shots($tid, $disc, $in['shots'], training_nfaa($training_id));
         }
 
+        // Sync-Modus: nach Speichern Turn rotieren. Frontend schickt `yield: true`
+        // beim "Fertig"-Klick (Standard-Save heißt nicht automatisch yield).
+        if ($is_sync && !empty($in['yield'])) {
+            advance_sync_turn($training_id);
+        }
+
         db()->commit();
     } catch (Throwable $e) {
         db()->rollBack();
@@ -709,6 +778,90 @@ function targets_create(int $user_id, int $training_id): void
     }
 
     target_detail($training_id, $tid);
+}
+
+/**
+ * Sync-Modus: Owner-only Force-Turn — übernimmt den Turn manuell für sich oder
+ * setzt ihn auf einen bestimmten Spieler. Wird genutzt wenn der eingeladene
+ * Spieler untätig bleibt und der Owner weitermachen will.
+ */
+function trainings_set_turn(int $user_id, int $training_id): void
+{
+    if (!user_is_training_owner($user_id, $training_id)) {
+        res_error('Nur der Owner darf den Turn setzen', 403);
+    }
+    $in  = req_json();
+    $pid = isset($in['participant_id']) ? (int)$in['participant_id'] : 0;
+    if ($pid <= 0) res_error('participant_id erforderlich');
+
+    // Validieren, dass der pid zum Training gehört
+    $check = db()->prepare('SELECT id FROM training_participants WHERE id = ? AND training_id = ?');
+    $check->execute([$pid, $training_id]);
+    if (!$check->fetchColumn()) res_error('Participant nicht im Training');
+
+    db()->prepare('UPDATE trainings SET current_turn_participant_id = ? WHERE id = ?')
+        ->execute([$pid, $training_id]);
+    trainings_detail($user_id, $training_id);
+}
+
+/**
+ * Sync-Modus: rotiert Turn zum nächsten Teilnehmer. Wenn alle Teilnehmer
+ * die aktuelle Station gescored haben, springt current_station_index +1
+ * und der Turn beginnt wieder beim ersten Spieler. Bei num_ends-Überlauf
+ * wird das Training automatisch beendet (ended_at = NOW()).
+ */
+function advance_sync_turn(int $training_id): void
+{
+    $stmt = db()->prepare(
+        'SELECT tp.id FROM training_participants tp
+         WHERE tp.training_id = ?
+         ORDER BY tp.role = "owner" DESC, tp.joined_at ASC, tp.id ASC'
+    );
+    $stmt->execute([$training_id]);
+    $ids = array_map('intval', array_column($stmt->fetchAll(), 'id'));
+    if (count($ids) <= 1) return;
+
+    $cur_stmt = db()->prepare(
+        'SELECT current_turn_participant_id, current_station_index, num_ends FROM trainings WHERE id = ?'
+    );
+    $cur_stmt->execute([$training_id]);
+    $cur_row    = $cur_stmt->fetch();
+    $cur_turn   = $cur_row['current_turn_participant_id'] !== null
+        ? (int)$cur_row['current_turn_participant_id'] : null;
+    $cur_st     = (int)($cur_row['current_station_index'] ?? 1);
+    $max_ends   = isset($cur_row['num_ends']) && $cur_row['num_ends'] !== null
+        ? (int)$cur_row['num_ends'] : 0;
+
+    // Haben alle Teilnehmer ein Target für die aktuelle Station? → Wrap-around.
+    $cnt_stmt = db()->prepare(
+        'SELECT COUNT(DISTINCT participant_id) FROM training_targets
+         WHERE training_id = ? AND target_index = ?'
+    );
+    $cnt_stmt->execute([$training_id, $cur_st]);
+    $done = (int)$cnt_stmt->fetchColumn();
+
+    if ($done >= count($ids)) {
+        // Alle durch → nächste Station + Turn auf ersten Spieler (Owner).
+        $next_st   = $cur_st + 1;
+        $next_turn = $ids[0];
+        if ($max_ends > 0 && $next_st > $max_ends) {
+            // Training automatisch beenden.
+            db()->prepare(
+                'UPDATE trainings SET ended_at = NOW(), current_turn_participant_id = NULL WHERE id = ?'
+            )->execute([$training_id]);
+        } else {
+            db()->prepare(
+                'UPDATE trainings SET current_station_index = ?, current_turn_participant_id = ? WHERE id = ?'
+            )->execute([$next_st, $next_turn, $training_id]);
+        }
+        return;
+    }
+
+    // Innerhalb der Station: zum nächsten Spieler rotieren.
+    $idx  = $cur_turn === null ? -1 : array_search($cur_turn, $ids, true);
+    $next = $ids[($idx === false ? 0 : (int)$idx + 1) % count($ids)];
+    db()->prepare('UPDATE trainings SET current_turn_participant_id = ? WHERE id = ?')
+        ->execute([$next, $training_id]);
 }
 
 function targets_update(int $user_id, int $training_id, int $tid): void

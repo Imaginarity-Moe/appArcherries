@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../lib/Notifications.php';
+
 /**
  * In-App-Notifications.
  *   GET    /notifications              → { unread_count, items }
@@ -14,6 +16,14 @@ declare(strict_types=1);
  *  - friend_request_rejected      payload { by_user_id, by_display_name }
  *  - training_friend_added        payload { training_id, by_user_id, by_display_name }
  */
+
+/** Mapping kind → Settings-Kategorie. Alle Friend-Events + Training-Friend-Add sind 'social'. */
+const NOTIF_KIND_CATEGORY = [
+    'friend_request_received' => 'social',
+    'friend_request_accepted' => 'social',
+    'friend_request_rejected' => 'social',
+    'training_friend_added'   => 'social',
+];
 
 function handle_notifications(string $method, string $path): void
 {
@@ -95,6 +105,9 @@ function notif_delete(int $me, int $id): void
  */
 function notify_create(int $user_id, string $kind, array $payload = []): void
 {
+    $cat = NOTIF_KIND_CATEGORY[$kind] ?? null;
+    if ($cat !== null && !should_notify($user_id, $cat, 'in_app')) return;
+
     db()->prepare('INSERT INTO notifications (user_id, kind, payload) VALUES (?, ?, ?)')
         ->execute([$user_id, $kind, json_encode($payload, JSON_UNESCAPED_UNICODE)]);
 }

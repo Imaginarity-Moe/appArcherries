@@ -1,0 +1,192 @@
+- generic [ref=e1]:
+  - generic [active]:
+    - dialog "Einwilligung zu Cookies und Datenverarbeitung" [ref=e2]:
+      - document [ref=e3]:
+        - generic [ref=e4]:
+          - generic [ref=e5]:
+            - heading "Einwilligung zu Cookies und Datenverarbeitung" [level=1] [ref=e6]
+            - generic [ref=e8]:
+              - paragraph [ref=e9]: Wir nutzen Cookies und ähnliche Technologien auf unserer Website. Einige sind notwendig, damit die Seite richtig funktioniert - diese können nicht deaktiviert werden. Andere Cookies helfen uns, die Website zu verbessern oder Werbung anzupassen.
+              - paragraph [ref=e10]: Sie können selbst entscheiden, ob Sie alle Cookies oder nur bestimmte zulassen. Falls Sie zustimmen, können Ihre Daten auch außerhalb der EU, z. B. in den USA, verarbeitet werden. Genauere Informationen dazu finden Sie unter "Einstellungen".
+              - paragraph [ref=e11]: Ihre Einwilligung können Sie jederzeit ändern oder widerrufen. Sie können Ihre Auswahl nachträglich ändern.
+          - form "Zweck" [ref=e12]:
+            - generic [ref=e13]:
+              - img "Essentiell" [ref=e16]
+              - generic [ref=e19]: Essentiell
+            - generic [ref=e20]:
+              - 'checkbox "Zweck: Speichern von oder Zugriff auf Informationen auf einem Endgerät" [ref=e22] [cursor=pointer]':
+                - img "Speichern von oder Zugriff auf Informationen auf einem Endgerät" [ref=e24]
+              - generic [ref=e27] [cursor=pointer]: Speichern von oder Zugriff auf Informationen auf einem Endgerät
+            - generic [ref=e28]:
+              - 'checkbox "Zweck: Verwendung genauer Standortdaten" [ref=e30] [cursor=pointer]':
+                - img "Verwendung genauer Standortdaten" [ref=e32]
+              - generic [ref=e35] [cursor=pointer]: Verwendung genauer Standortdaten
+            - generic [ref=e36]:
+              - 'checkbox "Zweck: Personalisierte Werbung und Inhalte, Messung von Werbeleistung und der Performance von Inhalten, Zielgruppenforschung sowie Entwicklung und Verbesserung von Angeboten" [ref=e38] [cursor=pointer]':
+                - img "Personalisierte Werbung und Inhalte, Messung von Werbeleistung und der Performance von Inhalten, Zielgruppenforschung sowie Entwicklung und Verbesserung von Angeboten" [ref=e40]
+              - generic [ref=e43] [cursor=pointer]: Personalisierte Werbung und Inhalte, Messung von Werbeleistung und der Performance von Inhalten, Zielgruppenforschung sowie Entwicklung und Verbesserung von Angeboten
+        - form [ref=e44]:
+          - button "Alle Akzeptieren" [ref=e46] [cursor=pointer]:
+            - img [ref=e47]
+            - generic [ref=e48]: Alle Akzeptieren
+          - button "Ablehnen" [ref=e50] [cursor=pointer]:
+            - img [ref=e51]
+            - generic [ref=e52]: Ablehnen
+          - button "Einstellungen" [ref=e54] [cursor=pointer]:
+            - generic [ref=e55]: Einstellungen
+          - generic [ref=e56]:
+            - link "Datenschutz" [ref=e57] [cursor=pointer]:
+              - /url: https://www.dasoertliche.de/?cmd=cmd_nav_privacy&cmpnoscreen
+            - text: "|"
+            - link "Impressum" [ref=e58] [cursor=pointer]:
+              - /url: https://www.dasoertliche.de/?cmd=cmd_nav_impressum&cmpnoscreen
+    - button "Datenschutz-Einstellungen" [ref=e60] [cursor=pointer]:
+      - img "Datenschutz-Einstellungen" [ref=e61]
+  - banner [ref=e62]:
+    - link "Das Örtliche" [ref=e63] [cursor=pointer]:
+      - /url: https://www.dasoertliche.de
+      - img "Das Örtliche" [ref=e64]
+  - main [ref=e65]:
+    - link "Zur Informationsseite Barrierefreiheit" [ref=e66] [cursor=pointer]:
+      - /url: /barrierefrei/
+      - text: 
+    - list [ref=e67]:
+      - listitem [ref=e68]:
+        - link "Das Örtliche" [ref=e69] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/
+      - listitem [ref=e70]:
+        - text: ❯
+        - link "Rückwärtssuche" [ref=e71] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/rueckwaertssuche/
+    - generic [ref=e72]:
+      - generic [ref=e73]:
+        - heading "Rückwärtssuche" [level=1] [ref=e74]
+        - generic [ref=e76]:
+          - generic "Bitte wähle, ob du mit einer Telefonnummer oder Adresse suchen möchtest." [ref=e77]:
+            - generic [ref=e78] [cursor=pointer]: Rufnummer 
+          - generic [ref=e79]:
+            - textbox "Gib hier bitte die Telefonnummer ein." [ref=e80]:
+              - /placeholder: Vorwahl und Rufnummer
+            - button "Sprachsuche" [ref=e81] [cursor=pointer]: 
+          - button "Finden" [ref=e82] [cursor=pointer]
+      - article [ref=e85]:
+        - heading "So funktioniert die Inverssuche" [level=2] [ref=e86]
+        - paragraph [ref=e87]: Wer hat mich angerufen? - Die kostenlose Rückwärtssuche (auch Inverssuche genannt) im Telefonbuch Das Örtliche hilft dir herauszufinden, wem eine bestimmte Telefonnummer gehört.
+        - paragraph [ref=e88]:
+          - text: Gib oben einfach die Telefonnummer ein, und klicke auf "Finden". Die Schreibweise ist egal, solange du die komplette Telefonnummer inklusive Vorwahl angibst. Wir finden für dich sowohl
+          - strong [ref=e89]: Festnetznummern
+          - text: als auch
+          - strong [ref=e90]: Handynummern
+          - text: und
+          - strong [ref=e91]: Sonderrufnummern
+          - text: .
+      - article [ref=e92]:
+        - heading "Häufige Fragen" [level=2] [ref=e93]
+        - list [ref=e94]:
+          - listitem [ref=e95]:
+            - heading "Wer hat mich angerufen? " [level=3] [ref=e97] [cursor=pointer]
+          - listitem [ref=e98]:
+            - heading "Ist die Rückwärtssuche kostenlos? " [level=3] [ref=e100] [cursor=pointer]
+          - listitem [ref=e101]:
+            - heading "Wofür kann die Rückwärtssuche alles genutzt werden? " [level=3] [ref=e103] [cursor=pointer]
+          - listitem [ref=e104]:
+            - heading "Was genau ist eine Rückwärtssuche oder Inverssuche? " [level=3] [ref=e106] [cursor=pointer]
+          - listitem [ref=e107]:
+            - heading "Funktioniert die Rückwärtssuche auch mit Mobilnummern? " [level=3] [ref=e109] [cursor=pointer]
+          - listitem [ref=e110]:
+            - heading "Funktioniert die Rückwärtssuche auch mit Faxnummern? " [level=3] [ref=e112] [cursor=pointer]
+          - listitem [ref=e113]:
+            - heading "Funktioniert die Inverssuche auch mit Vorwahlen? " [level=3] [ref=e115] [cursor=pointer]
+          - listitem [ref=e116]:
+            - heading "Funktioniert die Inverssuche auch mit ausländischen Nummern? " [level=3] [ref=e118] [cursor=pointer]
+          - listitem [ref=e119]:
+            - heading "Warum werden manche Telefonnummern nicht gefunden? " [level=3] [ref=e121] [cursor=pointer]
+          - listitem [ref=e122]:
+            - heading "Warum werde ich bei der Rückwärtssuche nicht gefunden? " [level=3] [ref=e124] [cursor=pointer]
+          - listitem [ref=e125]:
+            - heading "Benötige ich die vollständige Rufnummer für die Inverssuche? " [level=3] [ref=e127] [cursor=pointer]
+          - listitem [ref=e128]:
+            - heading "Ist die Rückwärtssuche nicht verboten? – Datenschutz und Einverständnis " [level=3] [ref=e130] [cursor=pointer]
+          - listitem [ref=e131]:
+            - heading "Wie verhindere ich, dass ich selbst gefunden werde? " [level=3] [ref=e133] [cursor=pointer]
+          - listitem [ref=e134]:
+            - heading "Wo finde ich die Standardsuche von Das Örtliche? " [level=3] [ref=e136] [cursor=pointer]
+        - paragraph [ref=e137]:
+          - text: Ratschläge und Tipps bei Belästigung oder Betrug am Telefon findest du in unserem Ratgeber
+          - link "Schutz gegen Telefonbetrug und Belästigung" [ref=e138] [cursor=pointer]:
+            - /url: /ratgeber/schutz-gegen-telefonbetrug-und-belaestigung
+          - text: .
+  - contentinfo [ref=e141]:
+    - list [ref=e142]:
+      - listitem [ref=e143]:
+        - link "Standardsuche" [ref=e144] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/?form_name=search_nat&cmd=cmd_nav_startpage&page=0&context=0&action=10
+      - listitem [ref=e145]:
+        - link "Rückwärtssuche" [ref=e146] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/rueckwaertssuche/
+      - listitem [ref=e147]:
+        - link "Adresssuche" [ref=e148] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/adresssuche/
+      - listitem [ref=e149]:
+        - link "Postleitzahlsuche" [ref=e150] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/postleitzahlen/
+      - listitem [ref=e151]:
+        - link "Vorwahlsuche" [ref=e152] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/vorwahl/
+      - listitem [ref=e153]:
+        - link "Personensuche" [ref=e154] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/personensuche/
+    - list [ref=e155]:
+      - listitem [ref=e156]:
+        - link "Geldautomaten" [ref=e157] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/geldautomaten/
+      - listitem [ref=e158]:
+        - link "Notapotheken" [ref=e159] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/notapotheken/
+      - listitem [ref=e160]:
+        - link "Firmensuche" [ref=e161] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/firmensuche/
+      - listitem [ref=e162]:
+        - link "Telefonauskunft" [ref=e163] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/telefonauskunft/
+      - listitem [ref=e164]:
+        - link "Freibäder" [ref=e165] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/freibad/
+      - listitem [ref=e166]:
+        - link "Weihnachtsmärkte" [ref=e167] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/weihnachtsmarkt/
+    - list [ref=e168]:
+      - listitem [ref=e169]:
+        - link "Mein Örtliches" [ref=e170] [cursor=pointer]:
+          - /url: //www.meinoertliches.de
+      - listitem [ref=e171]:
+        - link "Schnupperpaket" [ref=e172] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/schnupperpaket/
+      - listitem [ref=e173]:
+        - link "Werben in Das Örtliche" [ref=e174] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/werben/
+      - listitem [ref=e175]:
+        - link "Branchenbuch" [ref=e176] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/branchenbuch/
+      - listitem [ref=e177]:
+        - link "Suchbegriffe" [ref=e178] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/Themen/index.html
+    - list [ref=e179]:
+      - listitem [ref=e180]:
+        - link "Inhalte melden" [ref=e181] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/inhaltemelden/
+      - listitem [ref=e182]:
+        - link "Kontakt" [ref=e183] [cursor=pointer]:
+          - /url: //ihr-eintrag.dtme.de/ihr-privater-eintrag/
+      - listitem [ref=e184]:
+        - link "Datenschutz" [ref=e185] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/datenschutz
+      - listitem [ref=e186]:
+        - link "Datenschutz-Einstellungen" [ref=e187] [cursor=pointer]:
+          - /url: "#"
+      - listitem [ref=e188]:
+        - link "Nutzungsbedingungen" [ref=e189] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/nutzungsbedingungen
+      - listitem [ref=e190]:
+        - link "Impressum" [ref=e191] [cursor=pointer]:
+          - /url: //www.dasoertliche.de/?cmd=cmd_nav_impressum
