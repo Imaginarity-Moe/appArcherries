@@ -4,7 +4,70 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-18 (Friends Phase 1+2 + Notification-Center + Pro-Modus per Set + Logo-Varianten + Parcours-Bahnen-Integration)
+**Letzte Aktualisierung:** 2026-05-19 (Spinner-System + Sync-Modus + Notification-Prefs + SWR + Aufnahme-Vokabular + Robustness gegen IONOS-504er)
+
+## Session 2026-05-19 — die wichtigsten Änderungen
+
+### Sync-Modus für Multi-Player target_practice (Migrations 0045, 0046)
+Dritter `shared_scoring_mode` neben `solo`/`collab`:
+- **`sync`** = Mutex-Lock pro Spieler. Backend hält `current_turn_participant_id` und `current_station_index`. Nur der aktuelle Turn-Inhaber darf via `targets_create` schreiben (sonst HTTP 423 Locked).
+- **`advance_sync_turn`** rotiert Turn nach `yield: true` im body. Wenn alle Spieler die aktuelle Station gescored haben → `current_station_index++` + Turn zurück auf ersten Spieler. Bei `num_ends`-Überlauf wird `ended_at = NOW()` gesetzt.
+- **`POST /trainings/<id>/turn`** Owner-only Force-Übernahme (z. B. wenn Gast hängt).
+- **Frontend Status-Banner** „Du bist dran" / „X scort gerade" + Owner-Übernehmen-Button.
+- **Auto-Open**: Gäste werden bei Polling-Refresh automatisch zur `current_station_index` navigiert. Owner bleibt in der Übersicht (sonst kann er nicht einladen — wichtige UX-Lektion vom 19.05.).
+- **Live-Push** debounced 1.2s — jeder Pfeil-Click in Sync pusht ans Backend, Gegner sieht Marker via 5s-Polling (Status-Mirror, kein Live-Marker-Mirror).
+- **Darts-Style-Anzeige** im Live-Modus: pro Spieler aktueller Leg-Score + Legs im aktuellen Set + gewonnene Sets.
+
+### Spinner-System
+- `src/components/Spinner.tsx`: `<Spinner />` (inline, 18px) + `<PageSpinner />` (vollflächig, 32px). Loader2 mit `animate-spin` + Cherry-500. sr-only-Label aus `t("actions.loading")`.
+- Alle vorherigen `Lade…`-Text-Stellen ersetzt: App.tsx, Dashboard, Profile, Stats, Parcours, TrainingDetail, TrainingSummary, ArrowEdit, BowEdit, ParcoursEdit/Detail/Lanes, TrainingArchive, Join, EmailSettings, ParcoursReviews, AddFriendModal, HighscoreCard, StationPhoto, NewTraining-Submit.
+
+### SWR (Stale-While-Revalidate)
+- `apiSWR()` in `src/api/client.ts`: cache-first, refresh-in-background via `onRefresh`-Callback. Bei fehlendem Cache identisch zu `apiCached`.
+- 5 Listen-Endpoints umgestellt: `listTrainings`, `listBows`, `listArrows`, `listParcours`, `getStatsOverview`. Detail-Endpoints bleiben Network-First.
+- N+1-Fix in `trainings_list` (Migration 0043): `done_targets` als Aggregat in einem Query statt N+1 via `participant_total()`.
+- 2 Composite-Indizes: `trainings(user_id, archived_at, started_at)` + `training_participants(user_id, training_id)`.
+
+### Notification-Prefs (Migration 0044)
+- Granulare Toggles in `/profile#notifications`: 3 Kategorien (Sicherheit & Konto = locked, Soziales, Einladungen) × 2 Channels (In-App, E-Mail).
+- Tabelle `notification_prefs(user_id, category, channel, enabled)` — fehlende Row = enabled (Default).
+- `should_notify($uid, $cat, $ch)` in `api/lib/Notifications.php` als zentraler Helper. Aufgerufen in `friends.php` (Email-Versand) und `notify_create` (In-App).
+- **DSGVO-Footer** in jeder Friend-Mail via `mail_footer_html()` mit signed 24h-JWT-Magic-Login-Link auf `/email-settings`. Endpoint `POST /auth/email-settings` tauscht den Magic-Token gegen ein 30-Tage-JWT.
+
+### Aufnahme-Vokabular für target_practice
+- Helper `endLabel(discipline, count, caps)` in `src/lib/format.ts`:
+  - 3D / Field / Default → „Station" / „Stationen"
+  - target_practice → „Aufnahme" / „Aufnahmen"
+- Hierarchie laut User: **Set → Y Legs → X Aufnahmen → Z Pfeile**.
+- Wizard-Felder: „Pfeile pro Aufnahme" + „Anzahl Aufnahmen" (statt „Durchgang").
+- Hilfe-Seiten erweitert: HelpDisciplines (neue Sektion „Scheibenschießen"), HelpScoring (Hierarchie + 3 Wertungs-Varianten).
+
+### Robustness gegen IONOS-504er + NetworkErrors
+- `api()` in client.ts: bis zu **3 Versuche** mit 600/1200ms Backoff bei Network-Errors und HTTP 503/504. 4xx wird NICHT retryt.
+- `AuthContext.refresh()`: bei 5xx/Network-Error nur Log und Cache aus `localStorage.archerries.me` als optimistischer User-State — **kein Logout mehr bei IONOS-Hängern**. Nur 401/403 räumt Token + Cache ab.
+- Polling-Last halbiert: NotificationBell 30s → 90s, Live-Polling Sync-aware (5s sync / 10s collab+solo), Auto-Save Debounce 400ms → 1200ms.
+
+### Dashboard + UI-Polish
+- Trainings-Card: bei target_practice Metadaten-Zeile „3 Pfeile · 10 Aufnahmen · 18m · 10 Ringe · 2 Sets × 3 Legs" unter Disziplin+Bogen.
+- Bei beendetem Training: Card-Footer „X Aufnahmen" (bzw. „X Stationen" für 3D) statt Sparkline (Sparkline mit 1-Value renderte einen verwirrenden orangenen Punkt — `Sparkline` returnt jetzt `null` bei < 2 Werten).
+- Sidebar-Header: nur Wordmark (kein LogoMark mehr) für visuelle Ruhe.
+- Custom-Action-Bar `inset-x-0` → `left-64 right-0` (Sidebar bleibt voll sichtbar).
+- Tabellen-Header in StationsTable: `tracking-[0.08em] text-secondary/60 font-semibold` statt `text-muted` + `bg-surface` — premium-minimal.
+- Beendetes Training: Tabelle als Default-View + alle Teilnehmer sichtbar; Friend/QR-Buttons ausgeblendet.
+
+### Bug-Fixes
+- **Erste-Pfeil-Bug im Sync**: KEY-FIX-`useEffect` in StationLiveEntry hatte `existing?.id` in deps. Bei Sync-Auto-Save pushte erster Pfeil → Polling-Refresh → `existing.id` ändert sich (war null, jetzt int) → useEffect re-initialisierte `zonesPicked` aus shots → erster Slot war wieder „leer" → Pfeil musste doppelt gesetzt werden. **Fix**: `existing?.id` aus deps raus — re-init nur bei echtem Kontext-Wechsel (stationIndex / scoringForPid).
+- **Sync nicht-mein-Turn-Mirror**: separater `useEffect` mit `existingShotsSig`-Signature, der bei `!isMyTurn` das Pad passiv aus `existing.shots` rendert — Gegner sieht meine gespeicherten Marker.
+- **DartsStandings**: Bedingung von `scoringParticipants.length >= 2` auf `allParticipants.filter(p => p.role !== "viewer").length >= 2` umgestellt (sonst unsichtbar im Sync, weil `scoringParticipants` nur den Turn-Inhaber enthält).
+- **Auto-Close bei `ended_at`**: entfernt — User soll nach Training-Ende noch korrigieren können.
+
+### Memory-Sync-Konvention
+`.claude-memory/` im Repo = Git-Snapshot, Multi-Rechner-Sync via Push/Pull:
+- **"memory laden"** = `.claude-memory/*.md` (außer README) → `C:\Users\<USER>\.claude\projects\C--Git-projects-appArcherries\memory\`
+- **"memory exportieren"** = lokal → `.claude-memory/`, dann commit+push.
+- README im Snapshot-Ordner wird beim Import NICHT übernommen.
+
+
 
 ## Live-Status — alle Features seit der letzten Memory-Aktualisierung
 
