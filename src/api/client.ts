@@ -38,18 +38,44 @@ export async function api<T = unknown>(
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${BASE}${path}`, { ...init, headers });
-  const text = await res.text();
-  const data = text ? safeJson(text) : null;
+  // IONOS-Shared-Hosting hat Spitzen-Last → TCP-Connection-Refused / 504 Gateway Timeout
+  // sind keine echten App-Fehler. Wir retryen bis 2x bei Network-Errors und 504/503.
+  const maxAttempts = 3;
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${BASE}${path}`, { ...init, headers });
+      const text = await res.text();
+      const data = text ? safeJson(text) : null;
 
-  if (!res.ok) {
-    let msg = `Request failed (${res.status})`;
-    if (data && typeof data === "object" && "error" in data) {
-      msg = String((data as { error: unknown }).error);
+      if (!res.ok) {
+        // 4xx → kein Retry, ist eine echte App-Fehlerantwort
+        // 503/504 → Retry, IONOS-Shared-Hänger
+        const retriable = res.status === 503 || res.status === 504;
+        if (retriable && attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 600 * attempt));
+          continue;
+        }
+        let msg = `Request failed (${res.status})`;
+        if (data && typeof data === "object" && "error" in data) {
+          msg = String((data as { error: unknown }).error);
+        }
+        throw new ApiError(res.status, msg, data);
+      }
+      return data as T;
+    } catch (err) {
+      lastErr = err;
+      // ApiError = bewusste Backend-Antwort, nicht retryen außer 503/504 (oben behandelt)
+      if (err instanceof ApiError) throw err;
+      // Network-Error (TypeError "Failed to fetch") → retry
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 600 * attempt));
+        continue;
+      }
+      throw err;
     }
-    throw new ApiError(res.status, msg, data);
   }
-  return data as T;
+  throw lastErr ?? new Error("Request failed after retries");
 }
 
 function safeJson(s: string): unknown {

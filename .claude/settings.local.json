@@ -7,7 +7,8 @@
       "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 20)",
       "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 15)",
       "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 12)",
-      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 10)"
+      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 10)",
+      "PowerShell(& \"C:\\\\Git\\\\projects\\\\appArcherries\\\\deploy.bat\" 2>&1 | Select-Object -Last 8)"
     ]
   }
 }
