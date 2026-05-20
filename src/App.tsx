@@ -30,6 +30,8 @@ const Bows            = lazy(() => import("./pages/Bows"));               // Bow
 const BowEdit         = lazy(() => import("./pages/BowEdit"));            // Bow-Form (new + edit)
 const Arrows          = lazy(() => import("./pages/Arrows"));             // Pfeil-Set-Manager
 const ArrowEdit       = lazy(() => import("./pages/ArrowEdit"));          // Pfeil-Set-Form (new + edit)
+const Equipment       = lazy(() => import("./pages/Equipment"));          // Sehnen/Tabs/Releases/Sonstiges
+const EquipmentEdit   = lazy(() => import("./pages/EquipmentEdit"));      // Equipment-Form (new + edit)
 const Friends         = lazy(() => import("./pages/Friends"));            // Freundschafts-Verwaltung
 const TrainingArchive = lazy(() => import("./pages/TrainingArchive"));    // Archivierte Trainings
 
@@ -79,6 +81,9 @@ export default function App() {
         <Route path="/arrows" element={<RequireAuth><L><Arrows /></L></RequireAuth>} />
         <Route path="/arrows/new" element={<RequireAuth><L><ArrowEdit mode="new" /></L></RequireAuth>} />
         <Route path="/arrows/:id/edit" element={<RequireAuth><L><ArrowEdit mode="edit" /></L></RequireAuth>} />
+        <Route path="/equipment" element={<RequireAuth><L><Equipment /></L></RequireAuth>} />
+        <Route path="/equipment/new" element={<RequireAuth><L><EquipmentEdit mode="new" /></L></RequireAuth>} />
+        <Route path="/equipment/:id/edit" element={<RequireAuth><L><EquipmentEdit mode="edit" /></L></RequireAuth>} />
         <Route path="/friends" element={<RequireAuth><L><Friends /></L></RequireAuth>} />
         <Route path="/trainings/archive" element={<RequireAuth><L><TrainingArchive /></L></RequireAuth>} />
 
