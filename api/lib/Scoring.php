@@ -27,9 +27,9 @@ const FIRST_HIT_DISCIPLINES = ['3d_ifaa', '3d_ifaa_animal', '3d_bowhunter'];
  * Bewertet alle Pfeile eines Ziels.
  *
  * @param string $discipline
- * @param array<int,array{arrow_seq:int, zone:?string, x_norm?:?float, y_norm?:?float}> $shots
+ * @param array<int,array{arrow_seq:int, zone:?string, x_norm?:?float, y_norm?:?float, pad_x?:?float, pad_y?:?float}> $shots
  * @param bool $nfaa  NFAA-Modus-Toggle (relevant nur für 3d_ifaa_animal)
- * @return array<int,array{arrow_seq:int, zone:?string, points:int, x_norm?:?float, y_norm?:?float}>
+ * @return array<int,array{arrow_seq:int, zone:?string, points:int, x_norm?:?float, y_norm?:?float, pad_x?:?float, pad_y?:?float}>
  */
 function score_target(string $discipline, array $shots, bool $nfaa = false): array
 {

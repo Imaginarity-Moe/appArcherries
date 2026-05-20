@@ -27,6 +27,9 @@ export type Shot = {
   /** Normalisierte Position auf dem Stations-Foto (0..1). Null = nicht markiert. */
   x_norm?: number | null;
   y_norm?: number | null;
+  /** Normalisierte Position auf dem abstrakten BullseyePad (0..1, (0.5,0.5)=Zentrum). Für Heatmap-Aggregation. */
+  pad_x?: number | null;
+  pad_y?: number | null;
 };
 
 export type Target = {
@@ -337,7 +340,7 @@ type UpsertTargetBody = {
   animal_or_face?: string | null;
   distance_m?: number | null;
   notes?: string | null;
-  shots?: Array<{ arrow_seq: number; zone: string | null; x_norm?: number | null; y_norm?: number | null }>;
+  shots?: Array<{ arrow_seq: number; zone: string | null; x_norm?: number | null; y_norm?: number | null; pad_x?: number | null; pad_y?: number | null }>;
   /** Owner-only: scorst für anderen Participant (z.B. Gast ohne Account) */
   for_participant_id?: number;
   /** Sync-Modus: nach Speichern Turn zum nächsten Spieler weiterdrehen. */
@@ -388,6 +391,8 @@ export async function upsertTarget(
           points: s.points,
           x_norm: orig?.x_norm ?? null,
           y_norm: orig?.y_norm ?? null,
+          pad_x: orig?.pad_x ?? null,
+          pad_y: orig?.pad_y ?? null,
         };
       }),
       target_total: targetTotal,
@@ -420,6 +425,8 @@ export async function upsertTarget(
           points: s.points,
           x_norm: orig?.x_norm ?? null,
           y_norm: orig?.y_norm ?? null,
+          pad_x: orig?.pad_x ?? null,
+          pad_y: orig?.pad_y ?? null,
         };
       }),
       target_total: targetTotal,

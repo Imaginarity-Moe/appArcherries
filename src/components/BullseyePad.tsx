@@ -1,10 +1,18 @@
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Discipline } from "../api/trainings";
+
+export type PadPos = { x: number; y: number }; // 0..1 in SVG-viewBox-Space ((0.5,0.5)=Zentrum)
 
 type Props = {
   discipline: Discipline;
   selectedZone?: string | null;
-  onZoneSelect: (zoneCode: string) => void;
+  /** Pad-Position des aktuell gewählten Pfeils (0..1). Wird als Marker gerendert. */
+  selectedPos?: PadPos | null;
+  /** Tap auf einen Ring: setzt Zone (Score) und initial-Position. */
+  onZoneSelect: (zoneCode: string, pos: PadPos) => void;
+  /** Marker wurde gedraggt — Zone bleibt, nur Position ändert sich. */
+  onPositionUpdate?: (pos: PadPos) => void;
   disabled?: boolean;
 };
 
@@ -18,8 +26,9 @@ type Ring = {
 /**
  * Ringe pro Disziplin von INNEN nach AUSSEN. Der äußerste Ring ist immer „M" (Miss).
  * Konsistent: höchster Wert in der Mitte, jeder Ring eine andere Farbe.
+ * Exportiert, damit die Heatmap-Komponente dieselbe Geometrie nutzen kann.
  */
-const PAD_RINGS: Record<Discipline, Ring[]> = {
+export const PAD_RINGS: Record<Discipline, Ring[]> = {
   "3d_wa": [
     { code: "X",     label: "X",  fill: "#D4A547" },  // gold
     { code: "inner", label: "10", fill: "#E8B894" },  // dusty rose
@@ -69,9 +78,32 @@ const PAD_RINGS: Record<Discipline, Ring[]> = {
   target_practice: [], // target_practice nutzt TargetPad statt BullseyePad
 };
 
-export default function BullseyePad({ discipline, selectedZone, onZoneSelect, disabled }: Props) {
+/** SVG-Pixel-Position (0..200) → normalisiert (0..1) und auf [0,1] geclampt. */
+function svgEventToPos(e: React.PointerEvent<SVGElement>): PadPos | null {
+  const svg = e.currentTarget.ownerSVGElement ?? (e.currentTarget as unknown as SVGSVGElement);
+  if (!svg || !(svg instanceof SVGSVGElement)) return null;
+  const rect = svg.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return null;
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  return {
+    x: clamp((e.clientX - rect.left) / rect.width),
+    y: clamp((e.clientY - rect.top) / rect.height),
+  };
+}
+
+export default function BullseyePad({
+  discipline,
+  selectedZone,
+  selectedPos,
+  onZoneSelect,
+  onPositionUpdate,
+  disabled,
+}: Props) {
   const { t } = useTranslation("training");
   const rings = PAD_RINGS[discipline] ?? [];
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   if (rings.length === 0) return null;
 
   // Radien: rings[0] ist der INNERSTE (höchster Wert / Bullseye), letzter Ring ist außen (Miss)
@@ -79,10 +111,43 @@ export default function BullseyePad({ discipline, selectedZone, onZoneSelect, di
   const minR = 18;
   const step = (maxR - minR) / Math.max(rings.length - 1, 1);
 
+  function handleRingTap(e: React.PointerEvent<SVGCircleElement>, code: string) {
+    if (disabled) return;
+    const pos = svgEventToPos(e);
+    if (pos) onZoneSelect(code, pos);
+    else onZoneSelect(code, { x: 0.5, y: 0.5 });
+  }
+
+  function handleMarkerDown(e: React.PointerEvent<SVGGElement>) {
+    if (disabled || !onPositionUpdate) return;
+    e.stopPropagation();
+    (e.currentTarget as SVGGElement).setPointerCapture(e.pointerId);
+    setIsDragging(true);
+  }
+
+  function handleMarkerMove(e: React.PointerEvent<SVGGElement>) {
+    if (!isDragging || !onPositionUpdate) return;
+    e.stopPropagation();
+    const pos = svgEventToPos(e);
+    if (pos) onPositionUpdate(pos);
+  }
+
+  function handleMarkerUp(e: React.PointerEvent<SVGGElement>) {
+    if (!isDragging) return;
+    e.stopPropagation();
+    (e.currentTarget as SVGGElement).releasePointerCapture(e.pointerId);
+    setIsDragging(false);
+  }
+
+  // Marker-Position in viewBox-Pixeln
+  const markerVB = selectedPos
+    ? { x: selectedPos.x * 200, y: selectedPos.y * 200 }
+    : null;
+
   return (
     <div className="flex flex-col gap-2 select-none">
       <div className="relative aspect-square max-w-[300px] mx-auto w-full">
-        <svg viewBox="0 0 200 200" className="w-full h-full no-tap-highlight">
+        <svg ref={svgRef} viewBox="0 0 200 200" className="w-full h-full no-tap-highlight">
           {/* Außen nach innen rendern: größerer Ring zuerst, damit kleinere darüber liegen und Klick-Treffer auf den richtigen Ring geht */}
           {rings
             .map((ring, idx) => ({ ring, idx, r: minR + idx * step }))
@@ -100,7 +165,7 @@ export default function BullseyePad({ discipline, selectedZone, onZoneSelect, di
                   stroke={isSel ? "#8E2C3A" : "rgba(28,28,30,0.18)"}
                   strokeWidth={isSel ? 4 : 1}
                   className={`cursor-pointer transition ${disabled ? "opacity-40 pointer-events-none" : ""}`}
-                  onClick={() => !disabled && onZoneSelect(ring.code)}
+                  onPointerDown={(e) => handleRingTap(e, ring.code)}
                   aria-label={ring.label}
                 />
               );
@@ -130,12 +195,37 @@ export default function BullseyePad({ discipline, selectedZone, onZoneSelect, di
               </text>
             );
           })}
+
+          {/* Treffer-Marker (Cherry-Akzent) — Pointer-Events fangen Drag ab */}
+          {markerVB && (
+            <g
+              onPointerDown={handleMarkerDown}
+              onPointerMove={handleMarkerMove}
+              onPointerUp={handleMarkerUp}
+              onPointerCancel={handleMarkerUp}
+              style={{ cursor: onPositionUpdate ? "grab" : "default", touchAction: "none" }}
+            >
+              {/* unsichtbare größere Hit-Area für besseren Touch-Grip */}
+              <circle cx={markerVB.x} cy={markerVB.y} r={10} fill="transparent" />
+              <circle
+                cx={markerVB.x}
+                cy={markerVB.y}
+                r={4}
+                fill="#8E2C3A"
+                stroke="#FAF8F4"
+                strokeWidth={1.5}
+                className="pointer-events-none"
+              />
+            </g>
+          )}
         </svg>
       </div>
 
       {/* Hint-Text statt separatem Miss-Button — Miss ist jetzt ein Ring */}
       <p className="text-xs text-muted text-center">
-        {t("zone.hint", "Tippe einen Ring — Punkte werden berechnet")}
+        {selectedPos
+          ? t("zone.hint_marker", "Marker draggbar — Zone bleibt, nur Position ändert sich")
+          : t("zone.hint", "Tippe einen Ring — Punkte werden berechnet")}
       </p>
     </div>
   );

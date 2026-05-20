@@ -1,4 +1,5 @@
 import { apiCached, apiSWR } from "./client";
+import type { Discipline } from "./trainings";
 
 export type StatsOverview = {
   trend: Array<{ id: number; date: string; discipline: string; bow_type: string; score: number }>;
@@ -78,4 +79,32 @@ export async function getStatsOverview(
 
 export async function getTrainingStats(trainingId: number): Promise<TrainingStats> {
   return apiCached(`/stats/training/${trainingId}`);
+}
+
+export type HeatmapGroup = {
+  key: string;
+  label: string;
+  discipline: Discipline;
+  animal_or_face: string | null;
+  distance_m: number | null;
+  parcours_id: number | null;
+  parcours_name: string | null;
+  shot_count: number;
+  points: Array<{ pad_x: number; pad_y: number; zone: string | null; points: number }>;
+};
+
+export type HeatmapResponse = {
+  group_by: "tier" | "lane";
+  groups: HeatmapGroup[];
+};
+
+export async function getHeatmap(
+  group_by: "tier" | "lane" = "tier",
+  filters: { discipline?: string; bow?: string } = {}
+): Promise<HeatmapResponse> {
+  const qs = new URLSearchParams();
+  qs.set("group_by", group_by);
+  if (filters.discipline) qs.set("discipline", filters.discipline);
+  if (filters.bow) qs.set("bow", filters.bow);
+  return apiCached<HeatmapResponse>(`/stats/heatmap?${qs.toString()}`);
 }

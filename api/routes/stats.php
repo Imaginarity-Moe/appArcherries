@@ -18,7 +18,103 @@ function handle_stats(string $method, string $path): void
         stats_per_training($user['id'], (int)$m[1]);
         return;
     }
+    if ($sub === '/heatmap') {
+        stats_heatmap($user['id']);
+        return;
+    }
     res_error('Not found', 404);
+}
+
+/**
+ * Aggregierte Pad-Koordinaten für die Treffer-Heatmap.
+ *
+ * Query-Params:
+ *  - group_by = "tier" (default) | "lane"
+ *    tier = pro (animal_or_face, distance_m, discipline)
+ *    lane = pro (parcours_id, animal_or_face, distance_m, discipline)
+ *  - discipline = optionaler Filter
+ *  - bow        = optionaler Filter
+ *
+ * Liefert pro Gruppe die Liste aller pad_x/pad_y/zone/points-Treffer.
+ * Verworfen werden Shots ohne pad_x/pad_y oder ohne animal_or_face (target_practice
+ * hat kein "Tier", deshalb pauschal nicht in der Heatmap — wird später separat
+ * behandelt, wenn das Bedürfnis da ist).
+ */
+function stats_heatmap(int $user_id): void
+{
+    $group_by = req_query('group_by') ?: 'tier';
+    if (!in_array($group_by, ['tier', 'lane'], true)) $group_by = 'tier';
+    $disc = req_query('discipline');
+    $bow  = req_query('bow');
+
+    $where = ['t.user_id = ?', 's.pad_x IS NOT NULL', 's.pad_y IS NOT NULL',
+              'tt.animal_or_face IS NOT NULL', "tt.animal_or_face != ''"];
+    $args  = [$user_id];
+    if ($disc) { $where[] = 't.discipline = ?'; $args[] = $disc; }
+    if ($bow)  { $where[] = 't.bow_type = ?';   $args[] = $bow; }
+    $wsql = implode(' AND ', $where);
+
+    $stmt = db()->prepare(
+        "SELECT t.discipline, t.parcours_id, p.name AS parcours_name,
+                tt.animal_or_face, tt.distance_m,
+                s.pad_x, s.pad_y, s.zone, s.points
+         FROM shots s
+         JOIN training_targets tt ON tt.id = s.target_id
+         JOIN trainings t ON t.id = tt.training_id
+         LEFT JOIN parcours p ON p.id = t.parcours_id
+         WHERE $wsql
+         ORDER BY tt.animal_or_face ASC, tt.distance_m ASC"
+    );
+    $stmt->execute($args);
+    $rows = $stmt->fetchAll();
+
+    $groups = [];
+    foreach ($rows as $r) {
+        $animal = $r['animal_or_face'];
+        $distance = $r['distance_m'] !== null ? (float)$r['distance_m'] : null;
+        $discipline = $r['discipline'];
+        $parcours_id = $r['parcours_id'] !== null ? (int)$r['parcours_id'] : null;
+        $parcours_name = $r['parcours_name'];
+
+        if ($group_by === 'lane') {
+            $key = ($parcours_id ?? 0) . '|' . $animal . '|' . ($distance ?? 'x') . '|' . $discipline;
+            $label = ($parcours_name ?: 'Ohne Parcours') . ' · ' . $animal
+                   . ($distance !== null ? ' @' . rtrim(rtrim(number_format($distance, 1, '.', ''), '0'), '.') . 'm' : '');
+        } else {
+            $key = $animal . '|' . ($distance ?? 'x') . '|' . $discipline;
+            $label = $animal . ($distance !== null ? ' (' . rtrim(rtrim(number_format($distance, 1, '.', ''), '0'), '.') . 'm)' : '');
+        }
+
+        if (!isset($groups[$key])) {
+            $groups[$key] = [
+                'key'            => $key,
+                'label'          => $label,
+                'discipline'     => $discipline,
+                'animal_or_face' => $animal,
+                'distance_m'     => $distance,
+                'parcours_id'    => $group_by === 'lane' ? $parcours_id : null,
+                'parcours_name'  => $group_by === 'lane' ? $parcours_name : null,
+                'shot_count'     => 0,
+                'points'         => [],
+            ];
+        }
+        $groups[$key]['shot_count']++;
+        $groups[$key]['points'][] = [
+            'pad_x'  => (float)$r['pad_x'],
+            'pad_y'  => (float)$r['pad_y'],
+            'zone'   => $r['zone'],
+            'points' => (int)$r['points'],
+        ];
+    }
+
+    // Sortieren: Gruppen mit meisten Shots zuerst
+    $groups_arr = array_values($groups);
+    usort($groups_arr, fn ($a, $b) => $b['shot_count'] <=> $a['shot_count']);
+
+    res_json([
+        'group_by' => $group_by,
+        'groups'   => $groups_arr,
+    ]);
 }
 
 function stats_overview(int $user_id): void

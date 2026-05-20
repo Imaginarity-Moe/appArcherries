@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Trophy } from "lucide-react";
-import { getStatsOverview, type StatsOverview } from "../api/stats";
+import { getHeatmap, getStatsOverview, type HeatmapResponse, type StatsOverview } from "../api/stats";
 import { ScoreLineChart, ZoneDistributionBars, ArrowConsistencyBars } from "../components/charts";
 import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
 import { fmtDate } from "../lib/format";
 import { useSyncListener } from "../lib/useSyncListener";
 import { Spinner } from "../components/Spinner";
+
+const Heatmap = lazy(() => import("../components/Heatmap"));
 
 const DISCIPLINES = Object.keys(DISCIPLINE_LABELS) as Discipline[];
 const BOWS = Object.keys(BOW_LABELS) as BowType[];
@@ -17,6 +19,8 @@ export default function Stats() {
   const [loading, setLoading] = useState(true);
   const [discFilter, setDiscFilter] = useState<Discipline | "">("");
   const [bowFilter, setBowFilter] = useState<BowType | "">("");
+  const [heatmap, setHeatmap] = useState<HeatmapResponse | null>(null);
+  const [hmGroupBy, setHmGroupBy] = useState<"tier" | "lane">("tier");
 
   const loadStats = useCallback(() => {
     setLoading(true);
@@ -28,12 +32,26 @@ export default function Stats() {
       .finally(() => setLoading(false));
   }, [discFilter, bowFilter]);
 
+  const loadHeatmap = useCallback(() => {
+    getHeatmap(hmGroupBy, {
+      discipline: discFilter || undefined,
+      bow: bowFilter || undefined,
+    })
+      .then(setHeatmap)
+      .catch(() => setHeatmap(null));
+  }, [hmGroupBy, discFilter, bowFilter]);
+
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
+  useEffect(() => {
+    loadHeatmap();
+  }, [loadHeatmap]);
+
   // Nach Outbox-Drain: Stats neu laden (neue Scores ggf. eingegangen)
   useSyncListener(loadStats);
+  useSyncListener(loadHeatmap);
 
   const trendForChart = useMemo(() => {
     return (data?.trend ?? []).map((d) => ({
@@ -167,6 +185,50 @@ export default function Stats() {
               />
             </section>
           )}
+
+          <section className="card">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h2 className="font-display text-lg font-semibold">Treffer-Heatmap</h2>
+              <div className="flex gap-1 p-0.5 bg-surface rounded-lg border border-hairline">
+                <button
+                  onClick={() => setHmGroupBy("tier")}
+                  className={`px-3 py-1 rounded text-xs font-medium tap-target transition ${
+                    hmGroupBy === "tier" ? "bg-cherry-500 text-cream" : "text-secondary"
+                  }`}
+                >
+                  Pro Tier+Distanz
+                </button>
+                <button
+                  onClick={() => setHmGroupBy("lane")}
+                  className={`px-3 py-1 rounded text-xs font-medium tap-target transition ${
+                    hmGroupBy === "lane" ? "bg-cherry-500 text-cream" : "text-secondary"
+                  }`}
+                >
+                  Pro Bahn
+                </button>
+              </div>
+            </div>
+            {(heatmap?.groups.length ?? 0) === 0 ? (
+              <p className="text-sm text-muted text-center py-4">
+                Noch keine Heatmap-Daten. Beim Antippen eines Rings im BullseyePad wird die Trefferposition erfasst — Daten erscheinen hier ab der nächsten Station.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {heatmap!.groups.map((g) => (
+                  <div key={g.key} className="card-sunken">
+                    <div className="text-xs text-secondary">
+                      {DISCIPLINE_LABELS[g.discipline] ?? g.discipline}
+                    </div>
+                    <div className="text-sm font-semibold mb-2">{g.label}</div>
+                    <Suspense fallback={<Spinner className="py-2" />}>
+                      <Heatmap discipline={g.discipline} points={g.points} />
+                    </Suspense>
+                    <div className="text-xs text-muted mt-2 text-center">{g.shot_count} Pfeile</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </>
       )}
     </div>

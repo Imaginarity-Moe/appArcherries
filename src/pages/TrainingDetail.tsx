@@ -947,6 +947,19 @@ function StationLiveEntry({
     }
     return arr;
   });
+  // Pad-Positionen (BullseyePad-Tap-Position, getrennt von markers=Foto-Marker).
+  // Wird für Heatmap-Aggregation gespeichert.
+  const [padPositions, setPadPositions] = useState<({ x: number; y: number } | null)[]>(() => {
+    const arr: ({ x: number; y: number } | null)[] = Array(slots).fill(null);
+    if (existing) {
+      for (const s of existing.shots) {
+        if (s.arrow_seq >= 1 && s.arrow_seq <= slots && s.pad_x != null && s.pad_y != null) {
+          arr[s.arrow_seq - 1] = { x: s.pad_x, y: s.pad_y };
+        }
+      }
+    }
+    return arr;
+  });
   const [busy, setBusy] = useState(false);
   const [showStationGrid, setShowStationGrid] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -960,6 +973,7 @@ function StationLiveEntry({
     setActiveSlot(0);
     const zArr: (string | null)[] = Array(slots).fill(null);
     const mArr: ({ x: number; y: number } | null)[] = Array(slots).fill(null);
+    const pArr: ({ x: number; y: number } | null)[] = Array(slots).fill(null);
     if (existing) {
       for (const s of existing.shots) {
         if (s.arrow_seq >= 1 && s.arrow_seq <= slots) {
@@ -967,11 +981,15 @@ function StationLiveEntry({
           if (s.x_norm != null && s.y_norm != null) {
             mArr[s.arrow_seq - 1] = { x: s.x_norm, y: s.y_norm };
           }
+          if (s.pad_x != null && s.pad_y != null) {
+            pArr[s.arrow_seq - 1] = { x: s.pad_x, y: s.pad_y };
+          }
         }
       }
     }
     setZonesPicked(zArr);
     setMarkers(mArr);
+    setPadPositions(pArr);
     // existing?.id BEWUSST nicht in deps: im sync-Mode würde sonst der debounced
     // POST → Polling-Refresh den lokalen State direkt nach dem ersten Pfeil
     // überschreiben (zonesPicked auf [shot1] gesetzt → kurz danach re-init aus
@@ -993,6 +1011,7 @@ function StationLiveEntry({
     if (!isSyncMode || isMyTurn) return;
     const zArr: (string | null)[] = Array(slots).fill(null);
     const mArr: ({ x: number; y: number } | null)[] = Array(slots).fill(null);
+    const pArr: ({ x: number; y: number } | null)[] = Array(slots).fill(null);
     if (existing) {
       for (const s of existing.shots) {
         if (s.arrow_seq >= 1 && s.arrow_seq <= slots) {
@@ -1000,11 +1019,15 @@ function StationLiveEntry({
           if (s.x_norm != null && s.y_norm != null) {
             mArr[s.arrow_seq - 1] = { x: s.x_norm, y: s.y_norm };
           }
+          if (s.pad_x != null && s.pad_y != null) {
+            pArr[s.arrow_seq - 1] = { x: s.pad_x, y: s.pad_y };
+          }
         }
       }
     }
     setZonesPicked(zArr);
     setMarkers(mArr);
+    setPadPositions(pArr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSyncMode, isMyTurn, slots, existingShotsSig]);
 
@@ -1028,14 +1051,26 @@ function StationLiveEntry({
   }, [zonesPicked, markers, isSyncMode, isMyTurn]);
 
   // Beim Pfeil-Tap: nächsten leeren Slot aktivieren
-  function handleZoneSelect(code: string) {
+  function handleZoneSelect(code: string, pos?: { x: number; y: number }) {
     const next = [...zonesPicked];
     next[activeSlot] = code;
     setZonesPicked(next);
+    if (pos) {
+      const nextPad = [...padPositions];
+      nextPad[activeSlot] = pos;
+      setPadPositions(nextPad);
+    }
     // Nächsten leeren Slot suchen
     const nextEmpty = next.findIndex((z, i) => i > activeSlot && z === null);
     if (nextEmpty !== -1) setActiveSlot(nextEmpty);
     else if (activeSlot < slots - 1) setActiveSlot(activeSlot + 1);
+  }
+
+  // Drag-Refine des Pad-Markers — Zone bleibt, nur Position ändert sich
+  function handlePadPositionUpdate(pos: { x: number; y: number }) {
+    const next = [...padPositions];
+    next[activeSlot] = pos;
+    setPadPositions(next);
   }
 
   // Lokale Vorschau-Summe
@@ -1053,6 +1088,8 @@ function StationLiveEntry({
           zone: z,
           x_norm: markers[i]?.x ?? null,
           y_norm: markers[i]?.y ?? null,
+          pad_x: padPositions[i]?.x ?? null,
+          pad_y: padPositions[i]?.y ?? null,
         }))
         .filter((s) => s.zone !== null);
       await upsertTarget(training.id, {
@@ -1404,7 +1441,9 @@ function StationLiveEntry({
             <BullseyePad
               discipline={training.discipline}
               selectedZone={zonesPicked[activeSlot] ?? null}
-              onZoneSelect={(code) => handleZoneSelect(code)}
+              selectedPos={padPositions[activeSlot] ?? null}
+              onZoneSelect={(code, pos) => handleZoneSelect(code, pos)}
+              onPositionUpdate={handlePadPositionUpdate}
               disabled={(firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx) || !isMyTurn}
             />
           </div>
