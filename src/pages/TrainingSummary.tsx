@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, BarChart3, Plus, Trophy } from "lucide-react";
@@ -7,7 +7,9 @@ import { StationSparkline, ZoneDistributionBars, ArrowConsistencyBars } from "..
 import { BOW_LABELS, DISCIPLINE_LABELS, getTraining, updateTraining, type BowType, type Discipline, type Training } from "../api/trainings";
 import { fmtDate } from "../lib/format";
 import { usePageFooter } from "../components/FooterContext";
-import { PageSpinner } from "../components/Spinner";
+import { PageSpinner, Spinner } from "../components/Spinner";
+
+const Heatmap = lazy(() => import("../components/Heatmap"));
 
 /**
  * End-of-Training-Auswertung. Wird nach „Training beenden" angesteuert.
@@ -187,6 +189,11 @@ export default function TrainingSummary() {
         <ParticipantsHeatmap training={training} />
       )}
 
+      {/* Pad-Heatmap für 3D + Feldbogen (nutzt pad_x/pad_y aus BullseyePad) */}
+      {training && training.discipline !== "target_practice" && training.discipline !== "simple" && (
+        <OwnPadHeatmap training={training} />
+      )}
+
       {/* Highscore-Veröffentlichung — nur für Trainings auf einem Parcours mit Score > 0 */}
       {training && training.parcours_id && data.total_score > 0 && (
         <div className="card">
@@ -293,6 +300,44 @@ function ParticipantsHeatmap({ training }: { training: Training }) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Pad-Heatmap des aktuellen Trainings für 3D + Feldbogen.
+ * Aggregiert alle pad_x/pad_y des eigenen Spielers über alle Stationen.
+ */
+function OwnPadHeatmap({ training }: { training: Training }) {
+  const myPid = training.my_participant_id;
+  const points = useMemo(() => {
+    const pts: Array<{ pad_x: number; pad_y: number; zone: string | null; points: number }> = [];
+    for (const tg of training.targets ?? []) {
+      if (myPid != null && tg.participant_id !== myPid) continue;
+      for (const sh of tg.shots) {
+        if (sh.pad_x == null || sh.pad_y == null) continue;
+        pts.push({
+          pad_x: sh.pad_x,
+          pad_y: sh.pad_y,
+          zone: sh.zone,
+          points: sh.points ?? 0,
+        });
+      }
+    }
+    return pts;
+  }, [training, myPid]);
+
+  if (points.length === 0) return null;
+
+  return (
+    <div className="card">
+      <h2 className="font-display text-lg font-semibold mb-3">Treffer-Heatmap</h2>
+      <div className="mx-auto" style={{ maxWidth: 360 }}>
+        <Suspense fallback={<Spinner className="py-2" />}>
+          <Heatmap discipline={training.discipline} points={points} size={360} />
+        </Suspense>
+      </div>
+      <p className="text-xs text-muted text-center mt-2">{points.length} Pfeile in diesem Training</p>
     </div>
   );
 }

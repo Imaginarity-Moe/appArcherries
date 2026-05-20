@@ -1,9 +1,9 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Plus, Trash2, X, Check, Camera, Loader2, ChevronDown, ChevronUp,
 } from "lucide-react";
-import { PageSpinner } from "../components/Spinner";
+import { PageSpinner, Spinner } from "../components/Spinner";
 import {
   getParcours,
   listParcoursLanes,
@@ -15,9 +15,13 @@ import {
   type Parcours,
   type ParcoursLane,
 } from "../api/parcours";
+import { getHeatmap, type HeatmapResponse } from "../api/stats";
+import { DISCIPLINE_LABELS, type Discipline } from "../api/trainings";
 import { useConfirm } from "../components/ConfirmDialog";
 import { usePageFooter } from "../components/FooterContext";
 import { useAuth } from "../auth/AuthContext";
+
+const Heatmap = lazy(() => import("../components/Heatmap"));
 
 type EditState = {
   lane_number: string;
@@ -259,6 +263,10 @@ export default function ParcoursLanes() {
           Hinweis: Im Parcours sind aktuell keine Pflockfarben aktiviert. Distanzen pro Pflock können trotzdem gepflegt werden — sinnvoller ist es aber, die verfügbaren Pflöcke zuerst in den Parcours-Stammdaten zu setzen.
         </div>
       )}
+
+      {/* Heatmaps der eigenen Trainings auf diesem Parcours */}
+      <ParcoursHeatmaps parcoursId={parcoursId} />
+
 
       {/* Neue Bahn — Editor inline (nur Owner) */}
       {isOwner && editingId === "new" && (
@@ -748,5 +756,49 @@ function DistanceChip({ color, value }: { color: string; value: number }) {
       <span className={`w-2.5 h-2.5 rounded-full ${color}`} aria-hidden />
       <span className="font-mono tabular-nums text-secondary">{value} m</span>
     </span>
+  );
+}
+
+/**
+ * Aggregierte Pad-Heatmaps der eigenen Trainings auf diesem Parcours.
+ * Gruppiert nach (Tier + Distanz). Versteckt sich, wenn keine Daten existieren.
+ */
+function ParcoursHeatmaps({ parcoursId }: { parcoursId: number }) {
+  const [data, setData] = useState<HeatmapResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!parcoursId) return;
+    setLoading(true);
+    getHeatmap("tier", { parcours_id: parcoursId })
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [parcoursId]);
+
+  if (loading) return null; // Stille beim Laden, keine Spinner-Flicker
+  if (!data || data.groups.length === 0) return null;
+
+  return (
+    <details className="card group" open>
+      <summary className="cursor-pointer list-none flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold">Deine Trefferbilder</h2>
+        <ChevronDown size={18} className="transition group-open:rotate-180 text-secondary" />
+      </summary>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+        {data.groups.map((g) => (
+          <div key={g.key} className="card-sunken">
+            <div className="text-[11px] text-secondary truncate" title={DISCIPLINE_LABELS[g.discipline as Discipline] ?? g.discipline}>
+              {DISCIPLINE_LABELS[g.discipline as Discipline] ?? g.discipline}
+            </div>
+            <div className="text-xs font-semibold mb-1.5 truncate" title={g.label}>{g.label}</div>
+            <Suspense fallback={<Spinner className="py-1" />}>
+              <Heatmap discipline={g.discipline as Discipline} points={g.points} size={180} />
+            </Suspense>
+            <div className="text-[11px] text-muted text-center mt-1">{g.shot_count} Pfeile</div>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }

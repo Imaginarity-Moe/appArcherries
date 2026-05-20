@@ -46,12 +46,14 @@ function stats_heatmap(int $user_id): void
     if (!in_array($group_by, ['tier', 'lane'], true)) $group_by = 'tier';
     $disc = req_query('discipline');
     $bow  = req_query('bow');
+    $parcours_id = req_query('parcours_id');
 
     $where = ['t.user_id = ?', 's.pad_x IS NOT NULL', 's.pad_y IS NOT NULL',
               'tt.animal_or_face IS NOT NULL', "tt.animal_or_face != ''"];
     $args  = [$user_id];
-    if ($disc) { $where[] = 't.discipline = ?'; $args[] = $disc; }
-    if ($bow)  { $where[] = 't.bow_type = ?';   $args[] = $bow; }
+    if ($disc)        { $where[] = 't.discipline = ?'; $args[] = $disc; }
+    if ($bow)         { $where[] = 't.bow_type = ?';   $args[] = $bow; }
+    if ($parcours_id) { $where[] = 't.parcours_id = ?'; $args[] = (int)$parcours_id; }
     $wsql = implode(' AND ', $where);
 
     $stmt = db()->prepare(

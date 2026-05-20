@@ -18,6 +18,7 @@ import {
   type Training,
 } from "../api/trainings";
 import BullseyePad from "../components/BullseyePad";
+import StationHeatmapHint from "../components/StationHeatmapHint";
 import TargetPad from "../components/TargetPad";
 import ParticipantsBar from "../components/ParticipantsBar";
 import StationPhoto from "../components/StationPhoto";
@@ -1446,6 +1447,14 @@ function StationLiveEntry({
               onPositionUpdate={handlePadPositionUpdate}
               disabled={(firstHitDisableIdx !== -1 && activeSlot > firstHitDisableIdx) || !isMyTurn}
             />
+            <div className="mt-2">
+              <StationHeatmapHint
+                parcoursId={training.parcours_id}
+                animalOrFace={animal || null}
+                distanceM={distance ? Number(distance) : null}
+                discipline={training.discipline}
+              />
+            </div>
           </div>
         )}
 

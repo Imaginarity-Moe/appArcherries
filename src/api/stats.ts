@@ -100,11 +100,12 @@ export type HeatmapResponse = {
 
 export async function getHeatmap(
   group_by: "tier" | "lane" = "tier",
-  filters: { discipline?: string; bow?: string } = {}
+  filters: { discipline?: string; bow?: string; parcours_id?: number } = {}
 ): Promise<HeatmapResponse> {
   const qs = new URLSearchParams();
   qs.set("group_by", group_by);
   if (filters.discipline) qs.set("discipline", filters.discipline);
   if (filters.bow) qs.set("bow", filters.bow);
+  if (filters.parcours_id) qs.set("parcours_id", String(filters.parcours_id));
   return apiCached<HeatmapResponse>(`/stats/heatmap?${qs.toString()}`);
 }
