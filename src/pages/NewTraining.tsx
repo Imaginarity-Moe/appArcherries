@@ -76,7 +76,7 @@ export default function NewTraining() {
   const [tpScoringMode, setTpScoringMode] = useState<"points" | "legs" | "sets">("points");
   const [tpLegsToWin, setTpLegsToWin] = useState<string>("3");
   const [tpSetsToWin, setTpSetsToWin] = useState<string>("2");
-  const [tpSharedMode, setTpSharedMode] = useState<"solo" | "collab" | "sync">("solo");
+  const [tpSharedMode, setTpSharedMode] = useState<"solo" | "collab">("solo");
 
   // Hilfsfunktion: clamped Number aus String, fallback bei leer
   const clampInt = (v: string, min: number, max: number, fallback: number) => {
@@ -459,8 +459,8 @@ export default function NewTraining() {
               )}
               <div>
                 <label className="text-xs text-secondary mb-1.5 block">Eingabe bei Multi-Player</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(["solo", "collab", "sync"] as const).map((m) => (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(["solo", "collab"] as const).map((m) => (
                     <button
                       key={m}
                       type="button"
@@ -471,16 +471,14 @@ export default function NewTraining() {
                           : "bg-surface text-secondary border border-hairline"
                       }`}
                     >
-                      {m === "solo" ? "Einer scort" : m === "collab" ? "Jeder selbst" : "Synchron"}
+                      {m === "solo" ? "Einer scort" : "Jeder selbst"}
                     </button>
                   ))}
                 </div>
                 <p className="text-[11px] text-muted mt-1.5">
                   {tpSharedMode === "solo"
                     ? "Owner scort für alle Spieler — Reihenfolge wechselt pro Leg."
-                    : tpSharedMode === "collab"
-                    ? "Jeder Spieler scort am eigenen Handy. Alle sehen die Marker aller Schützen live."
-                  : "Alle sehen denselben Stand. Nur einer ist gleichzeitig dran — beim Speichern wechselt der Turn."}
+                    : "Jeder Spieler scort am eigenen Handy. Alle sehen die Marker aller Schützen live."}
                 </p>
               </div>
               <p className="text-xs text-muted">
