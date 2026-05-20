@@ -4,7 +4,34 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-19 (Spinner-System + Sync-Modus + Notification-Prefs + SWR + Aufnahme-Vokabular + Robustness gegen IONOS-504er)
+**Letzte Aktualisierung:** 2026-05-20 (Heatmap-MVP + Sync-Modus-Soft-Remove)
+
+## Session 2026-05-20 — die wichtigsten Änderungen
+
+### Sync-Modus aus Wizard ausgeblendet (Commit 8b787f8)
+Sync-Modus war unzuverlässig (Erste-Pfeil-Bug, Turn-Mirror, DartsStandings-Edge-Cases).
+**Soft-Remove**: nur UI-Option im `NewTraining`-Wizard entfernt — Grid 3→2 Buttons („Einer scort" / „Jeder selbst"). Backend, DB-Spalten, Migrations 0045/0046 bleiben unangetastet. Reversibel falls Bedarf wiederkommt. TrainingDetail-Rendering für lokal gecachte sync-Trainings bleibt funktional.
+
+### Treffer-Heatmap-MVP (Commit 718e482, Migration 0047)
+**Konzept**: Tap auf BullseyePad-Ring setzt Zone (Score) UND initial-Position (x/y im SVG-viewBox). Marker erscheint, ist drag-bar via Pointer-Events; Drag ändert NICHT die Zone, nur die Position. Wer nicht draggt, hat trotzdem ein sinnvolles Signal (Tap-Position selbst).
+
+**DB**: Migration 0047 fügt `shots.pad_x` / `shots.pad_y` (DECIMAL(6,5) NULL) hinzu — **getrennt von `x_norm`/`y_norm`**, die für Foto-Marker auf `uploads/stations/` reserviert bleiben. Vermeidet Datenmischung in Heatmap-Aggregation.
+
+**Backend**: `replace_shots()` in `trainings.php` liest/schreibt pad-Spalten. Score-Logik unverändert (Punkte aus Zone). Neuer Endpoint `GET /stats/heatmap?group_by=tier|lane&parcours_id=&discipline=&bow=`:
+- `tier`: Gruppierung pro (animal_or_face, distance_m, discipline)
+- `lane`: zusätzlich nach parcours_id
+- Filtert auf `tt.animal_or_face IS NOT NULL` — `target_practice` und `simple` fallen aus (haben kein „Tier").
+
+**Frontend**:
+- `BullseyePad`: neue Props `selectedPos` + `onPositionUpdate`, Marker als SVG `<g>` mit `touch-action: none`, Pointer-Capture für mobiles Drag.
+- `Heatmap`-Komponente (`src/components/Heatmap.tsx`): nutzt `PAD_RINGS` aus BullseyePad (jetzt `export const`), rendert gedämpfte Ringe + Cherry-Punkte mit Alpha (Dichte durch Overlap, kein KDE).
+- `TrainingDetail`: neuer `padPositions`-State parallel zu `markers`, im upsertTarget-Body durchgeschleift; aus `existing.shots.pad_x/pad_y` re-hydrated.
+- `/stats`: neue Sektion mit Pill-Toggle „Pro Tier+Distanz" / „Pro Bahn". Empty-State-Hint solange keine Pad-Daten existieren.
+- `TrainingSummary`: `OwnPadHeatmap`-Section für alle Disziplinen außer `target_practice`/`simple` — aggregiert pad-Treffer des eigenen Spielers über alle Stationen.
+- `ParcoursLanes`: `<ParcoursHeatmaps>`-Section (Disclosure, default offen) zeigt eigene Trefferbilder pro (Tier+Distanz) auf diesem Parcours.
+- `StationLiveEntry`: `<StationHeatmapHint>` als aufklappbare Mini-Heatmap unter dem BullseyePad — historische Daten für aktuelle (animal_or_face + distance) wenn parcours_id gesetzt.
+
+**Wichtig**: `PAD_RINGS` jetzt exportiert aus `BullseyePad.tsx` — Heatmap-Komponente nutzt dieselbe Ring-Geometrie für visuelle Konsistenz.
 
 ## Session 2026-05-19 — die wichtigsten Änderungen
 
@@ -211,7 +238,7 @@ Dritter `shared_scoring_mode` neben `solo`/`collab`:
 - BullseyePad-Inversion gefixt (innerstes Ring = höchster Wert)
 - Kompaktes Mobile-Layout passt iPhone 14 Pro ohne Scroll
 
-## DB-Schema (Stand: 27 Migrationen)
+## DB-Schema (Stand: 47 Migrationen)
 
 ```
 users (id, email, password_hash NULL, display_name, avatar_path NULL, status, role, ts)
@@ -265,29 +292,14 @@ Screenshots: `test-report/screenshots/{mobile,desktop,training-flow,community-fl
 
 **Sehr WICHTIG:** `public/.htaccess` ist Source-of-Truth für die SPA. Vite kopiert das bei jedem Build nach `dist/.htaccess` — Edits direkt in dist werden überschrieben!
 
-## Offene Threads (Stand 18.05.2026)
+## Offene Threads (Stand 20.05.2026)
 
-- **PWA-Cache zuverlässig**: autoUpdate + skipWaiting + clientsClaim, plus
-  controllerchange → window.location.reload(), plus localStorage-rev-check.
-  index.html hat zusätzlich meta http-equiv Cache-Control no-cache als Fallback
-  für Proxies, die HTTP-Header ignorieren. ✅
-- **Desktop Custom-Actions**: Layout rendert die customActions zusätzlich als
-  sticky Bottom-Toolbar (hidden lg:block) — der Bahnen-Button + Trainieren etc.
-  sind nun auf Desktop sichtbar (vorher fehlten alle). ✅
-- **Bahn-Foto bei Neuanlage**: nach erstem Save bleibt der Editor offen mit
-  existingLane gesetzt → Foto-Upload-Section erscheint. Hinweis-Text im
-  New-Modus erklärt die Reihenfolge. ✅
-- **Equipment-Loadout (FK trainings.bow_id)**: Migration 0028, bow_name in
-  Training-Detail + Liste, NewTraining sendet bow_id. ✅
-- **Stats Auto-Refresh nach Sync**: useSyncListener in Stats.tsx. ✅
+- **Heatmap pro Station** ✅ MVP live: pad_x/pad_y-Capture via BullseyePad-Tap+Drag, /stats-Heatmap-Sektion mit tier/lane-Toggle, TrainingSummary-Heatmap, ParcoursLanes-Heatmaps, StationLiveEntry-Hilfsanzeige. Multi-Player-Overlay (Farbcode pro Spieler) und WA-Lane-Foto-Overlay sind nice-to-have.
 - **Logo nachreichen** — PWA-Icons in public/pwa-*.png sind noch Placeholder.
-- **Heatmap pro Station**: Schema bereit (shots.x_norm/y_norm), Frontend
-  aggregiert noch nicht über mehrere Trainings.
 - **Material-Tracking** (Pfeile/Sehnen/Spitzen) — Feature offen.
-- **Offline-Foto-Upload** — Bild-Uploads sind weiter online-only.
+- **Offline-Foto-Upload** — Bild-Uploads sind weiter online-only (Outbox queued nur JSON).
 - **Admin-UI** — offen.
-- **Equipment-Loadout pro Training**: FK `trainings.bow_id` für Stats-Filter pro einzelnem Bogen.
-- **Material-Tracking, Heatmap, Offline-Foto-Upload** wie bisher.
+- **Disk-Quota-Warnung beim Deploy**: WinSCP meldet 2× in Folge Error-Code 4 beim `mkdir /uploads/arrows`. Wahrscheinlich harmlos (Verzeichnis existiert), aber bei nächstem Upload (Foto/Avatar) prüfen ob echtes IONOS-Quota erreicht ist.
 
 ## Stolperfallen (kassiert, nicht nochmal!)
 
@@ -321,6 +333,7 @@ Screenshots: `test-report/screenshots/{mobile,desktop,training-flow,community-fl
 28. **Deutsche Typo-Quotes „..." in JSX-Attributen** — das geschlossene `"` nach `Hannover` beendet den JSX-String-Prop vorzeitig, dann werfen `)` und das echte `"` `TS1003` / `TS1382`. Lösung: JSX-Expression-Container nutzen (`placeholder={"Notiz mit „Quote""}`) oder Single-Quote-Attribute (`placeholder='...mit "Zitat"...'`). Lieber innerhalb JSX-Attribute keine Typo-Quotes mischen.
 29. **`input[type="search"]` rendert natives Clear-X** — WebKit/Blink zeigt ein eigenes `::-webkit-search-cancel-button`, das *zusätzlich* zu unseren custom Clear-Buttons erscheint. Sichtbar als zwei X nebeneinander auf Bows/Arrows/Parcours/Help. Global suppress in `src/styles/index.css` via `input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }`. Beim Hinzufügen neuer Search-Inputs daran denken, dass das natürliche Verhalten genau dieses Doppel-X ist.
 30. **Playwright `fullPage` screenshot + `position: fixed` Sticky-Toolbars** — fixed-Elemente werden im fullPage-Shot EINMAL an ihrer initial-viewport-position gerendert. Sieht im Screenshot aus, als überlappe die Sticky-Toolbar Form-Felder in der Page-Mitte, ist aber kein realer UI-Bug — live klebt sie immer am Viewport-Bottom. Bei Overlap-Befunden im fullPage-Bild zweite Verifikation mit non-fullPage-Shot machen, bevor man "fixt".
+31. **Zwei Koordinaten-Systeme in shots-Tabelle** — `shots.x_norm/y_norm` = Marker auf User-Foto der Station (`uploads/stations/`, target_practice nutzt sie auch für TargetPad). `shots.pad_x/pad_y` (Migration 0047) = Position auf dem abstrakten BullseyePad für die Heatmap-Aggregation. NIE überladen: ein Wert in der falschen Spalte verfälscht die Heatmap. Der vorherige Heatmap-Anlauf (Commit d9e4946 revertiert) hatte genau diese Vermischung mit drin.
 
 ## Stack-Entscheidungen
 
