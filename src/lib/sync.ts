@@ -1,4 +1,4 @@
-import { api, ApiError } from "../api/client";
+import { api, ApiError, getToken } from "../api/client";
 import { db } from "./db";
 import { invalidateCache } from "./cache";
 import {
@@ -7,6 +7,12 @@ import {
   notifyOutboxChanged,
   removeEntry,
 } from "./outbox";
+import {
+  listPendingUploads,
+  markUploadFailed,
+  notifyUploadOutboxChanged,
+  removeUploadEntry,
+} from "./uploadOutbox";
 
 let draining = false;
 let scheduledTimer: number | null = null;
@@ -86,6 +92,65 @@ export async function drain(): Promise<{ sent: number; failed: number }> {
     if (sent > 0) notifyDrained();
   }
 
+  // Auch Upload-Outbox abarbeiten — eigene Loop, andere Fehlerbehandlung
+  const u = await drainUploads();
+  return { sent: sent + u.sent, failed: failed + u.failed };
+}
+
+/**
+ * Versucht alle ausstehenden Binär-Uploads als multipart/form-data zu senden.
+ * Resolve temp-IDs im Pfad (z.B. /trainings/tmp_xyz/targets/-3/image — falls
+ * Target-ID negativ war, ist Upload aktuell nicht möglich, weil das Target
+ * erst nach JSON-Sync eine echte ID bekommt; in dem Fall lassen wir den
+ * Eintrag bis zur nächsten Drain-Runde liegen).
+ */
+async function drainUploads(): Promise<{ sent: number; failed: number }> {
+  if (!navigator.onLine) return { sent: 0, failed: 0 };
+
+  let sent = 0;
+  let failed = 0;
+  const entries = await listPendingUploads();
+  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
+  const token = getToken();
+
+  for (const entry of entries) {
+    if (!navigator.onLine) break;
+    try {
+      const resolvedPath = await resolveTempIds(entry.path);
+      // Falls Pfad noch eine negative ID enthält (target_id < 0), Upload zurückstellen
+      if (/\/-\d+\//.test(resolvedPath) || /\/-\d+$/.test(resolvedPath)) {
+        continue;
+      }
+      const fd = new FormData();
+      fd.append("file", entry.blob, entry.filename);
+      const res = await fetch(`${base}${resolvedPath}`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!res.ok) {
+        // 4xx als unrecoverable verwerfen (außer 408/429), 5xx als retry
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+          console.warn("[sync] dropping unrecoverable upload", entry, res.status);
+          await removeUploadEntry(entry.id!);
+        } else {
+          await markUploadFailed(entry.id!, `HTTP ${res.status}`);
+          failed++;
+        }
+        continue;
+      }
+      // Erfolg — Caches invalidieren (Training neu laden zeigt echtes image_path)
+      await invalidateForPath(entry.path);
+      await removeUploadEntry(entry.id!);
+      sent++;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      await markUploadFailed(entry.id!, msg);
+      failed++;
+    }
+  }
+  notifyUploadOutboxChanged();
+  if (sent > 0) notifyDrained();
   return { sent, failed };
 }
 

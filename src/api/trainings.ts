@@ -1,6 +1,7 @@
 import { api, apiCached, apiSWR, getToken } from "./client";
 import { getCached, mutateCached, setCached, invalidateCache } from "../lib/cache";
 import { enqueue } from "../lib/outbox";
+import { enqueueUpload } from "../lib/uploadOutbox";
 import { isNetworkError } from "../lib/sync";
 import { db } from "../lib/db";
 import { scoreTarget } from "../lib/scoringPreview";
@@ -465,22 +466,45 @@ export async function uploadTargetImage(
   trainingId: number | string,
   targetId: number,
   file: File
-): Promise<{ image_path: string; image_url: string }> {
+): Promise<{ image_path: string; image_url: string; pending?: boolean }> {
   const resolved = await resolveId(trainingId);
   if (typeof resolved !== "number" || targetId <= 0) {
     throw new Error("Bilder können nur für gespeicherte Stationen hochgeladen werden");
   }
-  const fd = new FormData();
-  fd.append("file", file);
-  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
-  const token = getToken();
-  const res = await fetch(`${base}/trainings/${resolved}/targets/${targetId}/image`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: fd,
+  const path = `/trainings/${resolved}/targets/${targetId}/image`;
+
+  if (navigator.onLine) {
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
+      const token = getToken();
+      const res = await fetch(`${base}${path}`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (res.ok) return res.json();
+      // Server-Fehler (5xx) wie Netzwerk behandeln und queuen, 4xx propagieren
+      if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+        throw new Error(`Upload fehlgeschlagen: ${res.status}`);
+      }
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      // fall through zu Queue
+    }
+  }
+
+  // Offline / Netz-Fehler: in Upload-Outbox queuen, blob: URL für Session-Preview
+  await enqueueUpload({
+    path,
+    blob: file,
+    filename: file.name,
+    kind: "target_image",
+    meta: { training_id: resolved, target_id: targetId },
   });
-  if (!res.ok) throw new Error(`Upload fehlgeschlagen: ${res.status}`);
-  return res.json();
+  const blobUrl = URL.createObjectURL(file);
+  return { image_path: blobUrl, image_url: blobUrl, pending: true };
 }
 
 export async function deleteTargetImage(trainingId: number | string, targetId: number): Promise<{ ok: true }> {

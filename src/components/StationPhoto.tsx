@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Camera, ImageOff, X, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, ImageOff, X, Loader2, CloudOff } from "lucide-react";
 import { uploadTargetImage, deleteTargetImage } from "../api/trainings";
 import { useConfirm } from "./ConfirmDialog";
 
@@ -13,17 +13,37 @@ type Props = {
 /**
  * Foto-Upload pro Station. Auf Mobile öffnet sich direkt die Kamera (capture="environment").
  * Bild wird serverseitig auf max 1600px resized + JPEG-Re-Encoded.
- * Online-only — Uploads gehen NICHT durch die Offline-Outbox.
+ * Bei Offline/Netzfehler: in upload_outbox queuen, blob-Preview für die laufende Session.
  */
 export default function StationPhoto({ trainingId, targetId, imagePath, onChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(false);
+  // Lokaler Session-Preview wenn Upload in der Queue liegt (blob: URL).
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
   const confirm = useConfirm();
 
   // Stationen die noch nicht gespeichert sind (kein echtes id) können kein Bild bekommen
   const canUpload = targetId > 0 && typeof trainingId === "number";
+
+  // Wenn das Server-image_path eintrudelt (z.B. nach Sync), lokalen Preview verwerfen + URL freigeben
+  useEffect(() => {
+    if (imagePath && pendingPreview) {
+      URL.revokeObjectURL(pendingPreview);
+      setPendingPreview(null);
+    }
+  }, [imagePath, pendingPreview]);
+
+  // Beim Unmount: blob URL freigeben
+  useEffect(() => {
+    return () => {
+      if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    };
+  }, [pendingPreview]);
+
+  const displayPath = pendingPreview ?? imagePath;
+  const isPending = !!pendingPreview;
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,7 +52,13 @@ export default function StationPhoto({ trainingId, targetId, imagePath, onChange
     setBusy(true);
     try {
       const r = await uploadTargetImage(trainingId, targetId, file);
-      onChange(r.image_path);
+      if (r.pending) {
+        // Vorigen Preview freigeben falls einer existiert
+        if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+        setPendingPreview(r.image_path);
+      } else {
+        onChange(r.image_path);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload fehlgeschlagen");
     } finally {
@@ -60,7 +86,7 @@ export default function StationPhoto({ trainingId, targetId, imagePath, onChange
     }
   };
 
-  if (!canUpload && !imagePath) {
+  if (!canUpload && !displayPath) {
     return (
       <div className="text-xs text-forest-600 dark:text-forest-400 flex items-center gap-1">
         <ImageOff size={12} /> Foto erst nach erstem Speichern möglich
@@ -79,25 +105,35 @@ export default function StationPhoto({ trainingId, targetId, imagePath, onChange
         onChange={handleFile}
       />
 
-      {imagePath ? (
+      {displayPath ? (
         <div className="relative inline-block">
           <button type="button" onClick={() => setZoom(true)} className="block">
             <img
-              src={imagePath}
+              src={displayPath}
               alt="Station"
               className="rounded-xl w-24 h-24 object-cover"
               loading="lazy"
             />
           </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={busy}
-            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow-soft hover:bg-red-700 disabled:opacity-50"
-            aria-label="Foto entfernen"
-          >
-            <X size={14} />
-          </button>
+          {isPending && (
+            <span
+              className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-black/70 text-white px-1.5 py-0.5 text-[10px] font-medium"
+              title="Foto wartet auf Sync"
+            >
+              <CloudOff size={10} strokeWidth={2} /> Sync
+            </span>
+          )}
+          {!isPending && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={busy}
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow-soft hover:bg-red-700 disabled:opacity-50"
+              aria-label="Foto entfernen"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       ) : (
         <button
@@ -116,13 +152,13 @@ export default function StationPhoto({ trainingId, targetId, imagePath, onChange
       )}
 
       {/* Zoom-Overlay */}
-      {zoom && imagePath && (
+      {zoom && displayPath && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setZoom(false)}
         >
           <img
-            src={imagePath}
+            src={displayPath}
             alt="Station"
             className="max-w-full max-h-full rounded-xl"
             onClick={(e) => e.stopPropagation()}
