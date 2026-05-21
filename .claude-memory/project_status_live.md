@@ -4,7 +4,20 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-21 (Admin-UI MVP)
+**Letzte Aktualisierung:** 2026-05-21 (Session-Ende — Admin-UI MVP, Heatmap-Polish, Offline-Foto-Queue komplett)
+
+## Session 2026-05-21 — Resümee (6 Commits, alle live + gepusht)
+
+| Commit | Was |
+|---|---|
+| `daa7a97` | Offline-Foto-Queue auf Bow/Arrow/Parcours/Lane (tryUploadOrQueue-Helper) |
+| `a4122df` | Avatar offline (pendingAvatarUrl im AuthContext, merged via effectiveUser) |
+| `2e7f114` | Multi-Player-Pad-Heatmap mit Farbcode + Legende |
+| `5815023` | PhotoMarkers zeigt foreign Marker im collab-Mode |
+| `207c9f7` | Admin-UI MVP (/admin, Role/Status-Toggle, Schutzregeln) |
+| `2ec137f` | Memory-Snapshot 2026-05-21 |
+
+**Offen für nächste Session**: ParcoursEdit/NewParcours-Wizard-Toast (klein), Logo-Asset (User-Input), Heatmap-Detail-Polish (z.B. WA-Lane-Foto-Overlay aus Parcours-Bahn-Foto), Admin-Polish (Trainings pro User durchsehen, Parcours-Moderation, Hard-Delete).
 
 ## Session 2026-05-21 (Teil 5) — Admin-UI MVP
 
