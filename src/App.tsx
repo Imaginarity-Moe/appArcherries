@@ -34,6 +34,7 @@ const Equipment       = lazy(() => import("./pages/Equipment"));          // Seh
 const EquipmentEdit   = lazy(() => import("./pages/EquipmentEdit"));      // Equipment-Form (new + edit)
 const Friends         = lazy(() => import("./pages/Friends"));            // Freundschafts-Verwaltung
 const TrainingArchive = lazy(() => import("./pages/TrainingArchive"));    // Archivierte Trainings
+const Admin           = lazy(() => import("./pages/Admin"));              // User-Verwaltung (admin-only)
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -86,6 +87,7 @@ export default function App() {
         <Route path="/equipment/:id/edit" element={<RequireAuth><L><EquipmentEdit mode="edit" /></L></RequireAuth>} />
         <Route path="/friends" element={<RequireAuth><L><Friends /></L></RequireAuth>} />
         <Route path="/trainings/archive" element={<RequireAuth><L><TrainingArchive /></L></RequireAuth>} />
+        <Route path="/admin" element={<RequireAuth><L><Admin /></L></RequireAuth>} />
 
         {/* Hilfe (Accordion + Suche auf einer Page; Deep-Links via #anchor) */}
         <Route path="/help" element={<RequireAuth><HelpHub /></RequireAuth>} />

@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   Target,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { Wordmark, _logoFullLightUrl, _logoFullDarkUrl } from "./Logo";
@@ -85,6 +86,9 @@ export default function Layout() {
           <SidebarLink to="/parcours" icon={<Map size={18} strokeWidth={1.75} />} label={t("nav.parcours")} />
           <SidebarLink to="/help" icon={<HelpCircle size={18} strokeWidth={1.75} />} label={t("nav.help")} />
           <SidebarLink to="/profile" icon={<UserCircle size={18} strokeWidth={1.75} />} label={t("nav.profile")} />
+          {user.role === "admin" && (
+            <SidebarLink to="/admin" icon={<Shield size={18} strokeWidth={1.75} />} label="Admin" />
+          )}
         </nav>
         <div className="px-3 pb-2">
           <button onClick={() => navigate("/trainings/new")} className="btn-accent w-full">
