@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Crosshair } from "lucide-react";
 
 export type Marker = { x: number; y: number } | null;
+export type ForeignMarker = { x: number; y: number; label: string; color: string; points?: number };
 
 type Props = {
   imagePath: string;
@@ -11,6 +12,8 @@ type Props = {
   activeSlot: number;
   onMarkerSet: (slot: number, x: number, y: number) => void;
   onMarkerClear: (slot: number) => void;
+  /** Read-only Marker anderer Spieler (collab-Mode). Annahme: gleiche Foto-Geometrie. */
+  foreignMarkers?: ForeignMarker[];
 };
 
 const MARKER_COLORS = [
@@ -24,7 +27,7 @@ const MARKER_COLORS = [
  * Stations-Foto im Live-Eingabe-Modus: Tap aufs Bild setzt den Marker
  * für den aktiven Pfeil-Slot. Bestehende Marker sind sichtbar + tap-baren-löschbar.
  */
-export default function PhotoMarkers({ imagePath, markers, activeSlot, onMarkerSet, onMarkerClear }: Props) {
+export default function PhotoMarkers({ imagePath, markers, activeSlot, onMarkerSet, onMarkerClear, foreignMarkers }: Props) {
   const imgRef = useRef<HTMLImageElement>(null);
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -58,6 +61,24 @@ export default function PhotoMarkers({ imagePath, markers, activeSlot, onMarkerS
           className="absolute inset-0 cursor-crosshair"
           onClick={handleClick}
         />
+        {/* Foreign Marker zuerst — eigene liegen oben drauf für Hit-Target-Priorität */}
+        {(foreignMarkers ?? []).map((fm, i) => (
+          <span
+            key={`fm-${i}`}
+            style={{
+              position: "absolute",
+              left: `${fm.x * 100}%`,
+              top: `${fm.y * 100}%`,
+              transform: "translate(-50%, -50%)",
+              background: fm.color,
+            }}
+            className="w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow-card ring-2 ring-white/80 pointer-events-none"
+            title={`${fm.label}${fm.points != null ? ` · ${fm.points}` : ""}`}
+            aria-hidden
+          >
+            {fm.label}
+          </span>
+        ))}
         {markers.map((m, i) =>
           m ? (
             <button

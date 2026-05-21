@@ -1362,6 +1362,7 @@ function StationLiveEntry({
               next[slot] = null;
               setMarkers(next);
             }}
+            foreignMarkers={isCollabMode ? computeForeignMarkers(training, stationIndex, myPid) : undefined}
           />
         )}
 
