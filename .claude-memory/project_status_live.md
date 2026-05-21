@@ -4,7 +4,73 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-20 (Heatmap-MVP + Sync-Modus-Soft-Remove)
+**Letzte Aktualisierung:** 2026-05-21 (Admin-UI MVP)
+
+## Session 2026-05-21 (Teil 5) — Admin-UI MVP
+
+**Backend** `api/routes/admin.php` mit `handle_admin($method, $path)`:
+- `GET /admin/users` — Liste aller User mit Aggregaten (count_trainings, count_parcours, count_bows) via Subqueries
+- `PATCH /admin/users/<id>` `{role?, status?}` — Schutzregeln:
+  - Self-Demote-/Self-Deactivate-Schutz: User kann sich nicht selbst aussperren
+  - Letzten-Admin-Schutz: `count(role='admin' AND status='active') > 1` muss bleiben, sonst 400
+
+`api/index.php` Route-Dispatcher um `/admin/` erweitert.
+
+**Frontend** `pages/Admin.tsx`:
+- Tabelle mit Avatar, Name, Email, Role-Dropdown, Status-Pill, Count-Spalten
+- Search-Input filtert Email + Display-Name
+- Eigene Zeile: Role/Status disabled mit Hover-Tooltip
+- Redirect bei non-admin (UX-Backup, Backend würde sowieso 403)
+
+`Layout.tsx` Sidebar: `<SidebarLink to="/admin">` nur sichtbar wenn `user.role === "admin"`. Mobile-Floating-Nav hat keinen Admin-Link — Admin ist desktop-orientiert (Tabelle).
+
+`App.tsx`: `/admin` als lazy-Route. `src/api/admin.ts` mit `listAdminUsers` + `updateAdminUser`.
+
+## Session 2026-05-21 (Teil 4) — Foreign Marker auf Stations-Foto
+
+`PhotoMarkers` (Stations-Foto im 3D/Field-Live-Entry) nimmt jetzt optional `foreignMarkers?: ForeignMarker[]`. Read-only Punkte mit Spieler-Farbe + Initial, ohne Click-Handler, gerendert UNTER den eigenen Markern (eigene haben Hit-Target-Priorität).
+
+In TrainingDetail wird `computeForeignMarkers(training, stationIndex, myPid)` (existierte schon für TargetPad target_practice) auch an PhotoMarkers durchgereicht — wenn `isCollabMode` aktiv ist und andere Spieler bereits Foto-Marker für die aktuelle Station gesetzt haben, sieht der eigene Live-Score deren Treffer mit.
+
+**Konzeptuelle Annahme**: alle Participants teilen die gleiche Foto-Geometrie. In der Praxis macht meist der Score-Owner das Foto, alle markieren darauf. Wenn Spieler unterschiedliche eigene Fotos hochgeladen haben, sind die foreign-Markers visuell auf dem fremden Foto positioniert — Edge-Case, in der UI nicht abgefangen.
+
+## Session 2026-05-21 (Teil 3) — Multi-Player Pad-Heatmap
+
+`Heatmap`-Component bekommt optionalen `color?: string` pro Punkt. Default-Verhalten unverändert (Cherry mit Alpha 0.35); bei explizit gesetzter Farbe wird Alpha auf 0.7 erhöht, damit Spieler-Farben nicht zur dunklen Suppe matschen.
+
+`OwnPadHeatmap` umbenannt zu `ParticipantsPadHeatmap` in TrainingSummary. Iteriert alle scoring-Participants (filter role !== "viewer"), Farben aus `HEATMAP_COLORS` (gleicher Palette wie ParticipantsHeatmap für target_practice). Legende mit Spielername + Anzahl + Score-Total wenn ≥2 Spieler; bei Solo bleibt's wie bisher (1 Farbe, simple "X Pfeile"-Footer).
+
+Fallback: wenn `training.participants` leer ist (alte cached Trainings), alle pad-Treffer mit Default-Farbe rendern.
+
+## Session 2026-05-21 (Teil 2) — Avatar offline
+
+`AvatarUploader` nutzt jetzt `tryUploadOrQueue`. Bei pending wird `setPendingAvatar(blobUrl)` im `AuthContext` aufgerufen — der Context hält `pendingAvatarUrl` und merged ihn als `avatar_url` ins `user`-Objekt (`effectiveUser` via useMemo). **Alle 12 Avatar-Anzeigestellen** (Profile, Layout, ParcoursReviews, Friends, HighscoreCard etc.) sehen den blob-Preview automatisch ohne eigene Änderung.
+
+Cleanup-Flow: AuthContext registriert `subscribeDrained()`-Listener (nur wenn pendingAvatarUrl gesetzt), ruft `refresh()` → echter server-`avatar_url` → useEffect detektiert "user.avatar_url ≠ pendingUrl & nicht blob:" → revoke + clear. Bei `logout()` wird der pending blob auch revoked.
+
+**Hinweis**: Im AvatarUploader: `isPending = user?.avatar_url?.startsWith("blob:")` als simple Detection — der Entfernen-Button ist während pending versteckt (sonst würde der User versuchen, ein nicht-hochgeladenes Bild zu löschen).
+
+## Session 2026-05-21 — Offline-Foto-Queue erweitert
+
+Generischer Helper `tryUploadOrQueue<T>(opts)` in `src/lib/uploadOutbox.ts` extrahiert das Online-Try-+-Queue-Fallback-Pattern aus StationPhoto. Return-Type:
+
+```ts
+{ ok: true; pending: false; data: T }
+| { ok: true; pending: true; pendingUrl: string }
+```
+
+4xx (außer 408/429) wird propagiert, alles andere queuet. Genutzt von:
+- `uploadBowImage` → `bow_image` kind
+- `uploadArrowImage` → `arrow_image` kind
+- `uploadParcoursImage` → `parcours_image` kind
+- `uploadParcoursLaneImage` → `parcours_lane_image` kind
+- `uploadTargetImage` (StationPhoto) bleibt direkt — hat zusätzliche resolveId-Logik für tmp-IDs
+
+**UI-Pattern Pending-Preview**: jede Edit-Page hält einen `pendingPhoto: string | null` State (bzw. `Record<laneId, string>` in ParcoursLanes). Bei `r.pending === true` blob: URL in State, alten URL revoken. Beim Unmount alle blob: URLs revoken. `CloudOff`-Badge unten-links auf dem Bild, Delete-Button ausgeblendet solange pending (kann nichts löschen, was nicht hochgeladen ist).
+
+**Bewusst nicht umgestellt**:
+- Avatar (`AvatarUploader`) — globaler State über AuthContext, eigener Crop-Flow, seltene Aktion. Kann später wenn Bedarf.
+- ParcoursEdit / NewParcours — der bestehende `await uploadParcoursImage(...).catch(()=>{})` toleriert den neuen Return-Type. Offline-Upload wird gequeued ohne UI-Notification (User wird nicht informiert, dass Foto später kommt). Falls relevant: pendingPhoto-State im Form ergänzen, vor `nav(...)` Toast zeigen.
 
 ## Session 2026-05-20 — die wichtigsten Änderungen
 
@@ -294,11 +360,11 @@ Screenshots: `test-report/screenshots/{mobile,desktop,training-flow,community-fl
 
 ## Offene Threads (Stand 20.05.2026)
 
-- **Heatmap pro Station** ✅ MVP live: pad_x/pad_y-Capture via BullseyePad-Tap+Drag, /stats-Heatmap-Sektion mit tier/lane-Toggle, TrainingSummary-Heatmap, ParcoursLanes-Heatmaps, StationLiveEntry-Hilfsanzeige. Multi-Player-Overlay (Farbcode pro Spieler) und WA-Lane-Foto-Overlay sind nice-to-have.
+- **Heatmap pro Station** ✅ MVP + Multi-Player-Overlay + Foto-Marker-Mirror (2026-05-21): pad_x/pad_y-Capture, /stats-Heatmap mit tier/lane-Toggle, TrainingSummary mit Multi-Player-Farbcode + Legende, ParcoursLanes-Heatmaps, StationLiveEntry-Hint, PhotoMarkers im collab-Mode zeigt foreign Marker.
 - **Logo nachreichen** — PWA-Icons in public/pwa-*.png sind noch Placeholder.
 - **Material-Tracking** (Pfeile/Sehnen/Spitzen) — Feature offen.
-- **Offline-Foto-Upload** — Bild-Uploads sind weiter online-only (Outbox queued nur JSON).
-- **Admin-UI** — offen.
+- **Offline-Foto-Upload** ✅ komplett: Station-Fotos (2026-05-20), Bow/Arrow/Parcours/Parcours-Lane + Avatar (2026-05-21). Übrig: ParcoursEdit/NewParcours-Wizard-Toast (Wizard navigiert nach Save weg ohne Feedback).
+- **Admin-UI** ✅ MVP live (2026-05-21): /admin mit User-Liste + Role/Status-Toggle. Mehr (Trainings pro User durchsehen, Parcours-Moderation, Hard-Delete) kann später.
 - **Disk-Quota-Warnung beim Deploy**: WinSCP meldet 2× in Folge Error-Code 4 beim `mkdir /uploads/arrows`. Wahrscheinlich harmlos (Verzeichnis existiert), aber bei nächstem Upload (Foto/Avatar) prüfen ob echtes IONOS-Quota erreicht ist.
 
 ## Stolperfallen (kassiert, nicht nochmal!)
