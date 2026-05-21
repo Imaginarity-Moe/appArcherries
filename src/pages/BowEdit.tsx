@@ -3,15 +3,23 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, X, Check, Loader2, Star, Camera, Trash2 } from "lucide-react";
 import { PageSpinner } from "../components/Spinner";
 import {
+  addBowEquipment,
   createBow,
   deleteBow,
   deleteBowImage,
   getBow,
+  removeBowEquipment,
   updateBow,
   uploadBowImage,
   type Bow,
+  type LinkedEquipment,
 } from "../api/bows";
 import { listArrows, type Arrow } from "../api/arrows";
+import {
+  EQUIPMENT_KIND_LABELS,
+  listEquipment,
+  type EquipmentItem,
+} from "../api/equipment";
 import { BOW_LABELS, type BowType } from "../api/trainings";
 import { usePageFooter } from "../components/FooterContext";
 import { useConfirm } from "../components/ConfirmDialog";
@@ -45,10 +53,14 @@ export default function BowEdit({ mode }: { mode: Mode }) {
   const [isDefault, setIsDefault] = useState(false);
   const [allArrows, setAllArrows] = useState<Arrow[]>([]);
   const [arrowIds, setArrowIds] = useState<Set<number>>(new Set());
+  const [allEquipment, setAllEquipment] = useState<EquipmentItem[]>([]);
+  const [linkedEquipment, setLinkedEquipment] = useState<LinkedEquipment[]>([]);
+  const [equipmentBusy, setEquipmentBusy] = useState(false);
 
-  // Initial laden (Edit-Modus + Pfeil-Liste)
+  // Initial laden (Edit-Modus + Pfeil-Liste + Equipment-Liste)
   useEffect(() => {
     listArrows().then((r) => setAllArrows(r.arrows)).catch(() => {});
+    listEquipment().then((r) => setAllEquipment(r.items)).catch(() => {});
     if (mode !== "edit" || !id) return;
     getBow(Number(id))
       .then((r) => {
@@ -64,10 +76,33 @@ export default function BowEdit({ mode }: { mode: Mode }) {
         setNotes(r.bow.notes ?? "");
         setIsDefault(r.bow.is_default);
         setArrowIds(new Set((r.bow.linked_arrows ?? []).map((a) => a.id)));
+        setLinkedEquipment(r.bow.linked_equipment ?? []);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Konnte Bogen nicht laden"))
       .finally(() => setLoading(false));
   }, [mode, id]);
+
+  async function onAddEquipment(eqId: number) {
+    if (!id || !eqId) return;
+    setEquipmentBusy(true);
+    try {
+      const r = await addBowEquipment(Number(id), { equipment_item_id: eqId });
+      setLinkedEquipment(r.bow.linked_equipment ?? []);
+    } finally {
+      setEquipmentBusy(false);
+    }
+  }
+
+  async function onRemoveEquipment(eqId: number) {
+    if (!id) return;
+    setEquipmentBusy(true);
+    try {
+      const r = await removeBowEquipment(Number(id), eqId);
+      setLinkedEquipment(r.bow.linked_equipment ?? []);
+    } finally {
+      setEquipmentBusy(false);
+    }
+  }
 
   function toggleArrow(aid: number) {
     setArrowIds((cur) => {
@@ -346,6 +381,94 @@ export default function BowEdit({ mode }: { mode: Mode }) {
             </>
           )}
         </div>
+
+        {/* Verknüpftes Zubehör (Sehnen, Tabs, Releases, Sonstiges) */}
+        {mode === "edit" && bow && (
+          <div>
+            <label className="text-sm font-medium text-secondary mb-1.5 block">Zubehör</label>
+            {allEquipment.length === 0 ? (
+              <p className="text-sm text-muted">
+                Du hast noch kein Zubehör angelegt.{" "}
+                <Link to="/equipment/new" className="text-cherry-600 dark:text-cherry-400 underline">
+                  Jetzt anlegen →
+                </Link>
+              </p>
+            ) : (
+              <>
+                {linkedEquipment.length > 0 ? (
+                  <ul className="space-y-1.5 mb-2">
+                    {linkedEquipment.map((eq) => (
+                      <li
+                        key={eq.id}
+                        className={`flex items-center gap-2 rounded-lg bg-surface border border-hairline px-3 py-2 text-sm ${eq.is_active ? "" : "opacity-60"}`}
+                      >
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-secondary/70 shrink-0 w-16">
+                          {EQUIPMENT_KIND_LABELS[eq.kind]}
+                        </span>
+                        <Link
+                          to={`/equipment/${eq.id}/edit`}
+                          className="flex-1 min-w-0 truncate font-medium text-primary hover:text-cherry-500"
+                        >
+                          {eq.name}
+                          {(eq.manufacturer || eq.model) && (
+                            <span className="text-xs text-muted ml-1.5">
+                              · {[eq.manufacturer, eq.model].filter(Boolean).join(" ")}
+                            </span>
+                          )}
+                          {!eq.is_active && <span className="text-xs text-muted ml-1.5">· außer Dienst</span>}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => onRemoveEquipment(eq.id)}
+                          disabled={equipmentBusy}
+                          className="btn-icon text-muted hover:text-cherry-500 shrink-0"
+                          aria-label="Verknüpfung entfernen"
+                          title="Verknüpfung entfernen"
+                        >
+                          <X size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted mb-2">Noch kein Zubehör mit diesem Bogen verknüpft.</p>
+                )}
+                {(() => {
+                  const linkedIds = new Set(linkedEquipment.map((e) => e.id));
+                  const available = allEquipment.filter((e) => !linkedIds.has(e.id));
+                  if (available.length === 0) return null;
+                  return (
+                    <select
+                      className="input text-sm"
+                      value=""
+                      disabled={equipmentBusy}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        if (v > 0) onAddEquipment(v);
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="">+ Zubehör hinzufügen</option>
+                      {available.map((eq) => (
+                        <option key={eq.id} value={eq.id}>
+                          {EQUIPMENT_KIND_LABELS[eq.kind]} · {eq.name}
+                          {(eq.manufacturer || eq.model) ? ` (${[eq.manufacturer, eq.model].filter(Boolean).join(" ")})` : ""}
+                          {!eq.is_active ? " — außer Dienst" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  );
+                })()}
+              </>
+            )}
+          </div>
+        )}
+        {mode === "new" && (
+          <div>
+            <label className="text-sm font-medium text-secondary mb-1.5 block">Zubehör</label>
+            <p className="text-xs text-muted">Nach dem Speichern kannst du hier Zubehör (Sehnen, Tabs, Releases) verknüpfen.</p>
+          </div>
+        )}
 
         <label className="flex items-center gap-2.5 cursor-pointer">
           <input

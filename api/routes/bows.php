@@ -42,7 +42,74 @@ function handle_bows(string $method, string $path): void
         return;
     }
 
+    if (preg_match('#^/(\d+)/equipment$#', $sub, $m)) {
+        $id = (int)$m[1];
+        match ($method) {
+            'POST' => bow_equipment_add($user['id'], $id),
+            default => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+
+    if (preg_match('#^/(\d+)/equipment/(\d+)$#', $sub, $m)) {
+        $bow_id = (int)$m[1]; $eq_id = (int)$m[2];
+        match ($method) {
+            'PATCH'  => bow_equipment_update($user['id'], $bow_id, $eq_id),
+            'DELETE' => bow_equipment_remove($user['id'], $bow_id, $eq_id),
+            default  => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+
     res_error('Not found', 404);
+}
+
+function bow_assert_own(int $user_id, int $bow_id): void
+{
+    $s = db()->prepare('SELECT id FROM bows WHERE id = ? AND user_id = ?');
+    $s->execute([$bow_id, $user_id]);
+    if (!$s->fetch()) res_error('Not found', 404);
+}
+
+function bow_equipment_add(int $user_id, int $bow_id): void
+{
+    bow_assert_own($user_id, $bow_id);
+    $in = req_json();
+    $eq_id = (int)($in['equipment_item_id'] ?? 0);
+    if ($eq_id <= 0) res_error('equipment_item_id erforderlich');
+    // Item muss dem User gehören
+    $own = db()->prepare('SELECT id FROM equipment_items WHERE id = ? AND user_id = ?');
+    $own->execute([$eq_id, $user_id]);
+    if (!$own->fetch()) res_error('Equipment-Item gehört dir nicht', 403);
+    $role = isset($in['role']) && $in['role'] !== '' ? mb_substr((string)$in['role'], 0, 60) : null;
+
+    db()->prepare(
+        'INSERT IGNORE INTO bow_equipment (bow_id, equipment_item_id, role) VALUES (?, ?, ?)'
+    )->execute([$bow_id, $eq_id, $role]);
+
+    bow_detail($user_id, $bow_id);
+}
+
+function bow_equipment_update(int $user_id, int $bow_id, int $eq_id): void
+{
+    bow_assert_own($user_id, $bow_id);
+    $in = req_json();
+    if (array_key_exists('role', $in)) {
+        $role = $in['role'] !== null && $in['role'] !== '' ? mb_substr((string)$in['role'], 0, 60) : null;
+        db()->prepare(
+            'UPDATE bow_equipment SET role = ? WHERE bow_id = ? AND equipment_item_id = ?'
+        )->execute([$role, $bow_id, $eq_id]);
+    }
+    bow_detail($user_id, $bow_id);
+}
+
+function bow_equipment_remove(int $user_id, int $bow_id, int $eq_id): void
+{
+    bow_assert_own($user_id, $bow_id);
+    db()->prepare(
+        'DELETE FROM bow_equipment WHERE bow_id = ? AND equipment_item_id = ?'
+    )->execute([$bow_id, $eq_id]);
+    bow_detail($user_id, $bow_id);
 }
 
 function bows_list(int $user_id): void
@@ -251,6 +318,26 @@ function bow_detail(int $user_id, int $id, int $status = 200): void
         'model'        => $a['model'],
         'spine'        => $a['spine'],
     ], $arr->fetchAll());
+
+    // Verknüpftes Zubehör (Sehnen, Tabs, Releases, Sonstiges) mit ausliefern
+    $eq = db()->prepare(
+        'SELECT e.id, e.kind, e.sub_kind, e.name, e.manufacturer, e.model, e.retired_at,
+                be.role
+         FROM bow_equipment be JOIN equipment_items e ON e.id = be.equipment_item_id
+         WHERE be.bow_id = ? ORDER BY e.kind ASC, e.name ASC'
+    );
+    $eq->execute([$id]);
+    $r['linked_equipment'] = array_map(fn ($e) => [
+        'id'           => (int)$e['id'],
+        'kind'         => $e['kind'],
+        'sub_kind'     => $e['sub_kind'],
+        'name'         => $e['name'],
+        'manufacturer' => $e['manufacturer'],
+        'model'        => $e['model'],
+        'retired_at'   => $e['retired_at'],
+        'is_active'    => $e['retired_at'] === null,
+        'role'         => $e['role'],
+    ], $eq->fetchAll());
 
     res_json(['bow' => $r], $status);
 }

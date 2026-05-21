@@ -1,5 +1,6 @@
 import { api, apiCached, apiSWR, getToken } from "./client";
 import type { BowType } from "./trainings";
+import type { EquipmentKind } from "./equipment";
 
 export type LinkedArrow = {
   id: number;
@@ -7,6 +8,18 @@ export type LinkedArrow = {
   manufacturer: string | null;
   model: string | null;
   spine: string | null;
+};
+
+export type LinkedEquipment = {
+  id: number;
+  kind: EquipmentKind;
+  sub_kind: string | null;
+  name: string;
+  manufacturer: string | null;
+  model: string | null;
+  retired_at: string | null;
+  is_active: boolean;
+  role: string | null;
 };
 
 export type Bow = {
@@ -27,6 +40,8 @@ export type Bow = {
   updated_at: string;
   /** Verknüpfte Pfeil-Sets — nur in bow_detail enthalten */
   linked_arrows?: LinkedArrow[];
+  /** Verknüpftes Zubehör — nur in bow_detail enthalten */
+  linked_equipment?: LinkedEquipment[];
 };
 
 export async function listBows(onRefresh?: (fresh: { bows: Bow[] }) => void): Promise<{ bows: Bow[] }> {
@@ -64,4 +79,25 @@ export async function uploadBowImage(id: number, file: File): Promise<{ bow: Bow
 
 export async function deleteBowImage(id: number): Promise<{ bow: Bow }> {
   return api(`/bows/${id}/image`, { method: "DELETE" });
+}
+
+// ─── Bow ↔ Equipment-Verknüpfungen ────────────────────────────────────────
+
+export async function addBowEquipment(
+  bowId: number,
+  body: { equipment_item_id: number; role?: string | null }
+): Promise<{ bow: Bow }> {
+  return api(`/bows/${bowId}/equipment`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function updateBowEquipment(
+  bowId: number,
+  equipmentId: number,
+  body: { role?: string | null }
+): Promise<{ bow: Bow }> {
+  return api(`/bows/${bowId}/equipment/${equipmentId}`, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export async function removeBowEquipment(bowId: number, equipmentId: number): Promise<{ bow: Bow }> {
+  return api(`/bows/${bowId}/equipment/${equipmentId}`, { method: "DELETE" });
 }
