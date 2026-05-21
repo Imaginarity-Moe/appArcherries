@@ -191,7 +191,7 @@ export default function TrainingSummary() {
 
       {/* Pad-Heatmap für 3D + Feldbogen (nutzt pad_x/pad_y aus BullseyePad) */}
       {training && training.discipline !== "target_practice" && training.discipline !== "simple" && (
-        <OwnPadHeatmap training={training} />
+        <ParticipantsPadHeatmap training={training} />
       )}
 
       {/* Highscore-Veröffentlichung — nur für Trainings auf einem Parcours mit Score > 0 */}
@@ -306,38 +306,84 @@ function ParticipantsHeatmap({ training }: { training: Training }) {
 
 /**
  * Pad-Heatmap des aktuellen Trainings für 3D + Feldbogen.
- * Aggregiert alle pad_x/pad_y des eigenen Spielers über alle Stationen.
+ * Aggregiert alle pad_x/pad_y aller scoring-Participants über alle Stationen,
+ * farbcodiert pro Spieler. Bei Solo-Trainings: 1 Farbe, Legende ausgeblendet.
  */
-function OwnPadHeatmap({ training }: { training: Training }) {
-  const myPid = training.my_participant_id;
-  const points = useMemo(() => {
-    const pts: Array<{ pad_x: number; pad_y: number; zone: string | null; points: number }> = [];
-    for (const tg of training.targets ?? []) {
-      if (myPid != null && tg.participant_id !== myPid) continue;
-      for (const sh of tg.shots) {
-        if (sh.pad_x == null || sh.pad_y == null) continue;
-        pts.push({
-          pad_x: sh.pad_x,
-          pad_y: sh.pad_y,
-          zone: sh.zone,
-          points: sh.points ?? 0,
-        });
+function ParticipantsPadHeatmap({ training }: { training: Training }) {
+  const { points, legend } = useMemo(() => {
+    const participants = (training.participants ?? []).filter((p) => p.role !== "viewer");
+    // Fallback (z.B. Trainings ohne participants-Field): nur eigener Spieler
+    const effective = participants.length > 0 ? participants : null;
+    const pts: Array<{ pad_x: number; pad_y: number; zone: string | null; points: number; color: string }> = [];
+    const totals = new Map<number, { count: number; total: number; color: string; name: string }>();
+
+    if (effective) {
+      effective.forEach((p, idx) => {
+        const color = HEATMAP_COLORS[idx % HEATMAP_COLORS.length];
+        const name = p.is_self ? "Du" : (p.display_name ?? "—");
+        let count = 0, total = 0;
+        for (const tg of training.targets ?? []) {
+          if (tg.participant_id !== p.id) continue;
+          for (const sh of tg.shots) {
+            if (sh.pad_x == null || sh.pad_y == null) continue;
+            pts.push({
+              pad_x: sh.pad_x,
+              pad_y: sh.pad_y,
+              zone: sh.zone,
+              points: sh.points ?? 0,
+              color,
+            });
+            count++;
+            total += sh.points ?? 0;
+          }
+        }
+        if (count > 0) totals.set(p.id, { count, total, color, name });
+      });
+    } else {
+      // Kein Participants-Field → alle pad-Treffer mit Default-Farbe rendern
+      for (const tg of training.targets ?? []) {
+        for (const sh of tg.shots) {
+          if (sh.pad_x == null || sh.pad_y == null) continue;
+          pts.push({
+            pad_x: sh.pad_x,
+            pad_y: sh.pad_y,
+            zone: sh.zone,
+            points: sh.points ?? 0,
+            color: HEATMAP_COLORS[0],
+          });
+        }
       }
     }
-    return pts;
-  }, [training, myPid]);
+
+    return { points: pts, legend: Array.from(totals.values()) };
+  }, [training]);
 
   if (points.length === 0) return null;
 
+  const showLegend = legend.length >= 2;
+  const heading = showLegend ? "Treffer-Heatmap (alle Spieler)" : "Treffer-Heatmap";
+
   return (
     <div className="card">
-      <h2 className="font-display text-lg font-semibold mb-3">Treffer-Heatmap</h2>
+      <h2 className="font-display text-lg font-semibold mb-3">{heading}</h2>
       <div className="mx-auto" style={{ maxWidth: 360 }}>
         <Suspense fallback={<Spinner className="py-2" />}>
           <Heatmap discipline={training.discipline} points={points} size={360} />
         </Suspense>
       </div>
-      <p className="text-xs text-muted text-center mt-2">{points.length} Pfeile in diesem Training</p>
+      {showLegend ? (
+        <div className="flex flex-wrap gap-2 mt-3 justify-center text-xs">
+          {legend.map((row, i) => (
+            <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: row.color }} />
+              <span className="font-medium">{row.name}</span>
+              <span className="text-muted">· {row.count} Pfeile · {row.total} Pkt</span>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted text-center mt-2">{points.length} Pfeile in diesem Training</p>
+      )}
     </div>
   );
 }

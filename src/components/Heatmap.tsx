@@ -6,6 +6,8 @@ export type HeatmapPoint = {
   pad_y: number;
   zone: string | null;
   points: number;
+  /** Optional: Punktfarbe (z.B. pro Spieler). Default = Cherry-Dunkel. */
+  color?: string;
 };
 
 type Props = {
@@ -55,15 +57,15 @@ export default function Heatmap({ discipline, points, size = 240 }: Props) {
             />
           ))}
 
-        {/* Punkte: kleine Cherry-Dots mit Alpha. Dichte → dunkler durch Overlap. */}
+        {/* Punkte: pro Spieler eingefärbte Dots mit Alpha. Dichte → dunkler durch Overlap. */}
         {points.map((p, i) => (
           <circle
             key={i}
             cx={p.pad_x * 200}
             cy={p.pad_y * 200}
             r={2.4}
-            fill="#8E2C3A"
-            fillOpacity={0.35}
+            fill={p.color ?? "#8E2C3A"}
+            fillOpacity={p.color ? 0.7 : 0.35}
             stroke="#FAF8F4"
             strokeOpacity={0.4}
             strokeWidth={0.3}
