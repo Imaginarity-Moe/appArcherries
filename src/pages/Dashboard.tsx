@@ -287,7 +287,7 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
           </span>
           {item.is_shared && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-copper-700 dark:text-copper-200 bg-copper-50 dark:bg-copper-700/30 rounded-full px-1.5 py-0.5"
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-copper-700 dark:text-copper-100 bg-copper-50 dark:bg-copper-700/40 rounded-full px-1.5 py-0.5"
               title="Geteilte Runde — du bist Gast"
             >
               <Users size={10} /> Geteilt
