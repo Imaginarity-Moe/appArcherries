@@ -17,6 +17,7 @@ import Profile from "./pages/Profile";
 import HelpHub from "./pages/Help";
 import Join from "./pages/Join";
 import EmailSettings from "./pages/EmailSettings";
+import Welcome from "./pages/Welcome";
 
 // Lazy: Pages mit schweren Deps werden erst geladen wenn die Route besucht wird
 const TrainingSummary = lazy(() => import("./pages/TrainingSummary"));   // Recharts
@@ -36,10 +37,20 @@ const Friends         = lazy(() => import("./pages/Friends"));            // Fre
 const TrainingArchive = lazy(() => import("./pages/TrainingArchive"));    // Archivierte Trainings
 const Admin           = lazy(() => import("./pages/Admin"));              // User-Verwaltung (admin-only)
 
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children, skipOnboardingGate }: { children: JSX.Element; skipOnboardingGate?: boolean }) {
   const { user, loading } = useAuth();
   if (loading) return <PageSpinner />;
   if (!user) return <Navigate to="/login" replace />;
+  // Onboarding-Gate: User ohne abgeschlossenes Onboarding → /welcome.
+  // skipOnboardingGate erlaubt /welcome selbst sich zu rendern + e-mail-settings deep-link.
+  // Gäste (role='guest') überspringen Onboarding — sie kommen per QR-Link rein.
+  if (
+    !skipOnboardingGate
+    && user.role !== "guest"
+    && !user.onboarding_completed_at
+  ) {
+    return <Navigate to="/welcome" replace />;
+  }
   return children;
 }
 
@@ -63,6 +74,7 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/join/:token" element={<Join />} />
         <Route path="/email-settings" element={<EmailSettings />} />
+        <Route path="/welcome" element={<RequireAuth skipOnboardingGate><Welcome /></RequireAuth>} />
 
         {/* Hauptbereich */}
         <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />

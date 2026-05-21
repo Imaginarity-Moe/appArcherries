@@ -37,6 +37,11 @@ function handle_me(string $method, string $path = '/me'): void
         };
         return;
     }
+    if ($path === '/me/onboarding/complete' && $method === 'POST') {
+        db()->prepare('UPDATE users SET onboarding_completed_at = NOW() WHERE id = ?')->execute([$user_id]);
+        me_get($user_id);
+        return;
+    }
 
     res_error('Not found', 404);
 }
@@ -58,7 +63,7 @@ function me_notif_prefs_put(int $user_id): void
 function me_get(int $user_id): void
 {
     $stmt = db()->prepare(
-        'SELECT id, email, display_name, status, role, avatar_path, pro_mode FROM users WHERE id = ?'
+        'SELECT id, email, display_name, status, role, avatar_path, pro_mode, onboarding_completed_at FROM users WHERE id = ?'
     );
     $stmt->execute([$user_id]);
     $u = $stmt->fetch();
@@ -131,5 +136,6 @@ function me_serialize(array $u): array
         'avatar_path'  => $u['avatar_path'] ?? null,
         'avatar_url'   => isset($u['avatar_path']) && $u['avatar_path'] ? (string)$u['avatar_path'] : null,
         'pro_mode'     => (bool)($u['pro_mode'] ?? 0),
+        'onboarding_completed_at' => $u['onboarding_completed_at'] ?? null,
     ];
 }

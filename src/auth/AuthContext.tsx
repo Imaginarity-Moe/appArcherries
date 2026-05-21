@@ -19,6 +19,8 @@ export type User = {
   status: "pending" | "active";
   role: Role;
   avatar_url?: string | null;
+  /** Null = User hat das Onboarding noch nicht abgeschlossen. Timestamp = abgeschlossen. */
+  onboarding_completed_at?: string | null;
 };
 
 type AuthState = {
