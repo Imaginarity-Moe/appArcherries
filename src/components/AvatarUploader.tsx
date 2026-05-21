@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
-import { Camera, X, Check, Loader2, Trash2 } from "lucide-react";
+import { Camera, X, Check, Loader2, Trash2, CloudOff } from "lucide-react";
 import Avatar from "./Avatar";
 import { useAuth, type User } from "../auth/AuthContext";
-import { api, getToken } from "../api/client";
+import { api } from "../api/client";
+import { tryUploadOrQueue } from "../lib/uploadOutbox";
 import { useConfirm } from "./ConfirmDialog";
 
 const MAX_BYTES = 1 * 1024 * 1024; // 1 MB
@@ -17,7 +18,7 @@ const CROP_OUTPUT_PX = 512;        // serverseitig wird's nochmal auf max 1600 b
  * - Delete via Confirm
  */
 export default function AvatarUploader() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, setPendingAvatar } = useAuth();
   const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
   const [srcUrl, setSrcUrl] = useState<string | null>(null);
@@ -60,20 +61,18 @@ export default function AvatarUploader() {
     setError(null);
     try {
       const blob = await cropToBlob(srcUrl, cropArea, CROP_OUTPUT_PX);
-      const fd = new FormData();
-      fd.append("file", new File([blob], "avatar.jpg", { type: "image/jpeg" }));
-      const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
-      const token = getToken();
-      const res = await fetch(`${base}/me/avatar`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
+      const file = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+      const r = await tryUploadOrQueue<unknown>({
+        path: "/me/avatar",
+        file,
+        filename: "avatar.jpg",
+        kind: "avatar",
       });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(body || `Upload fehlgeschlagen (${res.status})`);
+      if (r.pending) {
+        setPendingAvatar(r.pendingUrl);
+      } else {
+        await refresh();
       }
-      await refresh();
       closeCrop();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload fehlgeschlagen");
@@ -99,9 +98,21 @@ export default function AvatarUploader() {
     }
   };
 
+  const isPending = !!user?.avatar_url?.startsWith("blob:");
+
   return (
     <div className="flex items-center gap-4">
-      <Avatar user={user as User} size="xl" />
+      <div className="relative">
+        <Avatar user={user as User} size="xl" />
+        {isPending && (
+          <span
+            className="absolute bottom-0 right-0 inline-flex items-center gap-1 rounded-full bg-black/70 text-white px-1.5 py-0.5 text-[10px] font-medium"
+            title="Foto wartet auf Sync"
+          >
+            <CloudOff size={10} strokeWidth={2} /> Sync
+          </span>
+        )}
+      </div>
       <div className="flex flex-col gap-2">
         <button
           onClick={() => fileRef.current?.click()}
@@ -110,7 +121,7 @@ export default function AvatarUploader() {
         >
           <Camera size={15} strokeWidth={1.75} /> {user?.avatar_url ? "Ändern" : "Hochladen"}
         </button>
-        {user?.avatar_url && (
+        {user?.avatar_url && !isPending && (
           <button onClick={handleDelete} className="btn-ghost text-sm inline-flex items-center gap-2 danger" disabled={busy}>
             <Trash2 size={14} strokeWidth={1.75} /> Entfernen
           </button>
