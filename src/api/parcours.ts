@@ -1,4 +1,5 @@
-import { api, apiCached, apiSWR, getToken } from "./client";
+import { api, apiCached, apiSWR } from "./client";
+import { tryUploadOrQueue, type UploadResult } from "../lib/uploadOutbox";
 
 export type Parcours = {
   id: number;
@@ -95,19 +96,17 @@ export async function deleteParcours(id: number): Promise<{ ok: true }> {
 }
 
 /**
- * Bild hochladen via FormData — direkter Aufruf, nicht über api() (das macht nur JSON).
+ * Bild hochladen mit Offline-Fallback — bei Netzfehler queuet die Datei
+ * in upload_outbox und gibt {pending:true, pendingUrl} als blob: URL zurück.
  */
-export async function uploadParcoursImage(id: number, file: File): Promise<{ image_url: string }> {
-  const fd = new FormData();
-  fd.append("file", file);
-  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
-  const res = await fetch(`${base}/parcours/${id}/image`, {
-    method: "POST",
-    headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
-    body: fd,
+export async function uploadParcoursImage(id: number, file: File): Promise<UploadResult<{ image_url: string }>> {
+  return tryUploadOrQueue<{ image_url: string }>({
+    path: `/parcours/${id}/image`,
+    file,
+    filename: file.name,
+    kind: "parcours_image",
+    meta: { parcours_id: id },
   });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-  return res.json();
 }
 
 // ─── Bahnen (Parcours-Lanes) ──────────────────────────────────────────────
@@ -156,17 +155,18 @@ export async function deleteParcoursLane(parcoursId: number, laneId: number): Pr
   return api(`/parcours/${parcoursId}/lanes/${laneId}`, { method: "DELETE" });
 }
 
-export async function uploadParcoursLaneImage(parcoursId: number, laneId: number, file: File): Promise<{ lane: ParcoursLane }> {
-  const fd = new FormData();
-  fd.append("file", file);
-  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
-  const res = await fetch(`${base}/parcours/${parcoursId}/lanes/${laneId}/image`, {
-    method: "POST",
-    headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
-    body: fd,
+export async function uploadParcoursLaneImage(
+  parcoursId: number,
+  laneId: number,
+  file: File
+): Promise<UploadResult<{ lane: ParcoursLane }>> {
+  return tryUploadOrQueue<{ lane: ParcoursLane }>({
+    path: `/parcours/${parcoursId}/lanes/${laneId}/image`,
+    file,
+    filename: file.name,
+    kind: "parcours_lane_image",
+    meta: { parcours_id: parcoursId, lane_id: laneId },
   });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-  return res.json();
 }
 
 export async function deleteParcoursLaneImage(parcoursId: number, laneId: number): Promise<{ lane: ParcoursLane }> {

@@ -1,7 +1,7 @@
 import { FormEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Plus, Trash2, X, Check, Camera, Loader2, ChevronDown, ChevronUp,
+  ArrowLeft, Plus, Trash2, X, Check, Camera, Loader2, ChevronDown, ChevronUp, CloudOff,
 } from "lucide-react";
 import { PageSpinner, Spinner } from "../components/Spinner";
 import {
@@ -73,6 +73,32 @@ export default function ParcoursLanes() {
   const [editingId, setEditingId] = useState<number | "new" | null>(null);
   const [edit, setEdit] = useState<EditState>(blankEdit(1));
   const [busy, setBusy] = useState(false);
+  // laneId → blob: URL für offline geladene Lane-Fotos, die noch in der Queue liegen
+  const [pendingPhotos, setPendingPhotos] = useState<Record<number, string>>({});
+
+  // Beim Unmount alle blob: URLs freigeben
+  useEffect(() => {
+    return () => {
+      Object.values(pendingPhotos).forEach((url) => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Wenn der Server beim Refresh ein image_url für eine Bahn liefert, lokalen Pending freigeben
+  useEffect(() => {
+    setPendingPhotos((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const lane of lanes) {
+        if (lane.image_url && next[lane.id]) {
+          URL.revokeObjectURL(next[lane.id]);
+          delete next[lane.id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [lanes]);
 
   const isOwner = !!(parcours && user && parcours.user_id === user.id);
 
@@ -202,9 +228,16 @@ export default function ParcoursLanes() {
     if (!parcours) return;
     setBusy(true);
     try {
-      await uploadParcoursLaneImage(parcours.id, lane.id, file);
-      const refreshed = await listParcoursLanes(parcours.id);
-      setLanes(refreshed.lanes);
+      const r = await uploadParcoursLaneImage(parcours.id, lane.id, file);
+      if (r.pending) {
+        setPendingPhotos((prev) => {
+          if (prev[lane.id]) URL.revokeObjectURL(prev[lane.id]);
+          return { ...prev, [lane.id]: r.pendingUrl };
+        });
+      } else {
+        const refreshed = await listParcoursLanes(parcours.id);
+        setLanes(refreshed.lanes);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Foto-Upload fehlgeschlagen");
     } finally {
@@ -314,6 +347,7 @@ export default function ParcoursLanes() {
                 busy={busy}
                 title={`Bahn ${lane.lane_number} bearbeiten`}
                 existingLane={lane}
+                pendingPhoto={pendingPhotos[lane.id] ?? null}
                 onImageUpload={(f) => handleImageUpload(lane, f)}
                 onImageDelete={() => handleImageDelete(lane)}
               />
@@ -323,6 +357,7 @@ export default function ParcoursLanes() {
                 isFirst={idx === 0}
                 isLast={idx === lanes.length - 1}
                 readOnly={!isOwner}
+                pendingPhoto={pendingPhotos[lane.id] ?? null}
                 onEdit={() => {
                   setEdit(laneToEdit(lane));
                   setEditingId(lane.id);
@@ -353,6 +388,7 @@ function LaneEditor({
   busy,
   title,
   existingLane,
+  pendingPhoto,
   onImageUpload,
   onImageDelete,
 }: {
@@ -365,10 +401,14 @@ function LaneEditor({
   title: string;
   /** Wenn gesetzt: existierende Bahn → Foto-Upload-Bereich wird gerendert */
   existingLane?: ParcoursLane;
+  /** Blob-URL für ein offline-hochgeladenes Foto, das noch in der Sync-Queue wartet */
+  pendingPhoto?: string | null;
   onImageUpload?: (f: File) => void;
   onImageDelete?: () => void;
 }) {
   const editorFileRef = useRef<HTMLInputElement>(null);
+  const displayImageUrl = pendingPhoto ?? existingLane?.image_url;
+  const isPending = !!pendingPhoto;
   return (
     <form onSubmit={onSave} className="space-y-3">
       <div className="flex items-center justify-between">
@@ -457,9 +497,19 @@ function LaneEditor({
       {existingLane && (
         <div>
           <div className="text-xs text-muted mb-1.5">Foto der Bahn</div>
-          {existingLane.image_url ? (
+          {displayImageUrl ? (
             <div className="flex items-center gap-3">
-              <img src={existingLane.image_url} alt="" className="w-20 h-20 rounded-xl object-cover" />
+              <div className="relative">
+                <img src={displayImageUrl} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                {isPending && (
+                  <span
+                    className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-black/70 text-white px-1.5 py-0.5 text-[10px] font-medium"
+                    title="Foto wartet auf Sync"
+                  >
+                    <CloudOff size={10} strokeWidth={2} /> Sync
+                  </span>
+                )}
+              </div>
               <input
                 ref={editorFileRef}
                 type="file"
@@ -481,7 +531,7 @@ function LaneEditor({
                 >
                   <Camera size={14} strokeWidth={1.75} /> Foto ersetzen
                 </button>
-                {onImageDelete && (
+                {onImageDelete && !isPending && (
                   <button
                     type="button"
                     onClick={onImageDelete}
@@ -572,6 +622,7 @@ function LaneRow({
   isFirst,
   isLast,
   readOnly,
+  pendingPhoto,
   onEdit,
   onDelete,
   onMoveUp,
@@ -584,6 +635,7 @@ function LaneRow({
   isFirst: boolean;
   isLast: boolean;
   readOnly: boolean;
+  pendingPhoto?: string | null;
   onEdit: () => void;
   onDelete: () => void;
   onMoveUp: () => void;
@@ -594,6 +646,8 @@ function LaneRow({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const displayImageUrl = pendingPhoto ?? lane.image_url;
+  const isPending = !!pendingPhoto;
 
   // Read-Only: einfache Zeile ohne Aktionen
   if (readOnly) {
@@ -612,14 +666,14 @@ function LaneRow({
           </div>
           {lane.notes && <div className="text-xs text-muted mt-1 line-clamp-2">{lane.notes}</div>}
         </div>
-        {lane.image_url && (
+        {displayImageUrl && (
           <button
             type="button"
-            onClick={() => setZoomImage(lane.image_url!)}
+            onClick={() => setZoomImage(displayImageUrl)}
             className="shrink-0"
             aria-label="Foto vergrößern"
           >
-            <img src={lane.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" />
+            <img src={displayImageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
           </button>
         )}
         {zoomImage && (
@@ -661,24 +715,33 @@ function LaneRow({
 
         {/* Foto */}
         <div className="shrink-0">
-          {lane.image_url ? (
+          {displayImageUrl ? (
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setZoomImage(lane.image_url!)}
+                onClick={() => setZoomImage(displayImageUrl)}
                 aria-label="Foto vergrößern"
               >
-                <img src={lane.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                <img src={displayImageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
               </button>
-              <button
-                type="button"
-                onClick={onImageDelete}
-                disabled={busy}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-cherry-500 text-white flex items-center justify-center shadow-card disabled:opacity-50"
-                aria-label="Foto entfernen"
-              >
-                <X size={12} strokeWidth={2} />
-              </button>
+              {isPending ? (
+                <span
+                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center shadow-card"
+                  title="Foto wartet auf Sync"
+                >
+                  <CloudOff size={11} strokeWidth={2} />
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onImageDelete}
+                  disabled={busy}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-cherry-500 text-white flex items-center justify-center shadow-card disabled:opacity-50"
+                  aria-label="Foto entfernen"
+                >
+                  <X size={12} strokeWidth={2} />
+                </button>
+              )}
             </div>
           ) : (
             <>

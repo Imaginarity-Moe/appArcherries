@@ -1,4 +1,5 @@
-import { api, apiCached, apiSWR, getToken } from "./client";
+import { api, apiCached, apiSWR } from "./client";
+import { tryUploadOrQueue, type UploadResult } from "../lib/uploadOutbox";
 
 export type ArrowMaterial = "carbon" | "aluminium" | "carbon_aluminium" | "wood" | "fiberglass";
 export type FletchingType = "natural" | "vane" | "spin_vane";
@@ -102,17 +103,14 @@ export async function deleteArrow(id: number): Promise<{ ok: true }> {
   return api(`/arrows/${id}`, { method: "DELETE" });
 }
 
-export async function uploadArrowImage(id: number, file: File): Promise<{ arrow: Arrow }> {
-  const fd = new FormData();
-  fd.append("file", file);
-  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
-  const res = await fetch(`${base}/arrows/${id}/image`, {
-    method: "POST",
-    headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
-    body: fd,
+export async function uploadArrowImage(id: number, file: File): Promise<UploadResult<{ arrow: Arrow }>> {
+  return tryUploadOrQueue<{ arrow: Arrow }>({
+    path: `/arrows/${id}/image`,
+    file,
+    filename: file.name,
+    kind: "arrow_image",
+    meta: { arrow_id: id },
   });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-  return res.json();
 }
 
 export async function deleteArrowImage(id: number): Promise<{ arrow: Arrow }> {

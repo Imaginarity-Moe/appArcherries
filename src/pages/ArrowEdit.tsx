@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, X, Check, Loader2, Star, Camera, Trash2, ExternalLink, History, Plus } from "lucide-react";
+import { ArrowLeft, X, Check, Loader2, Star, Camera, Trash2, ExternalLink, History, Plus, CloudOff } from "lucide-react";
 import { PageSpinner } from "../components/Spinner";
 import {
   createArrow,
@@ -86,6 +86,13 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
   const [isDefault, setIsDefault] = useState(false);
   const [bowIds, setBowIds] = useState<Set<number>>(new Set());
   const [events, setEvents] = useState<ArrowEvent[]>([]);
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingPhoto) URL.revokeObjectURL(pendingPhoto);
+    };
+  }, [pendingPhoto]);
 
   useEffect(() => {
     listBows().then((r) => setAllBows(r.bows)).catch(() => {});
@@ -298,7 +305,16 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
     setBusy(true);
     try {
       const r = await uploadArrowImage(arrow.id, file);
-      setArrow(r.arrow);
+      if (r.pending) {
+        if (pendingPhoto) URL.revokeObjectURL(pendingPhoto);
+        setPendingPhoto(r.pendingUrl);
+      } else {
+        if (pendingPhoto) {
+          URL.revokeObjectURL(pendingPhoto);
+          setPendingPhoto(null);
+        }
+        setArrow(r.data.arrow);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Foto-Upload fehlgeschlagen");
     } finally {
@@ -344,7 +360,7 @@ export default function ArrowEdit({ mode }: { mode: Mode }) {
         {/* Foto */}
         {mode === "edit" && arrow && (
           <section className="card">
-            <ArrowPhotoBlock arrow={arrow} busy={busy} onUpload={handleImageUpload} onDelete={handleImageDelete} />
+            <ArrowPhotoBlock arrow={arrow} busy={busy} pendingPhoto={pendingPhoto} onUpload={handleImageUpload} onDelete={handleImageDelete} />
           </section>
         )}
         {mode === "new" && (
@@ -798,25 +814,36 @@ function TriCheck({ label, value, onChange }: { label: string; value: boolean | 
 }
 
 function ArrowPhotoBlock({
-  arrow, busy, onUpload, onDelete,
+  arrow, busy, pendingPhoto, onUpload, onDelete,
 }: {
-  arrow: Arrow; busy: boolean; onUpload: (f: File) => void; onDelete: () => void;
+  arrow: Arrow; busy: boolean; pendingPhoto: string | null; onUpload: (f: File) => void; onDelete: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  if (arrow.image_url) {
+  const displayUrl = pendingPhoto ?? arrow.image_url;
+  const isPending = !!pendingPhoto;
+  if (displayUrl) {
     return (
       <div>
         <label className="text-sm font-medium text-secondary mb-1.5 block">Foto</label>
         <div className="flex items-start gap-3">
-          <img src={arrow.image_url} alt="" className="w-24 h-24 rounded-xl object-cover border border-hairline" />
+          <div className="relative">
+            <img src={displayUrl} alt="" className="w-24 h-24 rounded-xl object-cover border border-hairline" />
+            {isPending && (
+              <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-black/70 text-white px-1.5 py-0.5 text-[10px] font-medium" title="Foto wartet auf Sync">
+                <CloudOff size={10} strokeWidth={2} /> Sync
+              </span>
+            )}
+          </div>
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
           <div className="flex flex-col gap-1.5">
             <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="btn-secondary text-xs inline-flex items-center gap-1.5">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} strokeWidth={1.75} />} Foto ersetzen
             </button>
-            <button type="button" onClick={onDelete} disabled={busy} className="btn-ghost danger text-xs inline-flex items-center gap-1.5">
-              <Trash2 size={14} strokeWidth={1.75} /> Entfernen
-            </button>
+            {!isPending && (
+              <button type="button" onClick={onDelete} disabled={busy} className="btn-ghost danger text-xs inline-flex items-center gap-1.5">
+                <Trash2 size={14} strokeWidth={1.75} /> Entfernen
+              </button>
+            )}
           </div>
         </div>
       </div>

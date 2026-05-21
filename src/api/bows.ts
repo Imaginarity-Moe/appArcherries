@@ -1,4 +1,5 @@
-import { api, apiCached, apiSWR, getToken } from "./client";
+import { api, apiCached, apiSWR } from "./client";
+import { tryUploadOrQueue, type UploadResult } from "../lib/uploadOutbox";
 import type { BowType } from "./trainings";
 import type { EquipmentKind } from "./equipment";
 
@@ -64,17 +65,14 @@ export async function deleteBow(id: number): Promise<{ ok: true }> {
   return api(`/bows/${id}`, { method: "DELETE" });
 }
 
-export async function uploadBowImage(id: number, file: File): Promise<{ bow: Bow }> {
-  const fd = new FormData();
-  fd.append("file", file);
-  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api/index.php";
-  const res = await fetch(`${base}/bows/${id}/image`, {
-    method: "POST",
-    headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
-    body: fd,
+export async function uploadBowImage(id: number, file: File): Promise<UploadResult<{ bow: Bow }>> {
+  return tryUploadOrQueue<{ bow: Bow }>({
+    path: `/bows/${id}/image`,
+    file,
+    filename: file.name,
+    kind: "bow_image",
+    meta: { bow_id: id },
   });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-  return res.json();
 }
 
 export async function deleteBowImage(id: number): Promise<{ bow: Bow }> {
