@@ -135,7 +135,7 @@ export default function Profile() {
 
 
       <section className="card">
-        <h2 className="eyebrow mb-2 text-cherry-500">{t("profile:danger_zone")}</h2>
+        <h2 className="eyebrow mb-2 text-cherry-700 dark:text-cherry-200">{t("profile:danger_zone")}</h2>
         <p className="text-xs text-secondary mb-3">{t("profile:delete_account_confirm")}</p>
         <button className="btn-danger" disabled>
           <Trash2 size={15} strokeWidth={1.75} /> {t("profile:delete_account")}

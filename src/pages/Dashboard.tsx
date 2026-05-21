@@ -287,7 +287,7 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
           </span>
           {item.is_shared && (
             <span
-              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-copper-600 bg-copper-50 dark:bg-copper-700/20 rounded-full px-1.5 py-0.5"
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-copper-700 dark:text-copper-200 bg-copper-50 dark:bg-copper-700/30 rounded-full px-1.5 py-0.5"
               title="Geteilte Runde — du bist Gast"
             >
               <Users size={10} /> Geteilt
@@ -325,7 +325,7 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
       </div>
       <div className="flex flex-col items-end gap-0.5 shrink-0 min-w-[64px]">
         <div className="score text-score-md leading-none">{item.total_score}</div>
-        <div className="text-[10px] text-forest-300 uppercase tracking-wider">Pkt</div>
+        <div className="text-[10px] text-muted uppercase tracking-wider">Pkt</div>
         {isEnded && doneLanes > 0 && (
           <div className="text-[10px] text-secondary mt-1 font-mono tabular-nums">
             {doneLanes} {endLabel(item.discipline, doneLanes)}
