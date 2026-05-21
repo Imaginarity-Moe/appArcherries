@@ -4,9 +4,9 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-21 (Session-Ende — Admin-UI MVP, Heatmap-Polish, Offline-Foto-Queue komplett)
+**Letzte Aktualisierung:** 2026-05-21 (Nachtschicht — Help-Rewrite, Onboarding-Wizard, UI-Fixes)
 
-## Session 2026-05-21 — Resümee (6 Commits, alle live + gepusht)
+## Session 2026-05-21 — Resümee (10 Commits, alle live + gepusht)
 
 | Commit | Was |
 |---|---|
@@ -16,8 +16,51 @@ originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 | `5815023` | PhotoMarkers zeigt foreign Marker im collab-Mode |
 | `207c9f7` | Admin-UI MVP (/admin, Role/Status-Toggle, Schutzregeln) |
 | `2ec137f` | Memory-Snapshot 2026-05-21 |
+| `a75e14a` | Memory-Session-Ende-Tabelle |
+| `338441d` | Hilfeseite Rewrite mit SVG-Illustrationen (Disziplinen, Wertung, Pflöcke, Bogenklassen) |
+| `5b808e1` | Onboarding-Wizard 5 Steps + Migration 0051 (users.onboarding_completed_at) |
+| `a2aa9ea` | UI-Kontrast-Findings aus UIUX-Sweep behoben |
 
-**Offen für nächste Session**: ParcoursEdit/NewParcours-Wizard-Toast (klein), Logo-Asset (User-Input), Heatmap-Detail-Polish (z.B. WA-Lane-Foto-Overlay aus Parcours-Bahn-Foto), Admin-Polish (Trainings pro User durchsehen, Parcours-Moderation, Hard-Delete).
+## Session 2026-05-21 (Teil 6+7) — Help-Seiten und Onboarding
+
+### Neue Komponente `src/pages/help/HelpIllustrations.tsx`
+Zentrale didaktische SVGs für die Hilfeseiten — kein Interaction, nur statische Diagramme:
+- `AnimalTargetSVG` (3D-Wildschwein-Silhouette mit Inner Kill / Outer Kill / Wound + Beschriftungslinien)
+- `WATargetSVG` (10er-Ring mit Beschriftung der Ringwerte)
+- `FieldWATargetSVG` (Field-6er-Wertung, Gelb/Schwarz/Weiß)
+- `FieldIFAATargetSVG` (5/4/3 Weiß/Schwarz)
+- `PegStakeSVG` (farbiger Pflock-Kopf auf Holzpfahl)
+- `RecurveBowSVG`, `CompoundBowSVG`, `BarebowSVG`, `TraditionalBowSVG` (stilisierte Silhouetten)
+- `HelpIllustrationBox` (Wrapper für Illu + Caption + Inhalt nebeneinander)
+
+### Help-Section-Rewrite
+- **HelpDisciplines**: 3D / Feldbogen / Scheibenschießen / Halle, jeweils mit Illustration + verschachtelten Sub-Akkordeons (Wertungssysteme, Ablauf, Tipps für Anfänger).
+- **HelpScoring**: pro 3D-System konkrete Rechenbeispiele (Bestcase, nach Miss, spät getroffen). Halle-Beispiel mit Maxwert. Sets-und-Legs-Match-Verlauf.
+- **HelpPegs**: Distanz-Tabelle (min/max/typisch für) statt nur Text. Pflock-Etikette-Liste. Markiert vs. unmarkiert erklärt.
+- **HelpBows**: 4 Cards mit Silhouette, Merkmalen, typischen Disziplinen, voreingestellter Pflockfarbe. "Welche Klasse passt zu mir"-FAQ.
+
+### Onboarding-Wizard (`pages/Welcome.tsx`)
+Migration 0051 fügt `users.onboarding_completed_at TIMESTAMP NULL` hinzu. Bestehende User werden bei der Migration als abgeschlossen markiert (so dass nur **neue Registrierungen** durchgehen).
+
+5-Step-Wizard:
+1. **Willkommen** — App-Pitch mit 4 Highlight-Cards (Disziplinen, Geteilte Runden, Statistiken, Highscores)
+2. **Anzeigename** — Pflichtfeld, vorbelegt falls bei Registrierung gesetzt
+3. **Bogenklasse** — 4 Karten mit Silhouette + Pflock-Hint + optionaler Bogen-Name
+4. **Disziplin-Interesse** — 3D / Field / Target / Any (informativ)
+5. **Done** — Übersicht + zwei CTAs: "Erstes Training" → `/trainings/new` oder "Erstmal umsehen" → `/`
+
+Beim Submit werden parallel: display_name gepatched, default-Bogen via `createBow` angelegt, `POST /me/onboarding/complete` gerufen, `refresh()` lädt den User neu.
+
+`App.tsx::RequireAuth` bekommt einen **Onboarding-Gate**: wenn `user.role !== "guest"` und `!user.onboarding_completed_at`, dann redirect auf `/welcome`. Die `/welcome`-Route selbst nutzt `<RequireAuth skipOnboardingGate>` damit sie sich rendern darf.
+
+**Wie testen?** Neuen Account registrieren — der hat `onboarding_completed_at = NULL` und wird automatisch durch den Wizard gelotst.
+
+### UI-Kontrast-Fixes (aus UIUX-Sweep)
+- `text-forest-300` (alter Forest-Palette-Rest) auf "Pkt"-Suffix in Dashboard → `text-muted` (war 2.37 Kontrast)
+- "Geteilt"-Badge in Dashboard: explizites `dark:text-copper-200` (war 1.6 Kontrast im Dark)
+- "Gefahrenzone"-H2 in Profile: `text-cherry-700 dark:text-cherry-200` (war 3.93 unter WCAG-AA Schwelle)
+
+## Session 2026-05-21 (Teil 5) — Admin-UI MVP
 
 ## Session 2026-05-21 (Teil 5) — Admin-UI MVP
 
@@ -317,7 +360,7 @@ Dritter `shared_scoring_mode` neben `solo`/`collab`:
 - BullseyePad-Inversion gefixt (innerstes Ring = höchster Wert)
 - Kompaktes Mobile-Layout passt iPhone 14 Pro ohne Scroll
 
-## DB-Schema (Stand: 47 Migrationen)
+## DB-Schema (Stand: 51 Migrationen)
 
 ```
 users (id, email, password_hash NULL, display_name, avatar_path NULL, status, role, ts)
@@ -378,6 +421,8 @@ Screenshots: `test-report/screenshots/{mobile,desktop,training-flow,community-fl
 - **Material-Tracking** (Pfeile/Sehnen/Spitzen) — Feature offen.
 - **Offline-Foto-Upload** ✅ komplett: Station-Fotos (2026-05-20), Bow/Arrow/Parcours/Parcours-Lane + Avatar (2026-05-21). Übrig: ParcoursEdit/NewParcours-Wizard-Toast (Wizard navigiert nach Save weg ohne Feedback).
 - **Admin-UI** ✅ MVP live (2026-05-21): /admin mit User-Liste + Role/Status-Toggle. Mehr (Trainings pro User durchsehen, Parcours-Moderation, Hard-Delete) kann später.
+- **Onboarding** ✅ MVP live (2026-05-21): 5-Step-Wizard /welcome, Migration 0051 mit auto-complete für bestehende User.
+- **Hilfeseite** ✅ Rewrite mit SVG-Illustrationen + verschachtelten Sub-Akkordeons + konkreten Rechenbeispielen.
 - **Disk-Quota-Warnung beim Deploy**: WinSCP meldet 2× in Folge Error-Code 4 beim `mkdir /uploads/arrows`. Wahrscheinlich harmlos (Verzeichnis existiert), aber bei nächstem Upload (Foto/Avatar) prüfen ob echtes IONOS-Quota erreicht ist.
 
 ## Stolperfallen (kassiert, nicht nochmal!)
