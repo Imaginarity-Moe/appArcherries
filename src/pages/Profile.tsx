@@ -29,12 +29,12 @@ export default function Profile() {
   const [incomingFriends, setIncomingFriends] = useState(0);
   const [resettingOnboarding, setResettingOnboarding] = useState(false);
 
-  async function resetOnboarding() {
+  async function resetOnboarding(mode: "short" | "long") {
     setResettingOnboarding(true);
     try {
       await api("/me/onboarding/reset", { method: "POST" });
       await refresh();
-      nav("/welcome", { replace: true });
+      nav(`/welcome?mode=${mode}`, { replace: true });
     } catch (err) {
       console.warn("[profile] reset onboarding failed", err);
     } finally {
@@ -154,17 +154,38 @@ export default function Profile() {
       <section className="card">
         <h2 className="eyebrow mb-2">Tour &amp; Hilfe</h2>
         <p className="text-xs text-secondary mb-3">
-          Wenn du das Onboarding nochmal durchspielen möchtest — z.B. um Feedback zu geben oder dich
-          neu zu erinnern.
+          Wenn du dich erinnern willst oder Feedback zum Onboarding geben möchtest — zwei Modi:
         </p>
-        <button
-          className="btn-secondary inline-flex items-center gap-2"
-          onClick={resetOnboarding}
-          disabled={resettingOnboarding}
-        >
-          <Compass size={15} strokeWidth={1.75} />
-          {resettingOnboarding ? "Lade…" : "Onboarding neu starten"}
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            className="btn-secondary inline-flex items-start gap-2 text-left p-3"
+            onClick={() => resetOnboarding("short")}
+            disabled={resettingOnboarding}
+          >
+            <Compass size={16} strokeWidth={1.75} className="shrink-0 mt-0.5" />
+            <span className="flex flex-col items-start">
+              <span className="font-semibold text-sm">Kurze Tour</span>
+              <span className="text-xs text-secondary font-normal">5 Schritte — nur Setup, ~1 Minute</span>
+            </span>
+          </button>
+          <button
+            className="btn-secondary inline-flex items-start gap-2 text-left p-3"
+            onClick={() => resetOnboarding("long")}
+            disabled={resettingOnboarding}
+          >
+            <Compass size={16} strokeWidth={1.75} className="shrink-0 mt-0.5" />
+            <span className="flex flex-col items-start">
+              <span className="font-semibold text-sm">Ausführliche Einführung</span>
+              <span className="text-xs text-secondary font-normal">
+                11 Schritte — Konzepte erklärt: Disziplinen, Wertung, Pflöcke, Bogenklassen,
+                Multi-Player, Statistik. ~5 Minuten.
+              </span>
+            </span>
+          </button>
+        </div>
+        {resettingOnboarding && (
+          <p className="text-xs text-secondary mt-2">Setze Onboarding zurück…</p>
+        )}
       </section>
 
       <section className="card">
