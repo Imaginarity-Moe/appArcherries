@@ -9,31 +9,81 @@ import type { ReactNode } from "react";
 
 type Props = { size?: number; className?: string };
 
-// ─── 3D-Tier (vereinfachte Wildschwein-Silhouette mit Kill-Zonen) ──────────
+// ─── 3D-Tier (Reh/Hirsch-Profil mit klar abgegrenzten Kill-Zonen) ──────────
 export function AnimalTargetSVG({ size = 240, className = "" }: Props) {
   return (
-    <svg viewBox="0 0 240 160" width={size} className={className} role="img" aria-label="3D-Tierattrappe mit Trefferzonen">
-      {/* Körper-Silhouette — schaut nach links, vereinfachte Boar-Form */}
+    <svg viewBox="0 0 240 180" width={size} className={className} role="img" aria-label="3D-Tierattrappe (Reh) mit Trefferzonen">
+      {/* Schatten unter dem Tier */}
+      <ellipse cx="130" cy="170" rx="80" ry="5" fill="#000" opacity="0.12" />
+
+      {/* ─── Reh-Silhouette nach LINKS gerichtet (Kopf links, Schwanz rechts) ─── */}
+
+      {/* Hinterbeine — Standbein vorn, Spielbein leicht versetzt */}
+      <path d="M 178 105 L 175 158 L 180 158 L 184 110 Z" fill="#6B4226" stroke="#3F2715" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M 193 108 L 192 158 L 197 158 L 200 113 Z" fill="#5A3520" stroke="#3F2715" strokeWidth="1" strokeLinejoin="round" />
+
+      {/* Vorderbeine — analog, etwas dünner */}
+      <path d="M 80 100 L 76 158 L 82 158 L 86 105 Z" fill="#6B4226" stroke="#3F2715" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M 96 103 L 94 158 L 100 158 L 102 108 Z" fill="#5A3520" stroke="#3F2715" strokeWidth="1" strokeLinejoin="round" />
+
+      {/* Rumpf — ovaler Körper mit leichter Rücken-Schwingung */}
       <path
-        d="M 30 110 C 25 90, 30 70, 60 65 L 70 50 C 75 45, 85 45, 90 55 L 100 65
-           C 130 60, 170 60, 195 75 C 215 85, 215 110, 200 115 L 195 130
-           C 192 138, 182 138, 178 130 L 175 120 L 75 120 L 72 130 C 68 138, 58 138, 55 130 L 50 120 Z"
-        fill="#6B4226"
+        d="M 70 95
+           C 65 75, 80 60, 110 60
+           L 165 60
+           C 195 60, 215 75, 210 100
+           C 210 112, 200 118, 185 117
+           L 90 117
+           C 78 117, 68 110, 70 95 Z"
+        fill="#7B4D2E"
         stroke="#3F2715"
         strokeWidth="1.5"
       />
-      {/* Wound-Zone (großer äußerer Oval, Körper) */}
-      <ellipse cx="135" cy="95" rx="42" ry="22" fill="#D4A547" fillOpacity="0.85" stroke="#3F2715" strokeWidth="0.8" />
-      {/* Outer Kill (mittlerer Oval) */}
-      <ellipse cx="138" cy="93" rx="22" ry="13" fill="#C0464F" fillOpacity="0.95" stroke="#3F2715" strokeWidth="0.8" />
-      {/* Inner Kill (kleiner Spot) */}
-      <ellipse cx="138" cy="93" rx="8" ry="5" fill="#2A2A2A" stroke="#FFFFFF" strokeWidth="0.6" />
+
+      {/* Hals — schräg nach oben-links zum Kopf */}
+      <path
+        d="M 68 85
+           C 60 70, 50 50, 38 35
+           L 32 40
+           C 45 60, 55 78, 64 95 Z"
+        fill="#7B4D2E"
+        stroke="#3F2715"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+
+      {/* Kopf — länglich, leicht nach unten geneigt */}
+      <ellipse cx="28" cy="35" rx="14" ry="8" transform="rotate(-15 28 35)" fill="#7B4D2E" stroke="#3F2715" strokeWidth="1.3" />
+
+      {/* Nase — dunkler Punkt vorn */}
+      <ellipse cx="16" cy="40" rx="2.5" ry="1.8" fill="#2A1810" />
+      {/* Auge */}
+      <circle cx="30" cy="32" r="1.4" fill="#1A1208" />
+
+      {/* Ohren — zwei kleine Spitzen am Kopf */}
+      <path d="M 32 25 L 36 14 L 39 26 Z" fill="#6B4226" stroke="#3F2715" strokeWidth="0.8" />
+      <path d="M 38 26 L 43 17 L 45 28 Z" fill="#5A3520" stroke="#3F2715" strokeWidth="0.8" />
+
+      {/* Geweih — angedeutet als zwei kleine Y-Linien */}
+      <path d="M 38 20 L 34 10 M 38 20 L 42 8 M 42 8 L 46 6 M 42 8 L 40 4" fill="none" stroke="#3F2715" strokeWidth="1.2" strokeLinecap="round" />
+
+      {/* Schwanz — kleiner Stub hinten oben */}
+      <path d="M 208 78 Q 218 76 220 70 Q 222 80 215 86 Z" fill="#7B4D2E" stroke="#3F2715" strokeWidth="0.8" />
+
+      {/* ─── Trefferzonen — am Brustkorb hinter dem Vorderbein ─── */}
+      {/* Wound (großer äußerer Oval, gelb-gold) */}
+      <ellipse cx="125" cy="92" rx="38" ry="22" fill="#D4A547" fillOpacity="0.85" stroke="#3F2715" strokeWidth="0.8" />
+      {/* Outer Kill (mittlerer Oval, cherry) */}
+      <ellipse cx="128" cy="92" rx="22" ry="13" fill="#C0464F" fillOpacity="0.95" stroke="#3F2715" strokeWidth="0.8" />
+      {/* Inner Kill (kleiner Spot, schwarz) */}
+      <ellipse cx="128" cy="92" rx="8" ry="5" fill="#1F1F1F" stroke="#FFFFFF" strokeWidth="0.7" />
       {/* X-Markierung mittig */}
-      <text x="138" y="96" textAnchor="middle" fill="#FFFFFF" fontSize="6" fontWeight="bold" fontFamily="monospace">X</text>
-      {/* Beschriftungen — gestrichelt, dezente Farbe */}
-      <Label x={210} y={70} text="Wound" color="#7A5C1F" anchor={[180, 85]} />
-      <Label x={205} y={130} text="Outer Kill" color="#7A2532" anchor={[160, 100]} />
-      <Label x={45}  y={45}  text="Inner Kill" color="#1A1A1A" anchor={[135, 92]} />
+      <text x="128" y="95" textAnchor="middle" fill="#FFFFFF" fontSize="6" fontWeight="bold" fontFamily="monospace">X</text>
+
+      {/* ─── Beschriftungen ─── */}
+      <Label x={205} y={48} text="Wound" color="#7A5C1F" anchor={[160, 80]} />
+      <Label x={210} y={138} text="Outer Kill" color="#7A2532" anchor={[148, 98]} />
+      <Label x={55} y={155} text="Inner Kill" color="#1A1A1A" anchor={[125, 95]} />
     </svg>
   );
 }
@@ -116,57 +166,159 @@ export function FieldIFAATargetSVG({ size = 220, className = "" }: Props) {
   );
 }
 
-// ─── Bogen-Silhouetten — sehr stilisiert ───────────────────────────────────
+// ─── Bogen-Silhouetten — anatomisch erkennbar ──────────────────────────────
+
+// Recurve: Riser mittig, Wurfarme mit recurved Tips, Visier vorn, Stabilisator + V-Bar
 export function RecurveBowSVG({ size = 80, className = "" }: Props) {
   return (
-    <svg viewBox="0 0 80 120" width={size} className={className} role="img" aria-label="Recurve-Bogen">
-      <path d="M 40 10 C 22 25, 22 45, 40 50 C 22 55, 22 75, 40 90" fill="none" stroke="#6B4226" strokeWidth="3" strokeLinecap="round" />
-      <path d="M 40 10 C 35 22, 38 40, 40 50 C 42 60, 35 78, 40 90" fill="none" stroke="#888" strokeWidth="0.6" />
-      {/* Stabilisator */}
-      <line x1="40" y1="50" x2="60" y2="58" stroke="#1F1F1F" strokeWidth="1.5" />
-      <circle cx="60" cy="58" r="2" fill="#1F1F1F" />
-      {/* Visier */}
-      <line x1="40" y1="50" x2="48" y2="38" stroke="#1F1F1F" strokeWidth="1.2" />
-      <circle cx="48" cy="38" r="2" fill="none" stroke="#1F1F1F" strokeWidth="0.8" />
+    <svg viewBox="0 0 100 140" width={size} className={className} role="img" aria-label="Recurve-Bogen">
+      {/* Sehne — gerade vertikal */}
+      <line x1="50" y1="14" x2="50" y2="126" stroke="#888" strokeWidth="0.5" />
+
+      {/* Wurfarme — geschwungen mit recurved Tips (Enden biegen nach vorn) */}
+      <path d="M 50 14 Q 30 28 34 50 Q 38 65 50 70"
+            fill="none" stroke="#3F2715" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M 50 70 Q 38 75 34 90 Q 30 112 50 126"
+            fill="none" stroke="#3F2715" strokeWidth="3.5" strokeLinecap="round" />
+
+      {/* Riser — rechteckiges Mittelteil */}
+      <rect x="46" y="58" width="8" height="24" rx="2" fill="#1F1F1F" stroke="#000" strokeWidth="0.5" />
+
+      {/* Visierfenster mit Korn vorn */}
+      <line x1="50" y1="62" x2="80" y2="55" stroke="#1F1F1F" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="80" cy="55" r="3" fill="none" stroke="#1F1F1F" strokeWidth="1" />
+      <circle cx="80" cy="55" r="0.8" fill="#C0464F" />
+
+      {/* Pfeilauflage */}
+      <circle cx="55" cy="70" r="1.2" fill="#666" />
+
+      {/* Langer Stabilisator nach vorn (lange Stange) */}
+      <line x1="54" y1="78" x2="92" y2="92" stroke="#1F1F1F" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="92" cy="92" r="2.5" fill="#1F1F1F" />
+
+      {/* V-Bar mit zwei kurzen Seitenstabis */}
+      <line x1="54" y1="78" x2="68" y2="108" stroke="#3F3F3F" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="68" cy="108" r="2" fill="#3F3F3F" />
+
+      {/* Griff/Wickelung */}
+      <rect x="46" y="66" width="8" height="10" fill="#6B4226" />
     </svg>
   );
 }
 
+// Compound: zwei sichtbare Cams oben/unten, gerader Riser, Cable Guard, Scope mit Peep
 export function CompoundBowSVG({ size = 80, className = "" }: Props) {
   return (
-    <svg viewBox="0 0 80 120" width={size} className={className} role="img" aria-label="Compound-Bogen">
-      {/* Wurfarme + Cams */}
-      <circle cx="40" cy="15" r="6" fill="none" stroke="#1F1F1F" strokeWidth="1.5" />
-      <circle cx="40" cy="85" r="6" fill="none" stroke="#1F1F1F" strokeWidth="1.5" />
-      {/* Mittelteil — gerader Riser */}
-      <line x1="40" y1="21" x2="40" y2="79" stroke="#6B4226" strokeWidth="4" strokeLinecap="round" />
-      {/* String — Doppellinie */}
-      <line x1="40" y1="15" x2="40" y2="85" stroke="#888" strokeWidth="0.4" />
-      <path d="M 34 15 L 34 50 L 40 55 L 34 60 L 34 85" fill="none" stroke="#888" strokeWidth="0.6" />
-      {/* Scope */}
-      <line x1="40" y1="50" x2="52" y2="38" stroke="#1F1F1F" strokeWidth="1.2" />
-      <circle cx="52" cy="38" r="3" fill="none" stroke="#1F1F1F" strokeWidth="0.9" />
-      <circle cx="52" cy="38" r="1" fill="#C0464F" />
+    <svg viewBox="0 0 100 140" width={size} className={className} role="img" aria-label="Compound-Bogen">
+      {/* Sehne (gerade) + Buss-Kabel (gebogen, läuft über Cable Guard) */}
+      <line x1="50" y1="18" x2="50" y2="122" stroke="#888" strokeWidth="0.5" />
+
+      {/* Top Cam — größeres Rad */}
+      <circle cx="50" cy="18" r="9" fill="#222" stroke="#000" strokeWidth="1" />
+      <circle cx="50" cy="18" r="4.5" fill="none" stroke="#888" strokeWidth="0.6" />
+      <circle cx="50" cy="18" r="1" fill="#888" />
+
+      {/* Bottom Cam */}
+      <circle cx="50" cy="122" r="9" fill="#222" stroke="#000" strokeWidth="1" />
+      <circle cx="50" cy="122" r="4.5" fill="none" stroke="#888" strokeWidth="0.6" />
+      <circle cx="50" cy="122" r="1" fill="#888" />
+
+      {/* Wurfarme — kurze gerade Stutzen die in die Cams gehen */}
+      <rect x="46" y="22" width="8" height="16" fill="#3F2715" stroke="#000" strokeWidth="0.5" />
+      <rect x="46" y="102" width="8" height="16" fill="#3F2715" stroke="#000" strokeWidth="0.5" />
+
+      {/* Riser — gerader Mittelteil */}
+      <rect x="46" y="40" width="8" height="58" rx="1" fill="#1F1F1F" stroke="#000" strokeWidth="0.5" />
+
+      {/* Cable Guard — biegt die Kabel nach rechts */}
+      <line x1="54" y1="58" x2="60" y2="70" stroke="#3F3F3F" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M 60 25 Q 65 58 60 100" fill="none" stroke="#666" strokeWidth="0.7" />
+
+      {/* Griff */}
+      <rect x="46" y="62" width="8" height="14" fill="#6B4226" />
+
+      {/* Scope (großer Durchmesser, mit Cross-Hair) */}
+      <line x1="54" y1="65" x2="78" y2="55" stroke="#1F1F1F" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="82" cy="50" r="6" fill="#0A0A0A" stroke="#1F1F1F" strokeWidth="1" />
+      <line x1="76" y1="50" x2="88" y2="50" stroke="#C0464F" strokeWidth="0.5" />
+      <line x1="82" y1="44" x2="82" y2="56" stroke="#C0464F" strokeWidth="0.5" />
+      <circle cx="82" cy="50" r="1" fill="#D4A547" />
+
+      {/* Peep in der Sehne */}
+      <circle cx="50" cy="55" r="1.5" fill="none" stroke="#888" strokeWidth="0.6" />
+
+      {/* Pfeilauflage */}
+      <circle cx="55" cy="72" r="1.2" fill="#666" />
+
+      {/* Stabilisator */}
+      <line x1="54" y1="78" x2="92" y2="90" stroke="#1F1F1F" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="92" cy="90" r="2.5" fill="#1F1F1F" />
     </svg>
   );
 }
 
+// Barebow: Recurve-Wurfarme, Riser ohne Visier/Stabi, optional kleines Gegengewicht
 export function BarebowSVG({ size = 80, className = "" }: Props) {
   return (
-    <svg viewBox="0 0 80 120" width={size} className={className} role="img" aria-label="Blankbogen / Barebow">
-      <path d="M 40 10 C 22 25, 22 45, 40 50 C 22 55, 22 75, 40 90" fill="none" stroke="#6B4226" strokeWidth="3" strokeLinecap="round" />
-      <path d="M 40 10 C 35 22, 38 40, 40 50 C 42 60, 35 78, 40 90" fill="none" stroke="#888" strokeWidth="0.6" />
-      {/* Kein Visier, kein Stabilisator — bewusst */}
+    <svg viewBox="0 0 100 140" width={size} className={className} role="img" aria-label="Blankbogen / Barebow">
+      {/* Sehne */}
+      <line x1="50" y1="14" x2="50" y2="126" stroke="#888" strokeWidth="0.5" />
+
+      {/* Recurved Wurfarme */}
+      <path d="M 50 14 Q 30 28 34 50 Q 38 65 50 70"
+            fill="none" stroke="#3F2715" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M 50 70 Q 38 75 34 90 Q 30 112 50 126"
+            fill="none" stroke="#3F2715" strokeWidth="3.5" strokeLinecap="round" />
+
+      {/* Riser — gerader Mittelteil, schlicht */}
+      <rect x="46" y="58" width="8" height="24" rx="2" fill="#1F1F1F" stroke="#000" strokeWidth="0.5" />
+
+      {/* Griff/Wickelung */}
+      <rect x="46" y="66" width="8" height="10" fill="#6B4226" />
+
+      {/* Pfeilauflage */}
+      <circle cx="55" cy="70" r="1.2" fill="#666" />
+
+      {/* Internes Gegengewicht (klein, im Mittelteil — keine externen Stabis) */}
+      <circle cx="50" cy="80" r="2" fill="#444" />
     </svg>
   );
 }
 
+// Traditional / Langbogen: einteilig, D-förmig, Wickelung am Griff
 export function TraditionalBowSVG({ size = 80, className = "" }: Props) {
   return (
-    <svg viewBox="0 0 80 120" width={size} className={className} role="img" aria-label="Traditioneller Bogen / Langbogen">
-      {/* D-shaped Langbogen */}
-      <path d="M 40 5 C 28 30, 28 70, 40 95" fill="none" stroke="#6B4226" strokeWidth="3.5" strokeLinecap="round" />
-      <line x1="40" y1="5" x2="40" y2="95" stroke="#888" strokeWidth="0.6" />
+    <svg viewBox="0 0 100 140" width={size} className={className} role="img" aria-label="Langbogen / Traditioneller Bogen">
+      {/* Sehne */}
+      <line x1="50" y1="10" x2="50" y2="130" stroke="#888" strokeWidth="0.5" />
+
+      {/* D-Form — sanfter Bogen ohne recurve */}
+      <path
+        d="M 50 10 C 36 30, 32 60, 38 70 C 32 80, 36 110, 50 130"
+        fill="none"
+        stroke="#6B4226"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+      />
+
+      {/* Holzmaserung — feine helle Linie */}
+      <path
+        d="M 50 14 C 38 32, 34 60, 40 70 C 34 80, 38 108, 50 126"
+        fill="none"
+        stroke="#A87850"
+        strokeWidth="0.6"
+        opacity="0.7"
+      />
+
+      {/* Wickelung am Griff (Leder-/Stoffwicklung) */}
+      <rect x="40" y="62" width="8" height="16" fill="#3F2715" />
+      <line x1="40" y1="65" x2="48" y2="65" stroke="#6B4226" strokeWidth="0.5" />
+      <line x1="40" y1="68" x2="48" y2="68" stroke="#6B4226" strokeWidth="0.5" />
+      <line x1="40" y1="71" x2="48" y2="71" stroke="#6B4226" strokeWidth="0.5" />
+      <line x1="40" y1="74" x2="48" y2="74" stroke="#6B4226" strokeWidth="0.5" />
+
+      {/* Pfeilauflage — über die Hand (klassisch ohne mechanische Rest) */}
+      <line x1="40" y1="62" x2="36" y2="68" stroke="#A87850" strokeWidth="0.8" />
     </svg>
   );
 }
