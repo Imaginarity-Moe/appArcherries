@@ -88,6 +88,8 @@ export default function Profile() {
         </div>
       </section>
 
+      <AchievementsSection />
+
       <section className="card">
         <h2 className="eyebrow mb-4">{t("profile:settings")}</h2>
 
@@ -295,6 +297,74 @@ export default function Profile() {
         </div>
       )}
     </div>
+  );
+}
+
+function AchievementsSection() {
+  const [data, setData] = useState<import("../api/achievements").AchievementsResponse | null>(null);
+  useEffect(() => {
+    import("../api/achievements").then((m) => m.getAchievements()).then(setData).catch(() => {});
+  }, []);
+
+  if (!data) return null;
+  const unlocked = data.achievements.filter((a) => a.unlocked);
+  const locked   = data.achievements.filter((a) => !a.unlocked);
+
+  return (
+    <section className="card">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="eyebrow">Erfolge &amp; Streak</h2>
+        <span className="text-sm text-muted tabular-nums">
+          {data.unlocked_count} / {data.total}
+        </span>
+      </div>
+
+      {data.streak_current > 0 ? (
+        <div className="card-sunken flex items-center gap-3 mb-3">
+          <span className="text-3xl">🔥</span>
+          <div className="flex-1">
+            <p className="font-semibold">{data.streak_current}-Tage-Streak aktiv</p>
+            <p className="text-sm text-secondary">Schieße heute, um die Reihe zu halten.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="card-sunken text-sm text-secondary mb-3">
+          Noch keine aktive Streak. Schieße zwei Tage in Folge, dann zählt sie hoch.
+        </div>
+      )}
+
+      {/* Freigeschaltete */}
+      {unlocked.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+          {unlocked.map((a) => (
+            <div key={a.key} className="card-sunken text-center py-3" title={a.desc}>
+              <div className="text-2xl mb-1">{a.icon}</div>
+              <div className="text-sm font-semibold truncate">{a.label}</div>
+              <div className="text-xs text-muted truncate">{a.desc}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Verriegelte (gedämpft) */}
+      {locked.length > 0 && (
+        <details className="group">
+          <summary className="cursor-pointer list-none flex items-center gap-2 text-sm text-secondary">
+            <Compass size={14} strokeWidth={1.75} className="group-open:rotate-180 transition" />
+            {locked.length} noch nicht freigeschaltet
+          </summary>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+            {locked.map((a) => (
+              <div key={a.key} className="card-sunken text-center py-3 opacity-50 grayscale" title={a.desc}>
+                <div className="text-2xl mb-1">{a.icon}</div>
+                <div className="text-sm font-semibold truncate">{a.label}</div>
+                <div className="text-xs text-muted truncate">{a.desc}</div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </section>
   );
 }
 

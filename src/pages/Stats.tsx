@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Trophy } from "lucide-react";
+import { Trophy, Ruler, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { getHeatmap, getStatsOverview, type HeatmapResponse, type StatsOverview } from "../api/stats";
 import { ScoreLineChart, ZoneDistributionBars, ArrowConsistencyBars } from "../components/charts";
 import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
@@ -92,6 +93,23 @@ export default function Stats() {
           />
         ))}
       </div>
+
+      {/* CTA-Banner für Distanz-Schätz-Training */}
+      <Link
+        to="/train/distance"
+        className="card-sunken flex items-center gap-3 hover:border-cherry-500/40 transition group"
+      >
+        <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-cherry-50 dark:bg-cherry-900/30 text-cherry-600 dark:text-cherry-200 shrink-0">
+          <Ruler size={20} strokeWidth={1.75} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold">Distanzschätz-Training</p>
+          <p className="text-sm text-secondary">
+            Übung für unmarkierte 3D-Parcours — App nennt eine Distanz, du schätzt, App misst die Abweichung.
+          </p>
+        </div>
+        <ArrowRight size={16} strokeWidth={2} className="text-muted group-hover:text-cherry-500 group-hover:translate-x-0.5 transition shrink-0" />
+      </Link>
 
       {loading && <Spinner className="py-2" />}
 

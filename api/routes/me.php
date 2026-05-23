@@ -48,8 +48,39 @@ function handle_me(string $method, string $path = '/me'): void
         me_get($user_id);
         return;
     }
+    if ($path === '/me/achievements' && $method === 'GET') {
+        me_achievements_get($user_id);
+        return;
+    }
 
     res_error('Not found', 404);
+}
+
+function me_achievements_get(int $user_id): void
+{
+    require_once __DIR__ . '/../lib/Achievements.php';
+    // Lazy-Evaluate: schaltet neue Achievements bei jedem Aufruf frei
+    $newly = achievements_evaluate($user_id);
+    $unlocked = achievements_unlocked_for($user_id);
+    $all = achievements_all();
+    $items = [];
+    foreach ($all as $key => $def) {
+        $items[] = [
+            'key'         => $key,
+            'icon'        => $def['icon'],
+            'label'       => $def['label'],
+            'desc'        => $def['desc'],
+            'unlocked'    => isset($unlocked[$key]),
+            'unlocked_at' => $unlocked[$key] ?? null,
+            'is_new'      => in_array($key, $newly, true),
+        ];
+    }
+    res_json([
+        'achievements'    => $items,
+        'unlocked_count'  => count($unlocked),
+        'total'           => count($all),
+        'streak_current'  => streak_current($user_id),
+    ]);
 }
 
 function me_notif_prefs_get(int $user_id): void

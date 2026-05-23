@@ -194,6 +194,20 @@ export default function NewTraining() {
     setError(null);
     try {
       const isTargetPractice = discipline === "target_practice";
+
+      // Wetter-Auto-Logger: wenn Parcours mit Koordinaten + kein manuelles Wetter:
+      // Open-Meteo abfragen und in `weather` schreiben. Robust (Timeout 5s, Failure → leer).
+      let weather: string | null = null;
+      const selectedParcours = parcoursId
+        ? parcoursOptions.find((p) => p.id === parcoursId)
+        : null;
+      if (selectedParcours && selectedParcours.lat != null && selectedParcours.lng != null) {
+        try {
+          const { fetchWeatherSnippet } = await import("../lib/weather");
+          weather = await fetchWeatherSnippet(selectedParcours.lat, selectedParcours.lng);
+        } catch {/* still create training even if weather fetch fails */}
+      }
+
       const r = await createTraining({
         discipline,
         nfaa_mode: isAnimal ? nfaaMode : false,
@@ -204,6 +218,7 @@ export default function NewTraining() {
         parcours_id: isTargetPractice ? null : parcoursId,
         start_lane: parcoursId && startLane > 1 && !isTargetPractice ? startLane : undefined,
         location: location || null,
+        weather,
         notes: notes || null,
         // target_practice-Felder (Backend ignoriert sie bei anderen Disziplinen)
         ...(isTargetPractice ? {
