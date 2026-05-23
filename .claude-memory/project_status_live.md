@@ -4,7 +4,79 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-23 (Soft-Delete + Admin-Show-More + ParcoursEdit-Toast + SVG-Refinement)
+**Letzte Aktualisierung:** 2026-05-23 (Differentiators-Drop: Achievements + Distanzschätz-Training + Wetter-Logger + Self-Delete + Empty-States)
+
+## Session 2026-05-23 (Teil 4) — Wettbewerbs-Differentiator-Drop
+
+User-Vorgabe: "Hyper gewissenhaft autonom arbeiten, andere Apps recherchieren, eigene Ideen einbringen, beste App auf dem Markt machen". Strategie:
+
+1. Quick-Wins erst (Self-Delete, Empty-States, Performance-Audit)
+2. Research per WebSearch (MyTargets, Artemis, ArcheryBuddy, Rise, ArcherySuccess, Archery Sight Mark, PRO Archery Ballistics, ArcherSense)
+3. 3 differenzierende Features implementiert
+
+### Recherchierte Wettbewerber-Features
+- **AI-Form-Analyse via Video** (ArcheryBuddy, ArcherSense): zu komplex/teuer für V1
+- **Sight-Marks-Calculator** mit quadratischer Interpolation (PRO Archery Ballistics, Archery Sight Mark): machbar, TODO
+- **Streaks & Daily-Goals** (ArcheryBuddy, ArcherySuccess): ✅ heute gebaut
+- **Achievements & XP** (Rise, Archery Score Tracker): ✅ heute gebaut
+- **Wind-/Wetter-Korrektur** (PRO Archery Ballistics): teilweise via Wetter-Logger heute
+- **Monatliche Leaderboards** (Rise): TODO
+
+### Selbst implementierte Features (commit `e40f40a`, ` (siehe Distanzschätz + Achievements + Weather Commit)`)
+
+**1. Self-Delete im Profile** (`DELETE /me` mit Password-Confirm)
+   - Analog zur Admin-Variante, aber für sich selbst
+   - Superadmin nicht selbst-löschbar (Lock-Out)
+   - Modal mit Aufzählung was passiert + Password + Logout danach
+
+**2. Empty-States verbessert**
+   - Parcours-Liste: doppelt CTA (eigenen anlegen / öffentliche entdecken), Emoji-Header
+   - Stats: "Erstes Training starten"-CTA wenn leer
+   - Friends: erklärt Konzept + was Freunde tun können
+
+**3. Achievements & Streaks (Migration 0055)**
+   - `api/lib/Achievements.php` mit 18 Achievements
+   - Kategorien: Erste Schritte, Volume (10/50/100), Vielfalt (alle 3D / alle Bows), Score (300/500), Social, Streaks (3/7/30 Tage)
+   - Lazy-Evaluation bei `GET /me/achievements` — INSERT IGNORE für Race-Safety
+   - `streak_current()` rückwärts von heute (max 90 Tage zurück)
+   - Profile-Page: Streak-Card oben + Grid mit unlocked + collapsible details mit locked
+
+**4. Distanzschätz-Trainings-Modus** (`/train/distance`)
+   - Zufalls-Distanzen 5–45m, gauss-verteilt um 22m
+   - Range-Slider + Schnellauswahl-Buttons
+   - Feedback-Tone (perfekt/sehr gut/okay/daneben) + sportspezifische Erklärung
+   - Personal-Stats lokal in LocalStorage (kein Server, kein PII)
+   - Beste Serie (Streak unter 2m)
+   - CTA-Banner auf Stats-Page verlinkt den Modus
+
+**5. Wetter-Auto-Logger via Open-Meteo**
+   - `src/lib/weather.ts`: fetchWeatherSnippet(lat, lng) → "23°C, leicht bewölkt · Wind 8 km/h SW"
+   - Kein API-Key nötig (Open-Meteo kostenlos)
+   - Beim Training-Submit in NewTraining mit Parcours lat/lng aufgerufen
+   - Schreibt in existierende `trainings.weather`-Spalte
+   - Robust: 5s-Timeout, Lazy-Import, Training-Erstellung läuft auch bei API-Fehler durch
+
+### Was Archerries einzigartig macht (Stand jetzt)
+- Vollständig offline-PWA mit Sync-Queue auch für Bilder
+- Multi-Player-Live-Scoring per QR mit Gast-Accounts ohne Passwort
+- Pad-basierte Heatmap getrennt von Foto-Markern
+- Bahn-Foto-Galerie + Heatmap pro Parcours-Bahn
+- Detailed equipment tracking (Pfeil-Set + Sehnen-Lifecycle + Events)
+- Soft-Delete + DSGVO-Compliance + Admin mit Rollen
+- Hilfeseite mit offiziellem Regelwerk + 5 Themengruppen
+- Onboarding-Wizard (kurz/lang) mit Prefill und Abbrechen
+- **Achievements + Streaks** (neu)
+- **Lokales Distanzschätz-Training** (neu)
+- **Automatischer Wetter-Logger** (neu)
+
+### Open (für später)
+- Sight-Marks-Calculator pro Bogen (mit quadratischer Regression)
+- Monatliche Gruppen-Leaderboards
+- Crowdsourced Bahn-Distanzen (anonyme Schätzungen)
+- Verein/Mannschaft-Konzept
+- Tournament-Bracket-Management (außerhalb V1-Scope)
+
+## Session 2026-05-23 (Teil 3) — Drei in einem Sweep
 
 ## Session 2026-05-23 (Teil 3) — Drei in einem Sweep
 
