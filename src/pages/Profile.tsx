@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type AriaAttributes } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users, Bell } from "lucide-react";
+import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users, Bell, Compass } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { api } from "../api/client";
 import AvatarUploader from "../components/AvatarUploader";
 import { listFriends } from "../api/friends";
 import {
@@ -17,13 +19,28 @@ import { Spinner } from "../components/Spinner";
 type Theme = "light" | "dark" | "auto";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const { t, i18n } = useTranslation(["profile", "common"]);
+  const nav = useNavigate();
 
   const [theme, setTheme] = useState<Theme>(
     (localStorage.getItem("archerries.theme") as Theme) || "auto"
   );
   const [incomingFriends, setIncomingFriends] = useState(0);
+  const [resettingOnboarding, setResettingOnboarding] = useState(false);
+
+  async function resetOnboarding() {
+    setResettingOnboarding(true);
+    try {
+      await api("/me/onboarding/reset", { method: "POST" });
+      await refresh();
+      nav("/welcome", { replace: true });
+    } catch (err) {
+      console.warn("[profile] reset onboarding failed", err);
+    } finally {
+      setResettingOnboarding(false);
+    }
+  }
 
   useEffect(() => {
     localStorage.setItem("archerries.theme", theme);
@@ -133,6 +150,22 @@ export default function Profile() {
         <ChevronRight size={18} strokeWidth={1.75} className="text-muted" />
       </Link>
 
+
+      <section className="card">
+        <h2 className="eyebrow mb-2">Tour &amp; Hilfe</h2>
+        <p className="text-xs text-secondary mb-3">
+          Wenn du das Onboarding nochmal durchspielen möchtest — z.B. um Feedback zu geben oder dich
+          neu zu erinnern.
+        </p>
+        <button
+          className="btn-secondary inline-flex items-center gap-2"
+          onClick={resetOnboarding}
+          disabled={resettingOnboarding}
+        >
+          <Compass size={15} strokeWidth={1.75} />
+          {resettingOnboarding ? "Lade…" : "Onboarding neu starten"}
+        </button>
+      </section>
 
       <section className="card">
         <h2 className="eyebrow mb-2 text-cherry-700 dark:text-cherry-200">{t("profile:danger_zone")}</h2>

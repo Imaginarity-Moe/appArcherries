@@ -42,6 +42,11 @@ function handle_me(string $method, string $path = '/me'): void
         me_get($user_id);
         return;
     }
+    if ($path === '/me/onboarding/reset' && $method === 'POST') {
+        db()->prepare('UPDATE users SET onboarding_completed_at = NULL WHERE id = ?')->execute([$user_id]);
+        me_get($user_id);
+        return;
+    }
 
     res_error('Not found', 404);
 }
