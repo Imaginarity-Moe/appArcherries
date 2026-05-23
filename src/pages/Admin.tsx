@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import { Shield, Search } from "lucide-react";
+import { Link, Navigate } from "react-router-dom";
+import { Shield, Search, ChevronRight } from "lucide-react";
 import { PageSpinner } from "../components/Spinner";
 import Avatar from "../components/Avatar";
 import { useAuth, type Role } from "../auth/AuthContext";
 import { listAdminUsers, updateAdminUser, type AdminUser } from "../api/admin";
 
-const ROLES: Role[] = ["admin", "user", "guest"];
+const ALL_ROLES: Role[] = ["superadmin", "admin", "user", "guest"];
 
 export default function Admin() {
-  const { user } = useAuth();
+  const { user: me } = useAuth();
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -21,9 +21,22 @@ export default function Admin() {
       .catch((e) => setError(e instanceof Error ? e.message : "Konnte User-Liste nicht laden"));
   }, []);
 
-  // Schutz: nicht-admin abweisen (Backend würde 403 schmeißen, aber UX besser mit Redirect)
-  if (user && user.role !== "admin") {
+  // Backend lehnt non-admin/superadmin sowieso ab — UX-Backup mit Redirect.
+  if (me && me.role !== "admin" && me.role !== "superadmin") {
     return <Navigate to="/" replace />;
+  }
+
+  // Welche Rollen darf der eingeloggte User vergeben?
+  // - superadmin sieht alle, kann alle setzen
+  // - admin kann nur user und guest setzen (admins/superadmins anlegen geht nur via superadmin)
+  const myRole: Role = me?.role ?? "user";
+  const ASSIGNABLE_ROLES: Role[] = myRole === "superadmin" ? ALL_ROLES : ["user", "guest"];
+
+  function canModify(target: AdminUser): boolean {
+    if (target.id === me?.id) return false;
+    if (target.role === "superadmin" && myRole !== "superadmin") return false;
+    if (target.role === "admin" && myRole !== "superadmin") return false;
+    return true;
   }
 
   async function changeRole(u: AdminUser, role: Role) {
@@ -100,15 +113,22 @@ export default function Admin() {
               <th className="py-2.5 px-3 text-right">Trainings</th>
               <th className="py-2.5 px-3 text-right">Parcours</th>
               <th className="py-2.5 px-3 text-right">Bögen</th>
+              <th className="py-2.5 px-3"></th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((u) => {
-              const isSelf = u.id === user?.id;
+              const isSelf = u.id === me?.id;
+              const editable = canModify(u);
+              const lockedReason = isSelf
+                ? "Eigener Account nicht änderbar"
+                : !editable
+                  ? "Nur Superadmin darf diese Rolle ändern"
+                  : "Ändern";
               return (
-                <tr key={u.id} className="border-b border-hairline last:border-0">
+                <tr key={u.id} className="border-b border-hairline last:border-0 hover:bg-elevated/50 transition">
                   <td className="py-2 px-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <Link to={`/admin/users/${u.id}`} className="flex items-center gap-2.5 min-w-0 hover:text-cherry-500 transition">
                       <Avatar user={u} size="sm" />
                       <div className="min-w-0">
                         <div className="font-medium truncate">
@@ -117,17 +137,18 @@ export default function Admin() {
                         </div>
                         <div className="text-xs text-muted truncate">{u.email}</div>
                       </div>
-                    </div>
+                    </Link>
                   </td>
                   <td className="py-2 px-3">
                     <select
                       value={u.role}
-                      disabled={busyId === u.id || isSelf}
+                      disabled={busyId === u.id || !editable}
                       onChange={(e) => changeRole(u, e.target.value as Role)}
                       className="input py-1 text-xs"
-                      title={isSelf ? "Eigene Rolle nicht änderbar" : "Rolle ändern"}
+                      title={lockedReason}
                     >
-                      {ROLES.map((r) => (
+                      {/* Aktuelle Rolle muss in der Liste sein, auch wenn nicht zuweisbar */}
+                      {[...new Set([...ASSIGNABLE_ROLES, u.role])].map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
@@ -136,13 +157,13 @@ export default function Admin() {
                     <button
                       type="button"
                       onClick={() => toggleStatus(u)}
-                      disabled={busyId === u.id || isSelf}
+                      disabled={busyId === u.id || !editable}
                       className={`text-xs px-2 py-1 rounded-full font-medium ${
                         u.status === "active"
                           ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                           : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                       } disabled:opacity-50`}
-                      title={isSelf ? "Eigener Status nicht änderbar" : "Status umschalten"}
+                      title={lockedReason}
                     >
                       {u.status}
                     </button>
@@ -150,12 +171,21 @@ export default function Admin() {
                   <td className="py-2 px-3 text-right tabular-nums">{u.count_trainings}</td>
                   <td className="py-2 px-3 text-right tabular-nums">{u.count_parcours}</td>
                   <td className="py-2 px-3 text-right tabular-nums">{u.count_bows}</td>
+                  <td className="py-2 px-3 text-right">
+                    <Link
+                      to={`/admin/users/${u.id}`}
+                      className="inline-flex items-center gap-1 text-xs text-secondary hover:text-cherry-500 transition"
+                      title="Detail-Ansicht"
+                    >
+                      Details <ChevronRight size={14} strokeWidth={1.75} />
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-sm text-muted">
+                <td colSpan={7} className="py-6 text-center text-sm text-muted">
                   Keine User gefunden
                 </td>
               </tr>
@@ -164,9 +194,23 @@ export default function Admin() {
         </table>
       </div>
 
-      <p className="text-xs text-muted text-center">
-        Schutz: Mindestens ein aktiver Admin muss übrig bleiben. Eigene Rolle und Status nicht änderbar.
-      </p>
+      <div className="card-sunken text-xs text-secondary space-y-1">
+        <p>
+          <b>Rollen-Hierarchie:</b> superadmin &gt; admin &gt; user/guest. Eigener Account ist nie änderbar
+          (verhindert Lock-Out).
+        </p>
+        {myRole === "superadmin" ? (
+          <p>
+            Du bist Superadmin — du kannst alle Rollen vergeben. Mindestens ein aktiver Superadmin
+            muss übrig bleiben. Hard-Delete eines Users ist in der Detail-Ansicht möglich.
+          </p>
+        ) : (
+          <p>
+            Du bist Admin — du kannst nur User und Gäste verwalten. Andere Admins und Superadmins
+            sind für dich gesperrt.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

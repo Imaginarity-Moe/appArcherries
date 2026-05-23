@@ -10,7 +10,7 @@ import {
 import { api, ApiError, getToken, setToken } from "../api/client";
 import { subscribeDrained } from "../lib/sync";
 
-export type Role = "admin" | "user" | "guest";
+export type Role = "superadmin" | "admin" | "user" | "guest";
 
 export type User = {
   id: number;

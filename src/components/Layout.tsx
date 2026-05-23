@@ -86,7 +86,7 @@ export default function Layout() {
           <SidebarLink to="/parcours" icon={<Map size={18} strokeWidth={1.75} />} label={t("nav.parcours")} />
           <SidebarLink to="/help" icon={<HelpCircle size={18} strokeWidth={1.75} />} label={t("nav.help")} />
           <SidebarLink to="/profile" icon={<UserCircle size={18} strokeWidth={1.75} />} label={t("nav.profile")} />
-          {user.role === "admin" && (
+          {(user.role === "admin" || user.role === "superadmin") && (
             <SidebarLink to="/admin" icon={<Shield size={18} strokeWidth={1.75} />} label="Admin" />
           )}
         </nav>

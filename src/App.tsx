@@ -36,6 +36,7 @@ const EquipmentEdit   = lazy(() => import("./pages/EquipmentEdit"));      // Equ
 const Friends         = lazy(() => import("./pages/Friends"));            // Freundschafts-Verwaltung
 const TrainingArchive = lazy(() => import("./pages/TrainingArchive"));    // Archivierte Trainings
 const Admin           = lazy(() => import("./pages/Admin"));              // User-Verwaltung (admin-only)
+const AdminUserDetail = lazy(() => import("./pages/AdminUserDetail"));    // User-Detail (admin-only)
 
 function RequireAuth({ children, skipOnboardingGate }: { children: JSX.Element; skipOnboardingGate?: boolean }) {
   const { user, loading } = useAuth();
@@ -100,6 +101,7 @@ export default function App() {
         <Route path="/friends" element={<RequireAuth><L><Friends /></L></RequireAuth>} />
         <Route path="/trainings/archive" element={<RequireAuth><L><TrainingArchive /></L></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><L><Admin /></L></RequireAuth>} />
+        <Route path="/admin/users/:id" element={<RequireAuth><L><AdminUserDetail /></L></RequireAuth>} />
 
         {/* Hilfe (Accordion + Suche auf einer Page; Deep-Links via #anchor) */}
         <Route path="/help" element={<RequireAuth><HelpHub /></RequireAuth>} />
