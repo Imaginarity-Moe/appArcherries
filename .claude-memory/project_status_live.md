@@ -4,7 +4,45 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-23 (UX-Refinements: Schriftgrößen, Onboarding, Hilfe-Themengruppen, Regelwerk)
+**Letzte Aktualisierung:** 2026-05-23 (Soft-Delete + Admin-Show-More + ParcoursEdit-Toast + SVG-Refinement)
+
+## Session 2026-05-23 (Teil 3) — Drei in einem Sweep
+
+### ParcoursEdit-Offline-Toast (letzter Endpoint ohne Pending-Feedback)
+`ParcoursEdit` + `NewParcours` setzen `sessionStorage["parcours_photo_pending"] = id` wenn Foto-Upload in die Queue geht. `ParcoursDetail` liest beim Mount, zeigt Cherry-Banner „Foto wird hochgeladen, sobald online" + Schließen-X.
+
+### Admin: Trainings-Show-More
+Neuer paginierter Endpoint `GET /admin/users/:id/trainings?offset=&limit=` (Default offset=10, limit=20, max 100). `admin_user_detail` liefert weiter nur die ersten 10 als Vorschau + `count_trainings`. `AdminUserDetail.tsx` lädt 20er-Pakete lazy nach mit „Weitere N Trainings laden"-Button, zeigt am Ende „Alle X Trainings geladen".
+
+### Soft-Delete statt Hard-Delete (Migration 0054)
+`users.deleted_at TIMESTAMP NULL` + Index `idx_users_deleted`. `require_auth()` und `try_auth()` prüfen `deleted_at IS NULL` — soft-deleted können sich nicht mehr einloggen.
+
+`admin_user_delete` macht jetzt UPDATE statt DELETE:
+- `email` → `deleted-<id>-<ts>@deleted.local`
+- `display_name` → `Gelöschter User #<id>`
+- `password_hash` → NULL
+- `avatar_path` → NULL (Datei vorher vom Server gelöscht)
+- `status` → `pending`
+- `deleted_at` → NOW()
+
+Reviews, Friendships, geteilte Trainings, öffentliche Parcours BLEIBEN — werden als „Gelöschter User #<id>" gerendert. **DSGVO-konform**: PII raus, öffentliche Inhalte erhalten.
+
+Filter in anderen Endpoints:
+- `admin_users_list`: `WHERE deleted_at IS NULL` standardmäßig, `?include_deleted=1` zeigt auch gelöschte
+- `friends_list`: filtert gelöschte „andere"-Seite
+- `friends_request`: lehnt Anfragen an gelöschte ab
+- `highscore_list`: filtert gelöschte aus
+
+Frontend:
+- `AdminUser` + `AdminUserDetail`-Types mit `deleted_at`
+- `Admin.tsx`: Checkbox „Auch gelöschte zeigen" in Filter-Bar; Tabellenzeile für gelöschte: opacity-60, Trash2-Icon, „gelöscht"-Pill, italic Name, kein Online-Dot
+- `AdminUserDetail.tsx`: Banner „Account gelöscht" mit Datum; Profile abgeschwächt; `canDelete()` lehnt bereits gelöschte ab
+- Delete-Section: Text umgeschrieben („Anonymisieren" statt „Endgültig löschen"), Aufzählung was anonymisiert wird vs. was bleibt
+
+### SVG-Refinements (siehe Teil 2 zuvor)
+Wildschwein → Reh-Silhouette mit 4 Beinen, Hals, Kopf, Geweih, Schwanz. Bogen-Silhouetten detaillierter: Recurve mit Wurfarm-Tips + Visier + Stabi, Compound mit echten Cams + Scope, Barebow ohne Anbau, Langbogen mit Wicklung. User-Feedback: „nicht schön, ersetzen wir irgendwann durch PNG" — TODO für später.
+
+## Session 2026-05-23 (Teil 2) — UX-Refinements aus User-Feedback
 
 ## Session 2026-05-23 (Teil 2) — UX-Refinements aus User-Feedback
 
