@@ -13,10 +13,11 @@ function require_auth(): array
         res_error('Unauthorized', 401);
     }
 
-    $stmt = db()->prepare('SELECT id, email, display_name, status, role, last_seen_at FROM users WHERE id = ?');
+    $stmt = db()->prepare('SELECT id, email, display_name, status, role, last_seen_at, deleted_at FROM users WHERE id = ?');
     $stmt->execute([(int)$claims['uid']]);
     $u = $stmt->fetch();
-    if (!$u || $u['status'] !== 'active') {
+    // Soft-deleted users können sich nicht mehr authentifizieren (deleted_at gesetzt)
+    if (!$u || $u['status'] !== 'active' || !empty($u['deleted_at'])) {
         res_error('Unauthorized', 401);
     }
 
@@ -51,10 +52,10 @@ function try_auth(): ?array
     $claims = jwt_from_auth_header();
     if (!$claims || empty($claims['uid'])) return null;
 
-    $stmt = db()->prepare('SELECT id, email, display_name, status, role FROM users WHERE id = ?');
+    $stmt = db()->prepare('SELECT id, email, display_name, status, role, deleted_at FROM users WHERE id = ?');
     $stmt->execute([(int)$claims['uid']]);
     $u = $stmt->fetch();
-    if (!$u || $u['status'] !== 'active') return null;
+    if (!$u || $u['status'] !== 'active' || !empty($u['deleted_at'])) return null;
     return [
         'id'           => (int)$u['id'],
         'email'        => $u['email'],

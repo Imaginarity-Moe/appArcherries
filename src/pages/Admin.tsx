@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   Shield, Search, ChevronRight, ChevronUp, ChevronDown, ChevronsLeft, ChevronsRight,
-  Filter, X, Info, Crown, User as UserIcon, UserCircle,
+  Filter, X, Info, Crown, User as UserIcon, UserCircle, Trash2,
 } from "lucide-react";
 import { PageSpinner } from "../components/Spinner";
 import Avatar from "../components/Avatar";
@@ -28,12 +28,13 @@ export default function Admin() {
   const [sortBy, setSortBy] = useState<SortKey>("created");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
 
   useEffect(() => {
-    listAdminUsers()
+    listAdminUsers(includeDeleted)
       .then((r) => setUsers(r.users))
       .catch((e) => setError(e instanceof Error ? e.message : "Konnte User-Liste nicht laden"));
-  }, []);
+  }, [includeDeleted]);
 
   if (me && me.role !== "admin" && me.role !== "superadmin") {
     return <Navigate to="/" replace />;
@@ -181,6 +182,15 @@ export default function Admin() {
               }`}>{s}</span>
             </FilterPill>
           ))}
+          <label className="ml-3 inline-flex items-center gap-1.5 text-sm text-secondary cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeDeleted}
+              onChange={(e) => setIncludeDeleted(e.target.checked)}
+              className="w-4 h-4 accent-cherry-500"
+            />
+            Auch gelöschte zeigen
+          </label>
         </div>
       </div>
 
@@ -202,15 +212,18 @@ export default function Admin() {
           <tbody>
             {pageItems.map((u) => {
               const isSelf = u.id === me?.id;
+              const isDeleted = !!u.deleted_at;
               return (
-                <tr key={u.id} className="border-b border-hairline last:border-0 hover:bg-elevated/50 transition">
+                <tr key={u.id} className={`border-b border-hairline last:border-0 hover:bg-elevated/50 transition ${isDeleted ? "opacity-60" : ""}`}>
                   <td className="py-3 px-4">
                     <Link to={`/admin/users/${u.id}`} className="flex items-center gap-3 min-w-0 hover:text-cherry-500 transition">
-                      <Avatar user={u} size="md" showPresence />
+                      <Avatar user={u} size="md" showPresence={!isDeleted} />
                       <div className="min-w-0">
-                        <div className="font-medium truncate">
-                          {u.display_name ?? "—"}
-                          {isSelf && <span className="text-sm text-muted ml-1.5">(du)</span>}
+                        <div className="font-medium truncate flex items-center gap-1.5">
+                          {isDeleted && <Trash2 size={13} strokeWidth={1.75} className="text-muted shrink-0" />}
+                          <span className={isDeleted ? "italic" : ""}>{u.display_name ?? "—"}</span>
+                          {isSelf && <span className="text-sm text-muted ml-1">(du)</span>}
+                          {isDeleted && <span className="text-xs uppercase tracking-wider bg-surface text-muted border border-hairline rounded-full px-1.5 py-0.5">gelöscht</span>}
                         </div>
                         <div className="text-sm text-muted truncate">{u.email}</div>
                       </div>

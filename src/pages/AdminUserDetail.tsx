@@ -11,8 +11,8 @@ import { useConfirm } from "../components/ConfirmDialog";
 import RoleBadge from "../components/RoleBadge";
 import { lastSeenLabel, isOnline } from "../lib/presence";
 import {
-  getAdminUser, updateAdminUser, deleteAdminUser,
-  type AdminUserDetailResponse, type UserStatus,
+  getAdminUser, updateAdminUser, deleteAdminUser, listAdminUserTrainings,
+  type AdminUserDetailResponse, type UserStatus, type AdminTrainingItem,
 } from "../api/admin";
 import { DISCIPLINE_LABELS, BOW_LABELS, type BowType, type Discipline } from "../api/trainings";
 
@@ -30,6 +30,35 @@ export default function AdminUserDetail() {
   const [busy, setBusy] = useState(false);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // Pagination: weitere Trainings über die initialen 10 hinaus.
+  const [extraTrainings, setExtraTrainings] = useState<AdminTrainingItem[]>([]);
+  const [trainingsOffset, setTrainingsOffset] = useState(10);
+  const [trainingsHasMore, setTrainingsHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Wenn das Detail mehr als 10 Trainings hat: weitere lazy via Show-More.
+  useEffect(() => {
+    if (data && data.user.count_trainings > 10) {
+      setTrainingsHasMore(true);
+      setTrainingsOffset(10);
+      setExtraTrainings([]);
+    }
+  }, [data]);
+
+  async function loadMoreTrainings() {
+    if (loadingMore || !data) return;
+    setLoadingMore(true);
+    try {
+      const r = await listAdminUserTrainings(data.user.id, trainingsOffset, 20);
+      setExtraTrainings((prev) => [...prev, ...r.trainings]);
+      setTrainingsOffset((prev) => prev + r.trainings.length);
+      setTrainingsHasMore(r.has_more);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Konnte weitere Trainings nicht laden");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     if (!userId) return;
@@ -58,6 +87,7 @@ export default function AdminUserDetail() {
   function canDelete(): boolean {
     if (!canModify()) return false;
     if (u.role === "superadmin") return false; // Superadmin nicht löschbar via UI
+    if (u.deleted_at) return false; // bereits gelöscht
     return true;
   }
 
@@ -129,23 +159,37 @@ export default function AdminUserDetail() {
       )}
 
       {/* Profile-Card */}
-      <section className="card">
+      <section className={`card ${u.deleted_at ? "opacity-80" : ""}`}>
+        {u.deleted_at && (
+          <div className="card-sunken border-cherry-500/30 mb-3 flex items-start gap-2 text-sm">
+            <Trash2 size={14} strokeWidth={1.75} className="text-cherry-600 dark:text-cherry-200 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Dieser Account ist gelöscht.</p>
+              <p className="text-secondary text-xs">
+                Anonymisiert am {formatDate(u.deleted_at)}. Persönliche Daten (Name, E-Mail, Avatar) wurden entfernt;
+                öffentliche Inhalte (Parcours, Reviews, Trainings) bleiben erhalten.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="flex items-start gap-4">
-          <Avatar user={u} size="xl" showPresence />
+          <Avatar user={u} size="xl" showPresence={!u.deleted_at} />
           <div className="flex-1 min-w-0">
-            <h2 className="font-display text-xl font-semibold">
+            <h2 className={`font-display text-xl font-semibold ${u.deleted_at ? "italic text-secondary" : ""}`}>
               {u.display_name ?? "—"}
               {isSelf && <span className="text-sm text-muted ml-2">(du)</span>}
             </h2>
             <p className="text-sm text-secondary">{u.email}</p>
             <div className="flex flex-wrap items-center gap-2 mt-2">
               <RoleBadge role={u.role} />
-              <Badge variant={u.status === "active" ? "good" : "warn"}>{u.status}</Badge>
-              {isOnline(u.last_seen_at) ? (
+              <Badge variant={u.deleted_at ? "warn" : (u.status === "active" ? "good" : "warn")}>
+                {u.deleted_at ? "gelöscht" : u.status}
+              </Badge>
+              {!u.deleted_at && (isOnline(u.last_seen_at) ? (
                 <Badge variant="good">● online</Badge>
               ) : (
                 <span className="text-xs text-muted">· zuletzt aktiv {lastSeenLabel(u.last_seen_at)}</span>
-              )}
+              ))}
               <span className="text-xs text-muted">
                 · seit {formatDate(u.created_at)}
               </span>
@@ -216,25 +260,41 @@ export default function AdminUserDetail() {
         </div>
       </section>
 
-      {/* Hard-Delete */}
+      {/* Soft-Delete (Anonymisierung) */}
       {canDelete() && (
         <section className="card border-cherry-500/30">
           <h2 className="eyebrow text-cherry-700 dark:text-cherry-200 mb-2 flex items-center gap-1.5">
-            <AlertTriangle size={14} strokeWidth={1.75} /> Hard-Delete
+            <AlertTriangle size={14} strokeWidth={1.75} /> Account löschen (Soft-Delete)
           </h2>
           {!deleteOpen ? (
-            <button
-              type="button"
-              onClick={() => setDeleteOpen(true)}
-              className="btn-danger text-sm inline-flex items-center gap-1.5"
-            >
-              <Trash2 size={14} strokeWidth={1.75} /> User endgültig löschen
-            </button>
+            <>
+              <p className="text-sm text-secondary mb-3">
+                Anonymisiert Name + E-Mail + Avatar, sperrt den Login. <b>Inhalte bleiben erhalten</b>
+                (öffentliche Parcours, Reviews, geteilte Trainings, Highscores) — andere User sehen
+                den Account als <i>„Gelöschter User"</i>.
+              </p>
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(true)}
+                className="btn-danger text-sm inline-flex items-center gap-1.5"
+              >
+                <Trash2 size={14} strokeWidth={1.75} /> Account löschen
+              </button>
+            </>
           ) : (
             <div className="space-y-2">
-              <p className="text-xs text-secondary">
-                Trainings, Parcours, Bögen, Pfeile, Reviews und Freundschaften werden kaskadiert
-                mit gelöscht. <b>Nicht umkehrbar</b>. Zur Bestätigung Email-Adresse tippen:
+              <p className="text-sm text-secondary">
+                Der Account wird <b>anonymisiert</b>:
+              </p>
+              <ul className="text-sm text-secondary list-disc pl-5 space-y-0.5">
+                <li>Name → „Gelöschter User #{u.id}"</li>
+                <li>E-Mail → unbrauchbar gemacht</li>
+                <li>Avatar-Datei wird vom Server entfernt</li>
+                <li>Login wird gesperrt (password_hash = NULL)</li>
+              </ul>
+              <p className="text-sm text-secondary">
+                Inhalte (Parcours, Reviews, Trainings, Highscores) <b>bleiben</b>. Zur Bestätigung
+                E-Mail-Adresse tippen:
               </p>
               <input
                 type="email"
@@ -259,7 +319,7 @@ export default function AdminUserDetail() {
                   disabled={busy || deleteConfirmEmail !== u.email}
                 >
                   {busy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} strokeWidth={1.75} />}
-                  Endgültig löschen
+                  Anonymisieren
                 </button>
               </div>
             </div>
@@ -268,27 +328,45 @@ export default function AdminUserDetail() {
       )}
 
       {/* Listen */}
-      <DetailSection title="Letzte Trainings" count={data.trainings.length} defaultOpen={data.trainings.length > 0}>
+      <DetailSection title="Letzte Trainings" count={u.count_trainings} defaultOpen={data.trainings.length > 0}>
         {data.trainings.length === 0 ? (
-          <p className="text-xs text-muted">Noch keine Trainings.</p>
+          <p className="text-sm text-muted">Noch keine Trainings.</p>
         ) : (
-          <ul className="space-y-1">
-            {data.trainings.map((t) => (
-              <li key={t.id} className="flex items-center justify-between text-sm gap-2">
-                <Link to={`/trainings/${t.id}`} className="hover:text-cherry-500 transition truncate min-w-0">
-                  <span className="font-medium">{DISCIPLINE_LABELS[t.discipline as Discipline] ?? t.discipline}</span>
-                  {" · "}
-                  <span className="text-secondary">{BOW_LABELS[t.bow_type as BowType] ?? t.bow_type}</span>
-                  {t.parcours_name && <span className="text-secondary"> · {t.parcours_name}</span>}
-                </Link>
-                <div className="flex items-center gap-2 shrink-0 text-xs">
-                  {t.published_to_highscore && <Trophy size={12} className="text-amber-500" />}
-                  {t.summary_score != null && <span className="font-mono tabular-nums">{t.summary_score} Pkt</span>}
-                  <span className="text-muted">{formatDate(t.started_at)}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-1">
+              {[...data.trainings, ...extraTrainings].map((t) => (
+                <li key={t.id} className="flex items-center justify-between text-sm gap-2">
+                  <Link to={`/trainings/${t.id}`} className="hover:text-cherry-500 transition truncate min-w-0">
+                    <span className="font-medium">{DISCIPLINE_LABELS[t.discipline as Discipline] ?? t.discipline}</span>
+                    {" · "}
+                    <span className="text-secondary">{BOW_LABELS[t.bow_type as BowType] ?? t.bow_type}</span>
+                    {t.parcours_name && <span className="text-secondary"> · {t.parcours_name}</span>}
+                  </Link>
+                  <div className="flex items-center gap-2 shrink-0 text-sm">
+                    {t.published_to_highscore && <Trophy size={14} className="text-amber-500" />}
+                    {t.summary_score != null && <span className="font-mono tabular-nums">{t.summary_score} Pkt</span>}
+                    <span className="text-muted">{formatDate(t.started_at)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {trainingsHasMore && (
+              <button
+                type="button"
+                onClick={loadMoreTrainings}
+                disabled={loadingMore}
+                className="btn-ghost w-full mt-3 text-sm inline-flex items-center justify-center gap-2"
+              >
+                {loadingMore ? <Loader2 size={14} className="animate-spin" /> : <ChevronDown size={14} strokeWidth={1.75} />}
+                {loadingMore ? "Lade…" : `Weitere ${Math.min(20, u.count_trainings - (10 + extraTrainings.length))} Trainings laden`}
+              </button>
+            )}
+            {!trainingsHasMore && extraTrainings.length > 0 && (
+              <p className="text-xs text-muted text-center mt-2 italic">
+                Alle {u.count_trainings} Trainings geladen.
+              </p>
+            )}
+          </>
         )}
       </DetailSection>
 

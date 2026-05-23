@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Map as MapIcon, Play, Trash2, Globe, Pencil,
   Clock, Coins, Phone, Mail, Calendar, Ruler, Star, List as ListIcon,
+  CloudOff, X as XIcon,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import { Icon } from "leaflet";
@@ -42,6 +43,17 @@ export default function ParcoursDetail() {
   const [loading, setLoading] = useState(true);
   const confirm = useConfirm();
   const isOwner = !!(p && user && p.user_id === user.id);
+  // Banner anzeigen wenn ParcoursEdit/NewParcours das Foto in die Offline-Queue gelegt hat
+  const [photoPendingBanner, setPhotoPendingBanner] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    const pendingId = sessionStorage.getItem("parcours_photo_pending");
+    if (pendingId === String(id)) {
+      setPhotoPendingBanner(true);
+      sessionStorage.removeItem("parcours_photo_pending");
+    }
+  }, [id]);
 
   const reload = () => {
     getParcours(Number(id))
@@ -110,6 +122,26 @@ export default function ParcoursDetail() {
       <Link to="/parcours" className="inline-flex items-center gap-1 text-sm text-secondary hover:text-primary">
         <ArrowLeft size={16} strokeWidth={1.75} /> {t("common:actions.back")}
       </Link>
+
+      {photoPendingBanner && (
+        <div className="card border-cherry-500/30 bg-cherry-50/50 dark:bg-cherry-900/20 flex items-start gap-3">
+          <CloudOff size={18} strokeWidth={1.75} className="text-cherry-600 dark:text-cherry-200 shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold text-primary">Foto wird hochgeladen, sobald online</p>
+            <p className="text-secondary mt-0.5">
+              Das Parcours-Foto liegt in der Sync-Queue. Sobald du wieder Netz hast, läuft der Upload automatisch im Hintergrund.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPhotoPendingBanner(false)}
+            className="btn-icon shrink-0"
+            aria-label="Banner schließen"
+          >
+            <XIcon size={16} strokeWidth={1.75} />
+          </button>
+        </div>
+      )}
 
       {p.image_url && (
         <img src={p.image_url} alt={p.name} className="w-full rounded-2xl object-cover max-h-80" />

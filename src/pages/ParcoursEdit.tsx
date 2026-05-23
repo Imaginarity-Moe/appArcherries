@@ -71,7 +71,11 @@ export default function ParcoursEdit() {
       await updateParcours(parcours.id, formStateToBody(state));
       if (newFile) {
         try {
-          await uploadParcoursImage(parcours.id, newFile);
+          const r = await uploadParcoursImage(parcours.id, newFile);
+          if (r.pending) {
+            // Banner im Detail-View anzeigen: Foto wartet auf Sync
+            sessionStorage.setItem("parcours_photo_pending", String(parcours.id));
+          }
         } catch { /* nicht kritisch */ }
       }
       nav(`/parcours/${parcours.id}`);

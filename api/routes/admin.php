@@ -35,6 +35,10 @@ function handle_admin(string $method, string $path): void
             if ($method === 'PATCH')  { admin_user_update($me, $uid); return; }
             if ($method === 'DELETE') { admin_user_delete($me, $uid); return; }
         }
+        if (preg_match('#^/admin/users/(\d+)/trainings$#', $path, $m) && $method === 'GET') {
+            admin_user_trainings((int)$m[1]);
+            return;
+        }
     } catch (Throwable $e) {
         error_log('[admin] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
         res_error('Admin-Fehler: ' . $e->getMessage(), 500);
@@ -47,14 +51,18 @@ function handle_admin(string $method, string $path): void
 
 function admin_users_list(): void
 {
+    // ?include_deleted=1 zeigt auch soft-deleted User; Standard ist NUR aktive.
+    $include_deleted = !empty($_GET['include_deleted']);
+    $where = $include_deleted ? '' : 'WHERE u.deleted_at IS NULL';
     $sql = "
         SELECT
             u.id, u.email, u.display_name, u.status, u.role,
-            u.avatar_path, u.created_at, u.last_seen_at,
+            u.avatar_path, u.created_at, u.last_seen_at, u.deleted_at,
             (SELECT COUNT(*) FROM trainings WHERE user_id = u.id) AS count_trainings,
             (SELECT COUNT(*) FROM parcours  WHERE user_id = u.id) AS count_parcours,
             (SELECT COUNT(*) FROM bows      WHERE user_id = u.id) AS count_bows
         FROM users u
+        $where
         ORDER BY u.created_at DESC
     ";
     $rows = db()->query($sql)->fetchAll();
@@ -73,6 +81,7 @@ function admin_user_summary(array $u): array
         'avatar_url'      => $u['avatar_path'] ?: null,
         'created_at'      => $u['created_at'],
         'last_seen_at'    => $u['last_seen_at'] ?? null,
+        'deleted_at'      => $u['deleted_at'] ?? null,
         'count_trainings' => (int)($u['count_trainings'] ?? 0),
         'count_parcours'  => (int)($u['count_parcours']  ?? 0),
         'count_bows'      => (int)($u['count_bows']      ?? 0),
@@ -85,7 +94,7 @@ function admin_user_detail(int $target_uid): void
 {
     $stmt = db()->prepare("
         SELECT u.id, u.email, u.display_name, u.status, u.role, u.avatar_path, u.created_at,
-               u.onboarding_completed_at, u.last_seen_at,
+               u.onboarding_completed_at, u.last_seen_at, u.deleted_at,
                (SELECT COUNT(*) FROM trainings WHERE user_id = u.id) AS count_trainings,
                (SELECT COUNT(*) FROM parcours  WHERE user_id = u.id) AS count_parcours,
                (SELECT COUNT(*) FROM bows      WHERE user_id = u.id) AS count_bows,
@@ -240,6 +249,7 @@ function admin_user_detail(int $target_uid): void
             'created_at'             => $u['created_at'],
             'onboarding_completed_at'=> $u['onboarding_completed_at'],
             'last_seen_at'           => $u['last_seen_at'] ?? null,
+            'deleted_at'             => $u['deleted_at'] ?? null,
             'count_trainings'        => (int)$u['count_trainings'],
             'count_parcours'         => (int)$u['count_parcours'],
             'count_bows'             => (int)$u['count_bows'],
@@ -255,6 +265,53 @@ function admin_user_detail(int $target_uid): void
         'equipment' => $equipment,
         'friends'   => $friends,
         'reviews'   => $reviews,
+    ]);
+}
+
+// ─── Paginierte Trainings ─────────────────────────────────────────────────
+//
+// Detail-Endpoint liefert die ersten 10 als Vorschau (siehe admin_user_detail).
+// Power-User mit 200+ Trainings können hier weitere Seiten nachladen.
+//
+// Query: ?offset=10&limit=20  (offset 0 = neueste, descending nach started_at)
+function admin_user_trainings(int $target_uid): void
+{
+    $offset = max(0, (int)($_GET['offset'] ?? 0));
+    $limit  = min(100, max(1, (int)($_GET['limit'] ?? 20)));
+
+    $total = (int)db()->prepare('SELECT COUNT(*) FROM trainings WHERE user_id = ?')
+        ->execute([$target_uid]) ?: 0;
+    $cstmt = db()->prepare('SELECT COUNT(*) FROM trainings WHERE user_id = ?');
+    $cstmt->execute([$target_uid]);
+    $total = (int)$cstmt->fetchColumn();
+
+    $stmt = db()->prepare("
+        SELECT t.id, t.discipline, t.bow_type, t.started_at, t.ended_at, t.summary_score,
+               t.published_to_highscore, p.name AS parcours_name
+        FROM trainings t
+        LEFT JOIN parcours p ON p.id = t.parcours_id
+        WHERE t.user_id = ?
+        ORDER BY t.started_at DESC
+        LIMIT $limit OFFSET $offset
+    ");
+    $stmt->execute([$target_uid]);
+    $rows = array_map(fn($r) => [
+        'id'                     => (int)$r['id'],
+        'discipline'             => $r['discipline'],
+        'bow_type'               => $r['bow_type'],
+        'started_at'             => $r['started_at'],
+        'ended_at'               => $r['ended_at'],
+        'summary_score'          => $r['summary_score'] !== null ? (int)$r['summary_score'] : null,
+        'published_to_highscore' => (bool)$r['published_to_highscore'],
+        'parcours_name'          => $r['parcours_name'],
+    ], $stmt->fetchAll());
+
+    res_json([
+        'trainings' => $rows,
+        'offset'    => $offset,
+        'limit'     => $limit,
+        'total'     => $total,
+        'has_more'  => $offset + count($rows) < $total,
     ]);
 }
 
@@ -356,10 +413,11 @@ function admin_user_delete(array $me, int $target_uid): void
     $in = req_json();
     $confirm_email = trim((string)($in['confirm_email'] ?? ''));
 
-    $stmt = db()->prepare('SELECT id, email, role, avatar_path FROM users WHERE id = ?');
+    $stmt = db()->prepare('SELECT id, email, role, avatar_path, deleted_at FROM users WHERE id = ?');
     $stmt->execute([$target_uid]);
     $target = $stmt->fetch();
     if (!$target) res_error('User nicht gefunden', 404);
+    if (!empty($target['deleted_at'])) res_error('User ist bereits gelöscht', 409);
 
     if (!admin_can_modify($me, $target)) {
         res_error('Du darfst diesen User nicht löschen', 403);
@@ -375,14 +433,34 @@ function admin_user_delete(array $me, int $target_uid): void
         admin_ensure_superadmin_remains((int)$target['id']);
     }
 
-    // Avatar-Datei vom Server räumen falls vorhanden
+    // Avatar-Datei vom Server räumen falls vorhanden — auch bei Soft-Delete
+    // tragen wir den Speicher ab.
     if (!empty($target['avatar_path'])) {
         delete_upload_file((string)$target['avatar_path']);
     }
 
-    // Rest räumen die ON-DELETE-CASCADE-Constraints (trainings → targets → shots,
-    // parcours → lanes/reviews, bows, arrows, friendships, equipment_items, etc.)
-    db()->prepare('DELETE FROM users WHERE id = ?')->execute([$target_uid]);
+    // ─── Soft-Delete: User anonymisieren, Inhalte erhalten ───────────────────
+    // - display_name + email werden unbrauchbar (DSGVO: PII raus)
+    // - email braucht weiterhin UNIQUE-Schlüssel-Stabilität, also zeit-suffix
+    // - password_hash = NULL → kein Login mehr möglich (zusätzlich zu deleted_at-Check)
+    // - avatar_path = NULL (Datei oben schon gelöscht)
+    // - deleted_at = NOW() (Marker für alle Filter-Queries)
+    //
+    // Reviews, Friendships, geteilte Trainings, öffentliche Parcours BLEIBEN —
+    // andere User sehen den Eintrag als "Gelöschter User" gerendert.
+    $deleted_email = sprintf('deleted-%d-%d@deleted.local', $target_uid, time());
+    $deleted_name  = sprintf('Gelöschter User #%d', $target_uid);
 
-    res_json(['ok' => true, 'deleted_user_id' => $target_uid]);
+    db()->prepare(
+        'UPDATE users SET
+            email = ?,
+            display_name = ?,
+            password_hash = NULL,
+            avatar_path = NULL,
+            status = "pending",
+            deleted_at = NOW()
+         WHERE id = ?'
+    )->execute([$deleted_email, $deleted_name, $target_uid]);
+
+    res_json(['ok' => true, 'deleted_user_id' => $target_uid, 'mode' => 'soft']);
 }

@@ -79,13 +79,15 @@ function highscore_query(int $parcours_id, string $discipline, ?string $bow_type
     if ($allowed_users !== null && count($allowed_users) === 0) return [];
 
     // Schritt 1: alle veröffentlichten Trainings im Filter laden
+    // (Soft-deleted Users werden ausgefiltert — ihre Highscores erscheinen nicht mehr.)
     $sql = 'SELECT t.id, t.user_id, t.bow_type, t.summary_score, t.started_at, t.ended_at,
                    u.display_name, u.avatar_path
             FROM trainings t
             JOIN users u ON u.id = t.user_id
             WHERE t.parcours_id = ?
               AND t.discipline = ?
-              AND t.published_to_highscore = 1';
+              AND t.published_to_highscore = 1
+              AND u.deleted_at IS NULL';
     $params = [$parcours_id, $discipline];
     if ($bow_type !== null && $bow_type !== '') {
         $sql .= ' AND t.bow_type = ?';

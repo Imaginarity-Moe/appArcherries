@@ -47,7 +47,8 @@ function friends_list(int $me): void
                u.avatar_path AS other_avatar, u.last_seen_at AS other_last_seen
         FROM friendships f
         JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.recipient_id ELSE f.requester_id END
-        WHERE f.requester_id = ? OR f.recipient_id = ?
+        WHERE (f.requester_id = ? OR f.recipient_id = ?)
+          AND u.deleted_at IS NULL
         ORDER BY f.requested_at DESC';
     $stmt = db()->prepare($sql);
     $stmt->execute([$me, $me, $me]);
@@ -100,7 +101,7 @@ function friends_request(int $me): void
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) res_error('Ungültige E-Mail');
 
     // User suchen
-    $s = db()->prepare('SELECT id, display_name, email FROM users WHERE email = ? AND status = "active"');
+    $s = db()->prepare('SELECT id, display_name, email FROM users WHERE email = ? AND status = "active" AND deleted_at IS NULL');
     $s->execute([$email]);
     $target = $s->fetch();
     if (!$target) res_error('Kein User mit dieser E-Mail gefunden', 404);

@@ -84,7 +84,10 @@ export default function NewParcours() {
       const r = await createParcours(formStateToBody(state));
       if (file) {
         try {
-          await uploadParcoursImage(r.parcours.id, file);
+          const up = await uploadParcoursImage(r.parcours.id, file);
+          if (up.pending) {
+            sessionStorage.setItem("parcours_photo_pending", String(r.parcours.id));
+          }
         } catch { /* nicht kritisch */ }
       }
       nav(`/parcours/${r.parcours.id}`);

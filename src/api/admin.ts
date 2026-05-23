@@ -12,6 +12,7 @@ export type AdminUser = {
   avatar_url: string | null;
   created_at: string;
   last_seen_at: string | null;
+  deleted_at: string | null;
   count_trainings: number;
   count_parcours: number;
   count_bows: number;
@@ -27,6 +28,7 @@ export type AdminUserDetail = {
   created_at: string;
   onboarding_completed_at: string | null;
   last_seen_at: string | null;
+  deleted_at: string | null;
   count_trainings: number;
   count_parcours: number;
   count_bows: number;
@@ -117,8 +119,8 @@ export type AdminUserDetailResponse = {
   reviews: AdminReviewItem[];
 };
 
-export async function listAdminUsers(): Promise<{ users: AdminUser[] }> {
-  return api(`/admin/users`);
+export async function listAdminUsers(includeDeleted = false): Promise<{ users: AdminUser[] }> {
+  return api(`/admin/users${includeDeleted ? "?include_deleted=1" : ""}`);
 }
 
 export async function getAdminUser(id: number): Promise<AdminUserDetailResponse> {
@@ -137,4 +139,20 @@ export async function deleteAdminUser(id: number, confirmEmail: string): Promise
     method: "DELETE",
     body: JSON.stringify({ confirm_email: confirmEmail }),
   });
+}
+
+export type AdminTrainingsPage = {
+  trainings: AdminTrainingItem[];
+  offset: number;
+  limit: number;
+  total: number;
+  has_more: boolean;
+};
+
+export async function listAdminUserTrainings(
+  id: number,
+  offset = 10,
+  limit = 20
+): Promise<AdminTrainingsPage> {
+  return api(`/admin/users/${id}/trainings?offset=${offset}&limit=${limit}`);
 }
