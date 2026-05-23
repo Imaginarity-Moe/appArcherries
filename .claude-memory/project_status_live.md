@@ -4,7 +4,69 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-21 (Nachtschicht — Help-Rewrite, Onboarding-Wizard, UI-Fixes)
+**Letzte Aktualisierung:** 2026-05-23 (Admin-Polish, superadmin-Rolle, Online-Status, Help-Rewrite, Onboarding)
+
+## Session 2026-05-23 — Admin-Polish + Online-Status
+
+### Bug-Fix: `/admin/users/:id` warf 500
+Friendship-Query nutzte `:uid` dreimal. PDO mit `ATTR_EMULATE_PREPARES=false` verbietet das (native MySQL Prepared Statements). Fix: positional `?` mit dreifachem Übergeben. **Wichtige Stolperfalle für die Liste**.
+
+Bonus: `handle_admin()` wickelt jetzt alle admin-Endpoints in try-catch und gibt die echte Fehlermeldung an Admins zurück (nicht generisches "Server error"). Erleichtert Bug-Diagnose deutlich.
+
+### NetworkStatus-Popover
+War absolute `right-0`-positioniert → in Desktop-Sidebar links abgeschnitten. Neue `align="left|right"`-Prop, Sidebar nutzt `left`.
+
+### Admin-UI komplett ausgebaut
+- `RoleBadge` (`src/components/RoleBadge.tsx`): farbcodiert pro Rolle. Superadmin = Gold-Krone, Admin = Cherry-Schild, User = Neutral, Guest = muted-italic dashed.
+- Filter-Bar: Search + Rolle-Pillen + Status-Pillen (Filter-Pillen sind opacity-gated klickbar).
+- Sortierbare Tabelle: `ThSort`-Component mit auf/ab-Indikatoren in Cherry. Spalten: name/role/status/trainings/parcours/bows/created. ROLE_ORDER für stabile Rollen-Sortierung.
+- Pagination: 25 pro Seite, First/Prev/Next/Last + Range-Anzeige ("1–25 von 47").
+- `RoleInfoBox` collapsible: erklärt 4 Rollen + Schutzregeln + "Deine Rolle".
+
+### Superadmin-Rolle (Migration 0052)
+ENUM('superadmin','admin','user','guest'). markus@mossig.de auto auf superadmin. Schutzregeln:
+- Superadmin > Admin > User/Guest
+- Eigener Account nie änderbar (Lock-Out-Schutz)
+- Promotion zu Superadmin nur durch Superadmin
+- Mindestens ein aktiver Superadmin muss bleiben — `admin_ensure_superadmin_remains()` zentrale Prüfung
+- Hard-Delete eines Superadmin hart gesperrt
+- Admin kann keine Admins/Superadmins anfassen — `admin_can_modify()` zentraler Helper
+
+### User-Detail-Page `/admin/users/:id`
+Profile-Card mit Avatar + Online-Badge + Rolle-Badge + Status-Pill. 7 Count-Tiles. Aktionen (Role/Status). Hard-Delete-Bereich mit Email-confirm-Eingabe als Schutz. 7 Akkordeon-Listen: Trainings (Top 10), Parcours, Bögen, Pfeil-Sets, Equipment, Freunde (verlinkt), Reviews.
+
+### Online-Status-Feature (Migration 0053 — users.last_seen_at)
+Auth.php `require_auth()` schreibt `last_seen_at` throttled (max 1×/Min). Index auf `last_seen_at` für ggf. spätere "wer ist gerade online?"-Queries.
+
+Frontend:
+- `src/lib/presence.ts`: `isOnline(lastSeen)` mit 5-Min-Schwelle + `lastSeenLabel(lastSeen)` für de-DE-Anzeige.
+- Avatar-Component bekommt `showPresence?`-Prop → grüner Online-Dot unten-rechts mit `border-canvas` Hairline. Proportional zur Avatar-Größe.
+- Backend serialisiert `last_seen_at` in: me, admin_user_summary, admin_user_detail (user + friends), friends_list (FriendUser), trainings detail (Participant).
+- Frontend zeigt Online-Dot in: Admin-Liste, AdminUserDetail (Header + Friends), Friends-Page (alle 4 Sektionen), AddFriendModal, ParticipantsBar (nur fremde Spieler).
+
+### Help-Section-Erweiterung (von 11 auf 17)
+6 neue Sektionen mit i18n-Keys:
+- `stats` — Heatmap-Lesen, Pfeil-Konsistenz, Score-Verlauf, Highscore
+- `offline_sync` — 3-Schichten-Modell, Status-Indikator, Sync-Badge, Konflikte, Installation
+- `routines` — Hallen-Routinen, Distanzschätzung üben, Wettkampf-Vorbereitung
+- `power_user` — Deep-Links, BullseyePad-Tricks, Foto-Marker, Multi-Player-Tricks, Polling-Pause
+- `faq` — 13 häufige Fragen mit Aufklapp-Antworten
+- `privacy` — Wo liegen Daten, wer sieht was (Tabelle), Admin-Sicht, Veröffentlichungs-Kontrollen, DSGVO
+
+### Onboarding-Kurz/Lang-Modus
+Welcome.tsx liest `?mode=short|long`. SHORT = 5 Setup-Steps. LONG = 11 Steps mit 7 didaktischen Lehr-Steps vorgeschaltet: App-Konzept, 3 Disziplin-Familien, Wertungs-Grundlagen, Pflöcke, Bogenklassen, Multi-Player, Statistik+Datenschutz.
+
+Profile bietet 2 Buttons ("Kurze Tour" / "Ausführliche Einführung"), nutzt POST /me/onboarding/reset, navigiert mit ?mode-Param.
+
+Long-Steps haben "Lehrstoff überspringen → direkt zum Setup"-Link für ungeduldige User.
+
+### Eigene TODOs für später (User-Feedback abwarten)
+- SVG-Illustrationen sind noch sehr abstrakt — User markierte für später als Refinement.
+- AdminUserDetail Trainings-Liste auf 10 limitiert. Kein "Show more" — bei Power-Usern fehlt evtl. Übersicht.
+- Hard-Delete kaskadiert auch Reviews/Friendships — andere User verlieren Inhalt. Soft-Delete (Anonymisierung) wäre alternativ.
+- Last-Seen wird offline nicht aktualisiert → User in Funkloch erscheint als "vor 2 Std offline" obwohl er gerade was tut. Erst beim nächsten Sync wird's korrekt.
+
+
 
 ## Session 2026-05-21 — Resümee (10 Commits, alle live + gepusht)
 
