@@ -4,7 +4,49 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-23 (Admin-Polish, superadmin-Rolle, Online-Status, Help-Rewrite, Onboarding)
+**Letzte Aktualisierung:** 2026-05-23 (UX-Refinements: Schriftgrößen, Onboarding, Hilfe-Themengruppen, Regelwerk)
+
+## Session 2026-05-23 (Teil 2) — UX-Refinements aus User-Feedback
+
+### Admin-UI: Lesbarkeit
+Schrift in Tabelle + Filter war zu klein. Body `text-sm` → `text-base`, Header `text-xs` → `text-sm` (kein uppercase + Tracking mehr für besseres Lesen). Padding `py-2/px-3` → `py-3/px-4`. Avatar in Tabelle von `sm` → `md`. RoleBadge `sm` von 10px auf 12px, `md` von 12px auf 14px (+ Icons proportional).
+
+### Onboarding
+- **Default = LONG-Modus**: `?mode=short` ist nur explicit-Override (vorher umgekehrt). Damit bekommt jeder neue Registrierte die ausführliche Tour.
+- **X-Abbrechen** oben rechts: markiert Onboarding als abgeschlossen + redirect zur App. Sonst landet User im Loop.
+- **Prefill aus DB**: Welcome lädt `listBows()` beim Mount; default-Bow füllt `bowType` + `bowName` vor. Beim Save: `updateBow(existingDefaultBowId, ...)` statt `createBow()` — vermeidet Duplikate bei Re-Run.
+- **Multi-Select Interesse**: `Set<InterestKey>` statt single. „Alles ein bisschen" gestrichen, dafür Checkbox-Buttons.
+- **Scroll-to-Top**: `useEffect([stepIdx])` mit `window.scrollTo` + `topRef.scrollIntoView`.
+- **Profile-Buttons**: Ausführlich = `btn-accent` (default), Kurz = `btn-secondary`. Beschreibungen size up zu `text-sm`.
+
+### Hilfeseite-Struktur
+17 Sections sind in **5 Top-Level-Themengruppen** gegliedert:
+- Einstieg & App (getting_started, install, offline_sync)
+- Sport & Regelwerk (disciplines, scoring, pegs, bows)
+- Community & Geteilte Runden (shared, community)
+- Statistik & Fortgeschritten (stats, routines, power_user, equipment)
+- Datenschutz, FAQ & Glossar (privacy, faq, glossary, app)
+
+`Help.tsx` rendert pro Gruppe einen Header (Icon + Label + Description) + die zugehörigen Section-Akkordeons. Suchfilter funktioniert weiterhin sectionsweit (Gruppen ohne matches werden ausgeblendet).
+
+### Verbände-Glossar
+`HelpDisciplines` und `HelpScoring` haben jetzt am Top eine **card-sunken Verbände-Box**, die WA / DSB / IFAA / DFBV / NFAA / FITA auflöst. Der Glossar erscheint vor allen Disziplin-Beschreibungen — wer die Abkürzungen nicht kennt, sieht sie sofort.
+
+### Cross-Reference Disziplinen → Wertungssysteme
+Neuer `ScoringReference`-Banner als Link, **eine Ebene HÖHER** vor jedem Disziplin-Block (3D, Field, Scheibenschießen). Mit Pfeil-Icon und Hover-Animation. Anker: `/help/scoring#3d-wa-dsb`, `#feldbogen-wa-dsb`, `#scheibenschiessen`. Target-Sections haben `scroll-mt-24` für korrektes Scroll-Stop.
+
+### Pflock-Standpunkt-Regeln nach offiziellem Regelwerk
+War vorher: „Mit beiden Füßen am Pflock stehen. Eine Fußspitze sollte den Pflock direkt berühren." (slangig, technisch falsch). Jetzt drei verbandsspezifische card-sunken Blöcke:
+- **WA/DSB (Book 4)**: Beide Füße auf gedachter Linie durch den Pflock
+- **IFAA/DFBV**: Mindestens ein Fuß muss Pflock berühren oder direkt daneben aufliegen
+- **Verstöße**: Schuss-Annullierung (= 0), Wiederholungs-DQ
+
+Plus erweiterte Etikette (richtigen Pflock wählen, kein Distanz-Messen, Pfeile-erst-Ziehen, Abstand zur Schießlinie).
+
+### Tests
+`tests/e2e/responsive-audit.mjs` macht Screenshots der 10 wichtigsten Pages (Help-Sections + Welcome + Profile) auf Mobile + Desktop, Light + Dark. UIUX-Sweep zeigt 0 echte Findings (nur 2 false-positive für Build-Tag-Selector).
+
+## Session 2026-05-23 — Admin-Polish + Online-Status
 
 ## Session 2026-05-23 — Admin-Polish + Online-Status
 
