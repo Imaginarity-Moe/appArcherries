@@ -76,7 +76,7 @@ export default function Layout() {
             <Wordmark className="h-6" />
           </Link>
           <div className="flex items-center gap-0.5">
-            <NetworkStatusIcon />
+            <NetworkStatusIcon align="left" />
             <NotificationBell align="left" />
           </div>
         </div>

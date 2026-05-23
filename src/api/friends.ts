@@ -7,6 +7,7 @@ export type FriendUser = {
   email: string;
   display_name: string | null;
   avatar_url: string | null;
+  last_seen_at: string | null;
 };
 
 export type Friendship = {

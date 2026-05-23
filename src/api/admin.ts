@@ -11,6 +11,7 @@ export type AdminUser = {
   role: Role;
   avatar_url: string | null;
   created_at: string;
+  last_seen_at: string | null;
   count_trainings: number;
   count_parcours: number;
   count_bows: number;
@@ -25,6 +26,7 @@ export type AdminUserDetail = {
   avatar_url: string | null;
   created_at: string;
   onboarding_completed_at: string | null;
+  last_seen_at: string | null;
   count_trainings: number;
   count_parcours: number;
   count_bows: number;
@@ -92,6 +94,7 @@ export type AdminFriendItem = {
   email: string;
   display_name: string | null;
   avatar_url: string | null;
+  last_seen_at: string | null;
 };
 
 export type AdminReviewItem = {

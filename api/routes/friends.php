@@ -43,7 +43,8 @@ function friends_list(int $me): void
 {
     $sql = '
         SELECT f.id, f.requester_id, f.recipient_id, f.status, f.requested_at, f.responded_at,
-               u.id AS other_id, u.email AS other_email, u.display_name AS other_display_name, u.avatar_path AS other_avatar
+               u.id AS other_id, u.email AS other_email, u.display_name AS other_display_name,
+               u.avatar_path AS other_avatar, u.last_seen_at AS other_last_seen
         FROM friendships f
         JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.recipient_id ELSE f.requester_id END
         WHERE f.requester_id = ? OR f.recipient_id = ?
@@ -63,6 +64,7 @@ function friends_list(int $me): void
             'email'        => $r['other_email'],
             'display_name' => $r['other_display_name'],
             'avatar_url'   => $r['other_avatar'] ? (string)$r['other_avatar'] : null,
+            'last_seen_at' => $r['other_last_seen'] ?? null,
         ];
         $item = [
             'id'           => (int)$r['id'],

@@ -131,7 +131,7 @@ export default function AddFriendModal({
               const busy = busyId === f.user.id;
               return (
                 <li key={f.id} className="flex items-center gap-3 p-2 rounded-xl bg-surface">
-                  <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name }} size="sm" />
+                  <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name, last_seen_at: f.user.last_seen_at }} size="sm" showPresence />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{f.user.display_name ?? f.user.email}</div>
                     <div className="text-xs text-muted truncate">{f.user.email}</div>

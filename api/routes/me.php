@@ -68,7 +68,7 @@ function me_notif_prefs_put(int $user_id): void
 function me_get(int $user_id): void
 {
     $stmt = db()->prepare(
-        'SELECT id, email, display_name, status, role, avatar_path, pro_mode, onboarding_completed_at FROM users WHERE id = ?'
+        'SELECT id, email, display_name, status, role, avatar_path, pro_mode, onboarding_completed_at, last_seen_at FROM users WHERE id = ?'
     );
     $stmt->execute([$user_id]);
     $u = $stmt->fetch();
@@ -142,5 +142,6 @@ function me_serialize(array $u): array
         'avatar_url'   => isset($u['avatar_path']) && $u['avatar_path'] ? (string)$u['avatar_path'] : null,
         'pro_mode'     => (bool)($u['pro_mode'] ?? 0),
         'onboarding_completed_at' => $u['onboarding_completed_at'] ?? null,
+        'last_seen_at' => $u['last_seen_at'] ?? null,
     ];
 }

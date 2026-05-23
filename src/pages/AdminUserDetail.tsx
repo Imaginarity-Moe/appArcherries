@@ -8,6 +8,8 @@ import { PageSpinner } from "../components/Spinner";
 import Avatar from "../components/Avatar";
 import { useAuth, type Role } from "../auth/AuthContext";
 import { useConfirm } from "../components/ConfirmDialog";
+import RoleBadge from "../components/RoleBadge";
+import { lastSeenLabel, isOnline } from "../lib/presence";
 import {
   getAdminUser, updateAdminUser, deleteAdminUser,
   type AdminUserDetailResponse, type UserStatus,
@@ -129,7 +131,7 @@ export default function AdminUserDetail() {
       {/* Profile-Card */}
       <section className="card">
         <div className="flex items-start gap-4">
-          <Avatar user={u} size="xl" />
+          <Avatar user={u} size="xl" showPresence />
           <div className="flex-1 min-w-0">
             <h2 className="font-display text-xl font-semibold">
               {u.display_name ?? "—"}
@@ -137,8 +139,13 @@ export default function AdminUserDetail() {
             </h2>
             <p className="text-sm text-secondary">{u.email}</p>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <Badge>{u.role}</Badge>
+              <RoleBadge role={u.role} />
               <Badge variant={u.status === "active" ? "good" : "warn"}>{u.status}</Badge>
+              {isOnline(u.last_seen_at) ? (
+                <Badge variant="good">● online</Badge>
+              ) : (
+                <span className="text-xs text-muted">· zuletzt aktiv {lastSeenLabel(u.last_seen_at)}</span>
+              )}
               <span className="text-xs text-muted">
                 · seit {formatDate(u.created_at)}
               </span>
@@ -379,11 +386,14 @@ export default function AdminUserDetail() {
             {data.friends.map((f) => (
               <li key={f.id}>
                 <Link to={`/admin/users/${f.id}`} className="flex items-center gap-2 text-sm hover:text-cherry-500 transition min-w-0">
-                  <Avatar user={f} size="xs" />
-                  <span className="truncate">
+                  <Avatar user={f} size="xs" showPresence />
+                  <span className="truncate flex-1">
                     <b>{f.display_name ?? "—"}</b>
                     <span className="text-muted text-xs ml-1">{f.email}</span>
                   </span>
+                  {isOnline(f.last_seen_at) && (
+                    <span className="text-[10px] text-emerald-600 font-medium shrink-0">online</span>
+                  )}
                 </Link>
               </li>
             ))}

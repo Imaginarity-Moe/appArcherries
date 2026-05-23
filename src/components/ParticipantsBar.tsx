@@ -42,7 +42,7 @@ export default function ParticipantsBar({ participants, isOwner, onInvite, onAdd
               : "bg-surface text-secondary border border-hairline"
           }`}
         >
-          <Avatar user={{ display_name: p.display_name, avatar_url: null }} size="xs" />
+          <Avatar user={{ display_name: p.display_name, avatar_url: p.avatar_url ?? null, last_seen_at: p.last_seen_at ?? null }} size="xs" showPresence={!p.is_self} />
           {p.role === "owner" && <Crown size={11} strokeWidth={1.75} className={p.is_self ? "text-cream" : "text-cherry-500"} />}
           <span className="text-xs font-medium truncate max-w-[80px]">
             {p.display_name || "—"}

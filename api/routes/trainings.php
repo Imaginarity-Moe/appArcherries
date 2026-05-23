@@ -465,7 +465,8 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
 
     // Alle Participants laden
     $p_stmt = db()->prepare(
-        'SELECT tp.id, tp.user_id, tp.role, tp.joined_at, u.display_name, u.role AS user_role
+        'SELECT tp.id, tp.user_id, tp.role, tp.joined_at, u.display_name, u.role AS user_role,
+                u.avatar_path AS user_avatar, u.last_seen_at AS user_last_seen
          FROM training_participants tp
          JOIN users u ON u.id = tp.user_id
          WHERE tp.training_id = ?
@@ -519,6 +520,9 @@ function trainings_detail(int $user_id, int $id, int $status = 200): void
         $p['user_id'] = (int)$p['user_id'];
         $p['total_score'] = (int)($participant_totals[$p['id']] ?? 0);
         $p['is_self']     = $p['user_id'] === $user_id;
+        $p['avatar_url']  = $p['user_avatar'] ?? null;
+        $p['last_seen_at'] = $p['user_last_seen'] ?? null;
+        unset($p['user_avatar'], $p['user_last_seen']);
     }
     unset($p);
 

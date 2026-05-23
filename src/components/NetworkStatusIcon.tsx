@@ -11,8 +11,11 @@ import { drain } from "../lib/sync";
  * - Offline               → rotes WifiOff-Icon
  *
  * Tap öffnet ein kleines Popover mit Details + manuellem Sync-Trigger.
+ *
+ * `align="right"` (default): Popover öffnet nach links unten (Header rechts oben).
+ * `align="left"`: Popover öffnet nach rechts unten (für Desktop-Sidebar links).
  */
-export default function NetworkStatusIcon() {
+export default function NetworkStatusIcon({ align = "right" }: { align?: "left" | "right" } = {}) {
   const [online, setOnline] = useState(() => navigator.onLine);
   const [pending, setPending] = useState(0);
   const [showPopover, setShowPopover] = useState(false);
@@ -95,7 +98,7 @@ export default function NetworkStatusIcon() {
             aria-label="Schließen"
             tabIndex={-1}
           />
-          <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-elevated dark:bg-elevated-dark shadow-lift border border-forest-100 dark:border-forest-800 p-4 z-50 animate-slide-up">
+          <div className={`absolute ${align === "left" ? "left-0" : "right-0"} top-full mt-2 w-64 rounded-2xl bg-elevated dark:bg-elevated-dark shadow-lift border border-forest-100 dark:border-forest-800 p-4 z-50 animate-slide-up`}>
             <div className="flex items-start gap-3">
               <div className={colorClass}>{icon}</div>
               <div className="flex-1">

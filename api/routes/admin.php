@@ -22,15 +22,22 @@ function handle_admin(string $method, string $path): void
         res_error('Forbidden', 403);
     }
 
-    if ($path === '/admin/users' && $method === 'GET') {
-        admin_users_list();
-        return;
-    }
-    if (preg_match('#^/admin/users/(\d+)$#', $path, $m)) {
-        $uid = (int)$m[1];
-        if ($method === 'GET')    { admin_user_detail($uid); return; }
-        if ($method === 'PATCH')  { admin_user_update($me, $uid); return; }
-        if ($method === 'DELETE') { admin_user_delete($me, $uid); return; }
+    // Admin-Bereich: Backend-Fehler explizit durchreichen (statt generisches "Server error")
+    // damit Bug-Diagnose möglich ist. Nur Admins/Superadmins sehen das.
+    try {
+        if ($path === '/admin/users' && $method === 'GET') {
+            admin_users_list();
+            return;
+        }
+        if (preg_match('#^/admin/users/(\d+)$#', $path, $m)) {
+            $uid = (int)$m[1];
+            if ($method === 'GET')    { admin_user_detail($uid); return; }
+            if ($method === 'PATCH')  { admin_user_update($me, $uid); return; }
+            if ($method === 'DELETE') { admin_user_delete($me, $uid); return; }
+        }
+    } catch (Throwable $e) {
+        error_log('[admin] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+        res_error('Admin-Fehler: ' . $e->getMessage(), 500);
     }
 
     res_error('Not found', 404);
@@ -43,7 +50,7 @@ function admin_users_list(): void
     $sql = "
         SELECT
             u.id, u.email, u.display_name, u.status, u.role,
-            u.avatar_path, u.created_at,
+            u.avatar_path, u.created_at, u.last_seen_at,
             (SELECT COUNT(*) FROM trainings WHERE user_id = u.id) AS count_trainings,
             (SELECT COUNT(*) FROM parcours  WHERE user_id = u.id) AS count_parcours,
             (SELECT COUNT(*) FROM bows      WHERE user_id = u.id) AS count_bows
@@ -65,6 +72,7 @@ function admin_user_summary(array $u): array
         'role'            => $u['role'],
         'avatar_url'      => $u['avatar_path'] ?: null,
         'created_at'      => $u['created_at'],
+        'last_seen_at'    => $u['last_seen_at'] ?? null,
         'count_trainings' => (int)($u['count_trainings'] ?? 0),
         'count_parcours'  => (int)($u['count_parcours']  ?? 0),
         'count_bows'      => (int)($u['count_bows']      ?? 0),
@@ -77,7 +85,7 @@ function admin_user_detail(int $target_uid): void
 {
     $stmt = db()->prepare("
         SELECT u.id, u.email, u.display_name, u.status, u.role, u.avatar_path, u.created_at,
-               u.onboarding_completed_at,
+               u.onboarding_completed_at, u.last_seen_at,
                (SELECT COUNT(*) FROM trainings WHERE user_id = u.id) AS count_trainings,
                (SELECT COUNT(*) FROM parcours  WHERE user_id = u.id) AS count_parcours,
                (SELECT COUNT(*) FROM bows      WHERE user_id = u.id) AS count_bows,
@@ -184,19 +192,23 @@ function admin_user_detail(int $target_uid): void
     ], $stmt->fetchAll());
 
     // Freunde (akzeptierte) — beide Seiten der Friendship-Beziehung
+    // ACHTUNG: PDO mit EMULATE_PREPARES=false erlaubt keine wiederholten Named-Params.
+    // Native MySQL-Prepared-Statements verlangen pro Platzhalter eine separate Bindung.
+    // Deshalb positional placeholders + $target_uid dreifach übergeben.
     $stmt = db()->prepare("
-        SELECT u.id, u.email, u.display_name, u.avatar_path
+        SELECT u.id, u.email, u.display_name, u.avatar_path, u.last_seen_at
         FROM friendships f
-        JOIN users u ON u.id = CASE WHEN f.requester_id = :uid THEN f.recipient_id ELSE f.requester_id END
-        WHERE (f.requester_id = :uid OR f.recipient_id = :uid) AND f.status = 'accepted'
+        JOIN users u ON u.id = CASE WHEN f.requester_id = ? THEN f.recipient_id ELSE f.requester_id END
+        WHERE (f.requester_id = ? OR f.recipient_id = ?) AND f.status = 'accepted'
         ORDER BY u.display_name ASC, u.email ASC
     ");
-    $stmt->execute(['uid' => $target_uid]);
+    $stmt->execute([$target_uid, $target_uid, $target_uid]);
     $friends = array_map(fn($r) => [
         'id'           => (int)$r['id'],
         'email'        => $r['email'],
         'display_name' => $r['display_name'],
         'avatar_url'   => $r['avatar_path'] ?: null,
+        'last_seen_at' => $r['last_seen_at'] ?? null,
     ], $stmt->fetchAll());
 
     // Reviews (vom User geschrieben)
@@ -227,6 +239,7 @@ function admin_user_detail(int $target_uid): void
             'avatar_url'             => $u['avatar_path'] ?: null,
             'created_at'             => $u['created_at'],
             'onboarding_completed_at'=> $u['onboarding_completed_at'],
+            'last_seen_at'           => $u['last_seen_at'] ?? null,
             'count_trainings'        => (int)$u['count_trainings'],
             'count_parcours'         => (int)$u['count_parcours'],
             'count_bows'             => (int)$u['count_bows'],

@@ -122,7 +122,7 @@ export default function Friends() {
           <ul className="space-y-2.5">
             {state.incoming.map((f) => (
               <li key={f.id} className="flex items-center gap-3">
-                <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name }} size="sm" />
+                <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name, last_seen_at: f.user.last_seen_at }} size="sm" showPresence />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{f.user.display_name ?? f.user.email}</div>
                   <div className="text-xs text-muted truncate">{f.user.email}</div>
@@ -177,7 +177,7 @@ export default function Friends() {
           <ul className="space-y-2.5">
             {state.friends.map((f) => (
               <li key={f.id} className="flex items-center gap-3">
-                <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name }} size="sm" />
+                <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name, last_seen_at: f.user.last_seen_at }} size="sm" showPresence />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{f.user.display_name ?? f.user.email}</div>
                   <div className="text-xs text-muted truncate">{f.user.email}</div>
@@ -204,7 +204,7 @@ export default function Friends() {
           <ul className="space-y-2.5">
             {state.outgoing.map((f) => (
               <li key={f.id} className="flex items-center gap-3">
-                <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name }} size="sm" />
+                <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name, last_seen_at: f.user.last_seen_at }} size="sm" showPresence />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{f.user.display_name ?? f.user.email}</div>
                   <div className="text-xs text-muted truncate">wartet auf Bestätigung</div>
@@ -225,7 +225,7 @@ export default function Friends() {
           <ul className="space-y-2.5">
             {state.blocked.map((f) => (
               <li key={f.id} className="flex items-center gap-3 opacity-70">
-                <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name }} size="sm" />
+                <Avatar user={{ avatar_url: f.user.avatar_url ?? null, display_name: f.user.display_name, last_seen_at: f.user.last_seen_at }} size="sm" showPresence />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{f.user.display_name ?? f.user.email}</div>
                   <div className="text-xs text-muted truncate">{f.user.email}</div>

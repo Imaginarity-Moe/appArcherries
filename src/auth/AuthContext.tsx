@@ -21,6 +21,8 @@ export type User = {
   avatar_url?: string | null;
   /** Null = User hat das Onboarding noch nicht abgeschlossen. Timestamp = abgeschlossen. */
   onboarding_completed_at?: string | null;
+  /** Wann hat der User zuletzt eine authentifizierte Anfrage gemacht (server-throttled, max 1×/Min). */
+  last_seen_at?: string | null;
 };
 
 type AuthState = {

@@ -54,6 +54,8 @@ export type Participant = {
   joined_at: string;
   total_score: number;
   is_self: boolean;
+  avatar_url?: string | null;
+  last_seen_at?: string | null;
 };
 
 export type Training = {

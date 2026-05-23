@@ -13,12 +13,24 @@ function require_auth(): array
         res_error('Unauthorized', 401);
     }
 
-    $stmt = db()->prepare('SELECT id, email, display_name, status, role FROM users WHERE id = ?');
+    $stmt = db()->prepare('SELECT id, email, display_name, status, role, last_seen_at FROM users WHERE id = ?');
     $stmt->execute([(int)$claims['uid']]);
     $u = $stmt->fetch();
     if (!$u || $u['status'] !== 'active') {
         res_error('Unauthorized', 401);
     }
+
+    // Throttled-Update von last_seen_at: nur alle 60s schreiben, damit wir
+    // nicht bei jedem polling-Tick eine DB-Write provozieren.
+    $last = $u['last_seen_at'] ? strtotime((string)$u['last_seen_at']) : 0;
+    if (time() - $last >= 60) {
+        try {
+            db()->prepare('UPDATE users SET last_seen_at = NOW() WHERE id = ?')->execute([(int)$u['id']]);
+        } catch (Throwable $e) {
+            // last_seen_at-Updates dürfen nie eine echte Anfrage blockieren
+        }
+    }
+
     return [
         'id'           => (int)$u['id'],
         'email'        => $u['email'],
