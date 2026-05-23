@@ -15,6 +15,12 @@ import {
   Languages,
   Info,
   Trophy,
+  BarChart3,
+  Cloud,
+  Dumbbell,
+  Zap,
+  HelpCircle,
+  Lock,
 } from "lucide-react";
 
 import HelpGettingStarted from "./help/HelpGettingStarted";
@@ -28,6 +34,12 @@ import HelpGlossary from "./help/HelpGlossary";
 import HelpApp from "./help/HelpApp";
 import HelpCommunity from "./help/HelpCommunity";
 import HelpEquipment from "./help/HelpEquipment";
+import HelpStats from "./help/HelpStats";
+import HelpOfflineSync from "./help/HelpOfflineSync";
+import HelpRoutines from "./help/HelpRoutines";
+import HelpPowerUser from "./help/HelpPowerUser";
+import HelpFAQ from "./help/HelpFAQ";
+import HelpPrivacy from "./help/HelpPrivacy";
 
 type Section = {
   key: string;
@@ -47,6 +59,12 @@ const SECTIONS: Section[] = [
   { key: "pegs",            icon: <Compass size={18} strokeWidth={1.75} />,    keywords: "pflock peg blau rot gelb weiss farbe distanz markiert unmarkiert",                                            content: <HelpPegs /> },
   { key: "bows",            icon: <Crosshair size={18} strokeWidth={1.75} />,  keywords: "bogen recurve compound barebow longbow traditional jagd profil setup pfeilspine zuggewicht visiermarken",   content: <HelpBows /> },
   { key: "equipment",       icon: <Crosshair size={18} strokeWidth={1.75} />,  keywords: "equipment pfeil arrow spine länge gpi befiederung nocke spitze grains shop nachkauf bestand defekt verloren history verlauf",  content: <HelpEquipment /> },
+  { key: "stats",           icon: <BarChart3 size={18} strokeWidth={1.75} />,  keywords: "statistik heatmap verlauf konsistenz pfeil score chart graph diagramm",                                       content: <HelpStats /> },
+  { key: "offline_sync",    icon: <Cloud size={18} strokeWidth={1.75} />,      keywords: "offline pwa sync queue outbox indexeddb cache upload pending funkloch verbindung netz",                       content: <HelpOfflineSync /> },
+  { key: "routines",        icon: <Dumbbell size={18} strokeWidth={1.75} />,    keywords: "routine training warmup match wettkampf vorbereitung üben distanz schätzen anker schießen tipps",            content: <HelpRoutines /> },
+  { key: "power_user",      icon: <Zap size={18} strokeWidth={1.75} />,        keywords: "shortcut tastatur url deep-link power tricks profi schnell erfassung lange druck zoom",                       content: <HelpPowerUser /> },
+  { key: "faq",             icon: <HelpCircle size={18} strokeWidth={1.75} />, keywords: "faq frage antwort fehler problem stolperfalle troubleshoot",                                                   content: <HelpFAQ /> },
+  { key: "privacy",         icon: <Lock size={18} strokeWidth={1.75} />,       keywords: "datenschutz privacy sicherheit dsgvo daten löschen anonym öffentlich admin",                                  content: <HelpPrivacy /> },
   { key: "glossary",        icon: <Languages size={18} strokeWidth={1.75} />,  keywords: "begriff glossary definition spot passe quiver release nocke fletching killzone vital wound",                content: <HelpGlossary /> },
   { key: "app",             icon: <Info size={18} strokeWidth={1.75} />,       keywords: "about app entwicklung feedback geplant hosting daten datenschutz roadmap version",                          content: <HelpApp /> },
 ];
