@@ -1,3 +1,4 @@
+import { Info } from "lucide-react";
 import { AnimalTargetSVG, FieldWATargetSVG, FieldIFAATargetSVG, WATargetSVG, HelpIllustrationBox } from "./HelpIllustrations";
 
 /**
@@ -16,8 +17,23 @@ export default function HelpScoring() {
         </p>
       </header>
 
+      {/* Verbände-Glossar */}
+      <section className="card-sunken">
+        <h2 className="eyebrow mb-2 flex items-center gap-1.5">
+          <Info size={14} strokeWidth={1.75} /> Verbände — was bedeutet was?
+        </h2>
+        <ul className="text-sm grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+          <li><b>WA</b> · World Archery — Olympia-Verband (ehem. FITA)</li>
+          <li><b>DSB</b> · Deutscher Schützenbund (WA-DE)</li>
+          <li><b>IFAA</b> · International Field Archery Association</li>
+          <li><b>DFBV</b> · Deutscher Feldbogensportverband (IFAA-DE)</li>
+          <li><b>NFAA</b> · National Field Archery Association (USA)</li>
+          <li><b>FITA</b> · alter Name für WA</li>
+        </ul>
+      </section>
+
       {/* ═══ 3D · WA / DSB ═════════════════════════════════════════════════ */}
-      <section className="space-y-2">
+      <section id="3d-wa-dsb" className="space-y-2 scroll-mt-24">
         <h2 className="eyebrow">3D · WA / DSB</h2>
         <p className="text-primary"><b>2 Pfeile pro Ziel, beide werden gewertet.</b></p>
         <HelpIllustrationBox
@@ -161,7 +177,7 @@ export default function HelpScoring() {
       <div className="hairline" />
 
       {/* ═══ Feldbogen WA ══════════════════════════════════════════════════ */}
-      <section className="space-y-2">
+      <section id="feldbogen-wa-dsb" className="space-y-2 scroll-mt-24">
         <h2 className="eyebrow">Feldbogen · WA / DSB</h2>
         <p className="text-primary"><b>24 Scheiben × 4 Pfeile = 96 Pfeile gesamt.</b></p>
         <HelpIllustrationBox
@@ -220,7 +236,7 @@ export default function HelpScoring() {
       </section>
 
       {/* ═══ Scheibenschießen ═════════════════════════════════════════════ */}
-      <section className="space-y-2">
+      <section id="scheibenschiessen" className="space-y-2 scroll-mt-24">
         <h2 className="eyebrow">Scheibenschießen</h2>
         <p className="text-primary">
           Frei konfigurierbar: Du wählst Pfeile pro <b>Aufnahme</b>, Anzahl Aufnahmen, Distanz und

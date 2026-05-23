@@ -144,37 +144,37 @@ export default function Admin() {
       <RoleInfoBox myRole={myRole} />
 
       {/* Filter-Bar */}
-      <div className="card-sunken space-y-2.5">
+      <div className="card-sunken space-y-3">
         <div className="flex items-center gap-2">
-          <Search size={16} strokeWidth={1.75} className="text-muted shrink-0" />
+          <Search size={18} strokeWidth={1.75} className="text-muted shrink-0" />
           <input
             type="search"
-            className="input flex-1"
+            className="input flex-1 text-base"
             placeholder="Email oder Name suchen…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {hasActiveFilter && (
             <button onClick={resetFilters} className="btn-icon" title="Filter zurücksetzen">
-              <X size={16} strokeWidth={1.75} />
+              <X size={18} strokeWidth={1.75} />
             </button>
           )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Filter size={14} strokeWidth={1.75} className="text-muted shrink-0" />
-          <span className="text-xs text-muted">Rolle:</span>
+          <Filter size={16} strokeWidth={1.75} className="text-muted shrink-0" />
+          <span className="text-sm font-medium text-secondary">Rolle:</span>
           {ALL_ROLES.map((r) => (
             <FilterPill key={r} active={roleFilter.has(r)} onClick={() => toggleRole(r)}>
-              <RoleBadge role={r} size="sm" />
+              <RoleBadge role={r} size="md" />
             </FilterPill>
           ))}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted pl-[22px]">Status:</span>
+          <span className="text-sm font-medium text-secondary pl-[24px]">Status:</span>
           {ALL_STATUSES.map((s) => (
             <FilterPill key={s} active={statusFilter.has(s)} onClick={() => toggleStatus(s)}>
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+              <span className={`text-sm px-2.5 py-1 rounded-full font-medium ${
                 s === "active"
                   ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                   : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
@@ -186,17 +186,17 @@ export default function Admin() {
 
       {/* Tabelle */}
       <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead>
-            <tr className="border-b border-hairline text-left text-xs tracking-[0.08em] text-secondary/70 font-semibold uppercase select-none">
-              <ThSort label="User"      k="name"      sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-2.5 px-3" />
-              <ThSort label="Rolle"     k="role"      sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-2.5 px-3" />
-              <ThSort label="Status"    k="status"    sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-2.5 px-3" />
-              <ThSort label="Trainings" k="trainings" sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-2.5 px-3 text-right" />
-              <ThSort label="Parcours"  k="parcours"  sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-2.5 px-3 text-right" />
-              <ThSort label="Bögen"     k="bows"      sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-2.5 px-3 text-right" />
-              <ThSort label="Seit"      k="created"   sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-2.5 px-3 text-right" />
-              <th className="py-2.5 px-3"></th>
+            <tr className="border-b border-hairline text-left text-sm tracking-wide text-secondary/80 font-semibold select-none">
+              <ThSort label="User"      k="name"      sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-3 px-4" />
+              <ThSort label="Rolle"     k="role"      sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-3 px-4" />
+              <ThSort label="Status"    k="status"    sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-3 px-4" />
+              <ThSort label="Trainings" k="trainings" sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-3 px-4 text-right" />
+              <ThSort label="Parcours"  k="parcours"  sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-3 px-4 text-right" />
+              <ThSort label="Bögen"     k="bows"      sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-3 px-4 text-right" />
+              <ThSort label="Seit"      k="created"   sortBy={sortBy} sortDir={sortDir} onClick={clickSort} className="py-3 px-4 text-right" />
+              <th className="py-3 px-4"></th>
             </tr>
           </thead>
           <tbody>
@@ -204,40 +204,40 @@ export default function Admin() {
               const isSelf = u.id === me?.id;
               return (
                 <tr key={u.id} className="border-b border-hairline last:border-0 hover:bg-elevated/50 transition">
-                  <td className="py-2 px-3">
-                    <Link to={`/admin/users/${u.id}`} className="flex items-center gap-2.5 min-w-0 hover:text-cherry-500 transition">
-                      <Avatar user={u} size="sm" showPresence />
+                  <td className="py-3 px-4">
+                    <Link to={`/admin/users/${u.id}`} className="flex items-center gap-3 min-w-0 hover:text-cherry-500 transition">
+                      <Avatar user={u} size="md" showPresence />
                       <div className="min-w-0">
                         <div className="font-medium truncate">
                           {u.display_name ?? "—"}
-                          {isSelf && <span className="text-xs text-muted ml-1.5">(du)</span>}
+                          {isSelf && <span className="text-sm text-muted ml-1.5">(du)</span>}
                         </div>
-                        <div className="text-xs text-muted truncate">{u.email}</div>
+                        <div className="text-sm text-muted truncate">{u.email}</div>
                       </div>
                     </Link>
                   </td>
-                  <td className="py-2 px-3">
-                    <RoleBadge role={u.role} size="sm" />
+                  <td className="py-3 px-4">
+                    <RoleBadge role={u.role} size="md" />
                   </td>
-                  <td className="py-2 px-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  <td className="py-3 px-4">
+                    <span className={`text-sm px-2.5 py-1 rounded-full font-medium ${
                       u.status === "active"
                         ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                         : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                     }`}>{u.status}</span>
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums">{u.count_trainings}</td>
-                  <td className="py-2 px-3 text-right tabular-nums">{u.count_parcours}</td>
-                  <td className="py-2 px-3 text-right tabular-nums">{u.count_bows}</td>
-                  <td className="py-2 px-3 text-right text-xs text-muted tabular-nums whitespace-nowrap">
+                  <td className="py-3 px-4 text-right tabular-nums">{u.count_trainings}</td>
+                  <td className="py-3 px-4 text-right tabular-nums">{u.count_parcours}</td>
+                  <td className="py-3 px-4 text-right tabular-nums">{u.count_bows}</td>
+                  <td className="py-3 px-4 text-right text-sm text-muted tabular-nums whitespace-nowrap">
                     {formatDate(u.created_at)}
                   </td>
-                  <td className="py-2 px-3 text-right">
+                  <td className="py-3 px-4 text-right">
                     <Link
                       to={`/admin/users/${u.id}`}
-                      className="inline-flex items-center gap-1 text-xs text-secondary hover:text-cherry-500 transition"
+                      className="inline-flex items-center gap-1 text-sm text-secondary hover:text-cherry-500 transition"
                     >
-                      Details <ChevronRight size={14} strokeWidth={1.75} />
+                      Details <ChevronRight size={16} strokeWidth={1.75} />
                     </Link>
                   </td>
                 </tr>
@@ -245,7 +245,7 @@ export default function Admin() {
             })}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-sm text-muted">
+                <td colSpan={8} className="py-10 text-center text-base text-muted">
                   {hasActiveFilter ? "Keine User passen zum Filter." : "Keine User."}
                 </td>
               </tr>

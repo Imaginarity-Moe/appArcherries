@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight, ArrowLeft, Check, Target, Users, Trophy, BarChart3, Loader2,
-  Crosshair, Map, Crown, Award, Compass, Sparkles,
+  Crosshair, Map, Crown, Award, Compass, Sparkles, X as XIcon,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { api } from "../api/client";
-import { createBow, type Bow } from "../api/bows";
+import { createBow, listBows, updateBow, type Bow } from "../api/bows";
 import type { BowType } from "../api/trainings";
 import { BOW_LABELS } from "../api/trainings";
 import {
@@ -62,7 +62,8 @@ export default function Welcome() {
   const { user, refresh } = useAuth();
   const nav = useNavigate();
   const [search] = useSearchParams();
-  const mode: Mode = search.get("mode") === "long" ? "long" : "short";
+  // Default = "long" (ausführliche Tour). Kurz nur wenn explizit ?mode=short.
+  const mode: Mode = search.get("mode") === "short" ? "short" : "long";
   const stepKeys = STEPS[mode];
   const totalSteps = stepKeys.length;
 
@@ -70,11 +71,35 @@ export default function Welcome() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form-State (gemeinsam für beide Modi)
+  // Form-State (gemeinsam für beide Modi). Display-Name aus User vorausgefüllt.
   const [displayName, setDisplayName] = useState(user?.display_name ?? "");
   const [bowType, setBowType] = useState<BowType | null>(null);
   const [bowName, setBowName] = useState("");
-  const [interest, setInterest] = useState<"3d" | "field" | "target" | "any" | null>(null);
+  // Bei Wiederholung: existing default-Bow-ID merken um UPDATE statt CREATE zu machen.
+  const [existingDefaultBowId, setExistingDefaultBowId] = useState<number | null>(null);
+  // Mehrfach-Auswahl: User kann z.B. 3D + Field gleichzeitig wählen.
+  const [interests, setInterests] = useState<Set<"3d" | "field" | "target">>(new Set());
+
+  // Scroll bei Step-Wechsel an den Anfang — sonst hängt der User bei langen Inhalten
+  // (LANG-Modus) noch unten, wenn er auf "Weiter" geklickt hat.
+  const topRef = useRef<HTMLDivElement>(null);
+
+  // Bestehenden Default-Bow laden (Re-Run-Fall: User wiederholt Onboarding über Profil-Button)
+  useEffect(() => {
+    listBows()
+      .then((r) => {
+        const def = r.bows.find((b) => b.is_default) ?? r.bows[0];
+        if (def) {
+          setBowType(def.bow_type as BowType);
+          setExistingDefaultBowId(def.id);
+          // Wenn der Name nicht der generische Default ist, vorausfüllen
+          if (def.name && !def.name.startsWith("Mein ")) {
+            setBowName(def.name);
+          }
+        }
+      })
+      .catch(() => {/* erste Registrierung: noch keine Bögen — kein Problem */});
+  }, []);
 
   if (user?.onboarding_completed_at) {
     nav("/", { replace: true });
@@ -83,10 +108,17 @@ export default function Welcome() {
 
   const currentKey = stepKeys[stepIdx];
 
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Fallback fürs gesamte Fenster — manche Browser scrollen nicht innerhalb des
+    // Containers wenn body schon gescrollt ist.
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [stepIdx]);
+
   const canNext = (() => {
     if (currentKey === "name") return displayName.trim().length >= 2;
     if (currentKey === "bow_choice") return !!bowType;
-    if (currentKey === "interest") return !!interest;
+    if (currentKey === "interest") return interests.size > 0;
     return true;
   })();
 
@@ -99,7 +131,28 @@ export default function Welcome() {
   async function saveBow() {
     if (!bowType) return;
     const name = bowName.trim() || `Mein ${BOW_LABELS[bowType]}`;
-    await createBow({ name, bow_type: bowType, is_default: true } as Partial<Bow>);
+    if (existingDefaultBowId !== null) {
+      // Re-Run-Onboarding: bestehenden Default-Bow aktualisieren statt zu duplizieren
+      await updateBow(existingDefaultBowId, { name, bow_type: bowType, is_default: true } as Partial<Bow>);
+    } else {
+      await createBow({ name, bow_type: bowType, is_default: true } as Partial<Bow>);
+    }
+  }
+
+  // "Abbrechen": markiert Onboarding als abgeschlossen + navigiert zur App.
+  // Sonst landet der User beim nächsten Login wieder im Wizard.
+  async function dismiss() {
+    setBusy(true);
+    try {
+      await api("/me/onboarding/complete", { method: "POST" });
+      await refresh();
+      nav("/", { replace: true });
+    } catch {
+      // Fallback wenn Backend hängt: trotzdem zur App.
+      nav("/", { replace: true });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function complete(startTraining: boolean) {
@@ -127,16 +180,28 @@ export default function Welcome() {
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-8 sm:py-12 animate-fade-in">
-      {/* Progress-Indicator */}
-      <div className="flex items-center gap-1 mb-6">
-        {Array.from({ length: totalSteps }).map((_, i) => (
-          <div
-            key={i}
-            className={`h-1 flex-1 rounded-full transition ${i <= stepIdx ? "bg-cherry-500" : "bg-hairline"}`}
-            aria-hidden
-          />
-        ))}
+    <div ref={topRef} className="max-w-xl mx-auto px-4 py-8 sm:py-12 animate-fade-in">
+      {/* Top-Bar mit Fortschritt + Abbrechen-Option */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-1 flex-1">
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div
+              key={i}
+              className={`h-1 flex-1 rounded-full transition ${i <= stepIdx ? "bg-cherry-500" : "bg-hairline"}`}
+              aria-hidden
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={dismiss}
+          disabled={busy}
+          className="btn-icon text-secondary hover:text-cherry-500 shrink-0"
+          title={'Onboarding später nachholen — du findest es im Profil unter „Tour & Hilfe".'}
+          aria-label="Onboarding abbrechen"
+        >
+          <XIcon size={18} strokeWidth={1.75} />
+        </button>
       </div>
 
       <div className="card space-y-5 min-h-[400px] flex flex-col">
@@ -150,7 +215,14 @@ export default function Welcome() {
         {currentKey === "welcome"             && <StepWelcomeShort />}
         {currentKey === "name"                && <StepName value={displayName} onChange={setDisplayName} initialFromEmail={user?.email ?? null} />}
         {currentKey === "bow_choice"          && <StepBow type={bowType} name={bowName} onTypeChange={setBowType} onNameChange={setBowName} />}
-        {currentKey === "interest"            && <StepInterest value={interest} onChange={setInterest} />}
+        {currentKey === "interest"            && <StepInterest selected={interests} onToggle={(k) => {
+          setInterests((prev) => {
+            const next = new Set(prev);
+            if (next.has(k)) next.delete(k);
+            else next.add(k);
+            return next;
+          });
+        }} />}
         {currentKey === "done"                && <StepDone mode={mode} />}
 
         {error && <div className="text-sm text-cherry-600">{error}</div>}
@@ -617,39 +689,52 @@ function StepBow({
   );
 }
 
+type InterestKey = "3d" | "field" | "target";
+
 function StepInterest({
-  value, onChange,
+  selected,
+  onToggle,
 }: {
-  value: "3d" | "field" | "target" | "any" | null;
-  onChange: (v: "3d" | "field" | "target" | "any") => void;
+  selected: Set<InterestKey>;
+  onToggle: (k: InterestKey) => void;
 }) {
-  const opts = [
-    { k: "3d" as const,     label: "3D-Parcours",      desc: "Tier­attrappen im Wald, WA/IFAA/Bowhunter" },
-    { k: "field" as const,  label: "Feldbogen",        desc: "Ringauflagen im Wald, WA/IFAA" },
-    { k: "target" as const, label: "Scheibenschießen", desc: "Halle, FITA Outdoor" },
-    { k: "any" as const,    label: "Alles ein bisschen", desc: "Keine Festlegung" },
+  const opts: { k: InterestKey; label: string; desc: string }[] = [
+    { k: "3d",     label: "3D-Parcours",      desc: "Tierattrappen im Wald, mit WA-, IFAA- oder Bowhunter-Wertung" },
+    { k: "field",  label: "Feldbogen",        desc: "Ringauflagen auf Waldscheiben, WA oder IFAA" },
+    { k: "target", label: "Scheibenschießen", desc: "Halle, FITA-Outdoor — klassisches Ringeschießen" },
   ];
   return (
     <>
       <Eyebrow>Setup 3 / 4</Eyebrow>
       <h2 className="display text-h2">Was interessiert dich am meisten?</h2>
       <p className="text-secondary">
-        Hilft uns, dir relevante Disziplinen vorzuschlagen. Du kannst alles immer schießen — die App schränkt nichts ein.
+        Mehrfachauswahl möglich — wähle alles, was dir Spaß macht. Hilft uns, dir relevante
+        Disziplinen vorzuschlagen. Du kannst trotzdem jederzeit alles schießen.
       </p>
       <div className="space-y-2">
         {opts.map((o) => {
-          const sel = o.k === value;
+          const sel = selected.has(o.k);
           return (
             <button
               key={o.k}
               type="button"
-              onClick={() => onChange(o.k)}
-              className={`w-full text-left rounded-2xl border-2 px-4 py-3 transition active:scale-[0.99] ${
+              onClick={() => onToggle(o.k)}
+              className={`w-full text-left rounded-2xl border-2 px-4 py-3 transition active:scale-[0.99] flex items-center gap-3 ${
                 sel ? "border-cherry-500 bg-cherry-50 dark:bg-cherry-900/20" : "border-hairline bg-surface hover:border-hairline-strong"
               }`}
             >
-              <div className="font-semibold text-sm">{o.label}</div>
-              <div className="text-xs text-secondary">{o.desc}</div>
+              <span
+                className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center transition ${
+                  sel ? "bg-cherry-500 border-cherry-500" : "border-hairline bg-canvas"
+                }`}
+                aria-hidden
+              >
+                {sel && <Check size={14} strokeWidth={3} className="text-cream" />}
+              </span>
+              <span className="flex-1 min-w-0">
+                <div className="font-semibold">{o.label}</div>
+                <div className="text-sm text-secondary">{o.desc}</div>
+              </span>
             </button>
           );
         })}

@@ -17,8 +17,8 @@ export default function RoleBadge({
   size?: "sm" | "md";
   withIcon?: boolean;
 }) {
-  const sz = size === "sm" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-0.5";
-  const iconSize = size === "sm" ? 10 : 12;
+  const sz = size === "sm" ? "text-xs px-2 py-0.5" : "text-sm px-2.5 py-1";
+  const iconSize = size === "sm" ? 12 : 14;
 
   const variants: Record<Role, { cls: string; label: string; icon: React.ReactNode }> = {
     superadmin: {

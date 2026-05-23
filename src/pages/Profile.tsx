@@ -153,38 +153,41 @@ export default function Profile() {
 
       <section className="card">
         <h2 className="eyebrow mb-2">Tour &amp; Hilfe</h2>
-        <p className="text-xs text-secondary mb-3">
-          Wenn du dich erinnern willst oder Feedback zum Onboarding geben möchtest — zwei Modi:
+        <p className="text-sm text-secondary mb-3">
+          Du kannst das Onboarding jederzeit erneut durchspielen — z.B. um es einem
+          neuen Mitspieler zu zeigen oder selbst noch mal aufzufrischen.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            className="btn-accent inline-flex items-start gap-2 text-left p-3"
+            onClick={() => resetOnboarding("long")}
+            disabled={resettingOnboarding}
+          >
+            <Compass size={18} strokeWidth={1.75} className="shrink-0 mt-0.5" />
+            <span className="flex flex-col items-start">
+              <span className="font-semibold">Ausführliche Einführung</span>
+              <span className="text-sm opacity-90 font-normal">
+                11 Schritte — Disziplinen, Wertung, Pflöcke, Bogenklassen,
+                Multi-Player, Statistik. ~5 Min.
+              </span>
+            </span>
+          </button>
           <button
             className="btn-secondary inline-flex items-start gap-2 text-left p-3"
             onClick={() => resetOnboarding("short")}
             disabled={resettingOnboarding}
           >
-            <Compass size={16} strokeWidth={1.75} className="shrink-0 mt-0.5" />
+            <Compass size={18} strokeWidth={1.75} className="shrink-0 mt-0.5" />
             <span className="flex flex-col items-start">
-              <span className="font-semibold text-sm">Kurze Tour</span>
-              <span className="text-xs text-secondary font-normal">5 Schritte — nur Setup, ~1 Minute</span>
-            </span>
-          </button>
-          <button
-            className="btn-secondary inline-flex items-start gap-2 text-left p-3"
-            onClick={() => resetOnboarding("long")}
-            disabled={resettingOnboarding}
-          >
-            <Compass size={16} strokeWidth={1.75} className="shrink-0 mt-0.5" />
-            <span className="flex flex-col items-start">
-              <span className="font-semibold text-sm">Ausführliche Einführung</span>
-              <span className="text-xs text-secondary font-normal">
-                11 Schritte — Konzepte erklärt: Disziplinen, Wertung, Pflöcke, Bogenklassen,
-                Multi-Player, Statistik. ~5 Minuten.
+              <span className="font-semibold">Kurze Tour</span>
+              <span className="text-sm text-secondary font-normal">
+                5 Schritte — nur Setup, ~1 Min.
               </span>
             </span>
           </button>
         </div>
         {resettingOnboarding && (
-          <p className="text-xs text-secondary mt-2">Setze Onboarding zurück…</p>
+          <p className="text-sm text-secondary mt-2">Setze Onboarding zurück…</p>
         )}
       </section>
 

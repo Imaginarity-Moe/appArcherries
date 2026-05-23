@@ -78,23 +78,69 @@ export default function HelpPegs() {
         </p>
       </section>
 
-      {/* Etikette */}
+      {/* Standpunkt-Regeln */}
+      <section className="space-y-2">
+        <h2 className="eyebrow">Standpunkt-Regeln (offizielles Regelwerk)</h2>
+        <p className="text-sm text-secondary">
+          Wo genau du beim Schuss stehen musst, regeln die Verbände unterschiedlich. Hier die
+          Kernregeln aus den offiziellen Rule-Books:
+        </p>
+
+        <div className="card-sunken space-y-1.5">
+          <p className="font-semibold text-sm">WA / DSB (World Archery, Book 4)</p>
+          <p className="text-sm text-secondary">
+            Beide Füße stehen <b>auf einer gedachten Linie</b> durch den Pflock — die Schießlinie
+            verläuft quer zur Schussrichtung am Pflock entlang. Der Pflock selbst markiert die
+            Linie, du stehst hinter ihm. Niemand darf näher zur Scheibe stehen als der Pflock.
+          </p>
+        </div>
+
+        <div className="card-sunken space-y-1.5">
+          <p className="font-semibold text-sm">IFAA / DFBV (IFAA Book of Rules)</p>
+          <p className="text-sm text-secondary">
+            Mindestens <b>ein Fuß muss den Pflock berühren</b> oder direkt daneben aufliegen (es gilt
+            der Standpunkt am Pflock). Der zweite Fuß kann frei stehen, solange er nicht näher zur
+            Scheibe ist als der Pflock.
+          </p>
+        </div>
+
+        <div className="card-sunken space-y-1.5">
+          <p className="font-semibold text-sm">Was passiert bei Verstößen?</p>
+          <p className="text-sm text-secondary">
+            Schiedsrichter können einen Schuss <b>annullieren</b> (= 0 Punkte) wenn der Standpunkt
+            falsch war. Bei Wiederholung kann es zu Disqualifikation einer Runde kommen.
+            Bei Übungs- und Trainingsrunden ist das meist egal, bei Wettkämpfen aber strikt.
+          </p>
+        </div>
+
+        <p className="text-sm text-secondary italic">
+          Im Zweifel beim Schiedsrichter / Veranstalter nachfragen — manche Parcours haben
+          zusätzliche Hausregeln (z.B. Pflock-Markierungslinie auf dem Boden).
+        </p>
+      </section>
+
+      {/* Etikette & Fairness */}
       <section className="space-y-2">
         <h2 className="eyebrow">Pflock-Etikette</h2>
-        <ul className="list-disc pl-5 text-primary text-sm space-y-1.5">
+        <ul className="list-disc pl-5 text-primary space-y-1.5">
           <li>
-            <b>Mit beiden Füßen am Pflock stehen.</b> Eine Fußspitze sollte den Pflock direkt
-            berühren. Manche Veranstalter sind hier streng — Pfeile, die ohne Pflockkontakt
-            geschossen wurden, können disqualifiziert werden.
+            <b>Den richtigen Pflock wählen.</b> Vor dem Schießen kontrollieren — wenn du
+            Recurve mit Visier schießt und am Roten Pflock startest, gilt deine Wertung nicht.
+            Bei Recurve/Compound ist standardmäßig <b>Blau</b>, bei Trad/Blank <b>Rot</b>.
           </li>
           <li>
-            <b>Den richtigen Pflock wählen.</b> Vor dem Schießen kontrollieren — wenn du Recurve
-            mit Visier schießt und am Roten Pflock startest, gilt deine Wertung nicht.
+            <b>Distanz nicht aktiv messen.</b> Auf unmarkierten Parcours (IFAA Hunter,
+            unmarkierte 3D-Veranstaltungen) ist das Verwenden von Laser-Entfernungsmessern oder
+            das aktive Ausschreiten der Distanz <b>regelwidrig</b>. Die App nutzt deshalb auch
+            kein GPS — nur deine manuelle Schätzdistanz.
           </li>
           <li>
-            <b>Pflock-Distanz nicht messen.</b> Auf unmarkierten Parcours ist Distanzmessen
-            (Laser, Schritte) Pflicht­verletzung. Die App nutzt absichtlich nur deine
-            <i> manuelle Schätzdistanz</i>, kein GPS.
+            <b>Pfeile erst ziehen wenn alle aus der Gruppe fertig sind.</b> Sicherheits-Standard
+            auf allen Veranstaltungen.
+          </li>
+          <li>
+            <b>Hinter dem Pflock warten.</b> Wer nicht am Pflock steht, hält Abstand zur
+            Schießlinie — sonst Ablenkung und Sicherheitsrisiko.
           </li>
         </ul>
       </section>
