@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type AriaAttributes } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users, Bell, Compass } from "lucide-react";
+import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users, Bell, Compass, AlertTriangle, Loader2, X as XIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api } from "../api/client";
@@ -19,7 +19,7 @@ import { Spinner } from "../components/Spinner";
 type Theme = "light" | "dark" | "auto";
 
 export default function Profile() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, logout } = useAuth();
   const { t, i18n } = useTranslation(["profile", "common"]);
   const nav = useNavigate();
 
@@ -28,6 +28,26 @@ export default function Profile() {
   );
   const [incomingFriends, setIncomingFriends] = useState(0);
   const [resettingOnboarding, setResettingOnboarding] = useState(false);
+  // Self-Delete Modal-State
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function deleteSelf() {
+    if (!deletePassword.trim()) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await api("/me", { method: "DELETE", body: JSON.stringify({ password: deletePassword }) });
+      logout();
+      nav("/login", { replace: true });
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Löschen fehlgeschlagen");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   async function resetOnboarding(mode: "short" | "long") {
     setResettingOnboarding(true);
@@ -191,13 +211,89 @@ export default function Profile() {
         )}
       </section>
 
-      <section className="card">
-        <h2 className="eyebrow mb-2 text-cherry-700 dark:text-cherry-200">{t("profile:danger_zone")}</h2>
-        <p className="text-xs text-secondary mb-3">{t("profile:delete_account_confirm")}</p>
-        <button className="btn-danger" disabled>
-          <Trash2 size={15} strokeWidth={1.75} /> {t("profile:delete_account")}
+      <section className="card border-cherry-500/30">
+        <h2 className="eyebrow mb-2 text-cherry-700 dark:text-cherry-200 flex items-center gap-1.5">
+          <AlertTriangle size={14} strokeWidth={1.75} /> {t("profile:danger_zone")}
+        </h2>
+        <p className="text-sm text-secondary mb-3">
+          Account löschen anonymisiert deine Daten (Name, E-Mail, Avatar). Öffentliche Inhalte
+          (Parcours, Reviews, Highscores) bleiben anonym erhalten. Du wirst sofort ausgeloggt
+          und kannst dich nicht mehr einloggen.
+        </p>
+        <button onClick={() => setDeleteOpen(true)} className="btn-danger text-sm inline-flex items-center gap-1.5">
+          <Trash2 size={15} strokeWidth={1.75} /> Account löschen
         </button>
       </section>
+
+      {/* Account-Lösch-Modal */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-50 bg-warm-black/75 flex items-center justify-center p-4 animate-fade-in">
+          <div className="card max-w-md w-full space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={20} strokeWidth={1.75} className="text-cherry-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-display text-lg font-semibold">Account wirklich löschen?</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setDeleteOpen(false); setDeletePassword(""); setDeleteError(null); }}
+                className="btn-icon shrink-0"
+                disabled={deleteBusy}
+                aria-label="Abbrechen"
+              >
+                <XIcon size={18} strokeWidth={1.75} />
+              </button>
+            </div>
+
+            <p className="text-sm text-secondary">Was passiert:</p>
+            <ul className="text-sm text-secondary list-disc pl-5 space-y-0.5">
+              <li>Dein Anzeigename → <i>„Gelöschter User #{user?.id}"</i></li>
+              <li>Deine E-Mail wird unbrauchbar</li>
+              <li>Dein Avatar wird gelöscht</li>
+              <li>Login wird gesperrt — kein Zugang mehr</li>
+              <li>Trainings, Bögen, Pfeile, Parcours bleiben in der DB (anonym)</li>
+              <li>Öffentliche Reviews + Highscores bleiben (anonym)</li>
+            </ul>
+
+            <p className="text-sm text-secondary mt-2">
+              Zur Bestätigung dein <b>aktuelles Passwort</b> eingeben:
+            </p>
+            <input
+              type="password"
+              className="input text-sm font-mono"
+              placeholder="Aktuelles Passwort"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              autoComplete="current-password"
+              autoFocus
+            />
+
+            {deleteError && (
+              <div className="text-sm text-cherry-600">{deleteError}</div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => { setDeleteOpen(false); setDeletePassword(""); setDeleteError(null); }}
+                className="btn-ghost text-sm flex-1"
+                disabled={deleteBusy}
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={deleteSelf}
+                disabled={deleteBusy || !deletePassword.trim()}
+                className="btn-danger text-sm flex-1 inline-flex items-center justify-center gap-1.5"
+              >
+                {deleteBusy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} strokeWidth={1.75} />}
+                Endgültig löschen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

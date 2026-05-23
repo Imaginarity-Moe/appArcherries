@@ -96,8 +96,16 @@ export default function Stats() {
       {loading && <Spinner className="py-2" />}
 
       {!loading && !hasData && (
-        <div className="card text-center py-10">
-          <p className="text-forest-700">{t("stats:no_data")}</p>
+        <div className="card text-center py-10 space-y-4">
+          <div className="text-5xl">📊</div>
+          <p className="font-semibold text-lg">Noch keine Statistik-Daten</p>
+          <p className="text-secondary max-w-md mx-auto">
+            Sobald du dein erstes Training mit der Pfeil-genauen Erfassung beendet hast, siehst du
+            hier deinen Score-Verlauf, Trefferbild, Pfeil-Konsistenz und persönliche Bestleistungen.
+          </p>
+          <a href="/trainings/new" className="btn-accent inline-flex items-center gap-1.5">
+            🎯 Erstes Training starten
+          </a>
         </div>
       )}
 

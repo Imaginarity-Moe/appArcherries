@@ -134,17 +134,39 @@ export default function ParcoursList() {
       {loading && <Spinner className="py-2" />}
 
       {!loading && filtered.length === 0 && (
-        <div className="card text-center py-10">
+        <div className="card text-center py-10 space-y-4">
           {query && items.length > 0 ? (
             <p className="text-secondary">Keine Treffer für „{query}"</p>
           ) : mode === "public" ? (
-            <p className="text-secondary">Noch keine öffentlichen Parcours von anderen Usern.</p>
+            <>
+              <div className="text-5xl mb-2">🏞️</div>
+              <p className="font-semibold text-lg">Noch keine öffentlichen Parcours</p>
+              <p className="text-secondary max-w-md mx-auto">
+                Andere User haben noch keine Parcours veröffentlicht — oder du bist der Erste,
+                der seinen Parcours mit der Community teilt. Lege einen privaten an und schalte
+                ihn später öffentlich.
+              </p>
+              <Link to="/parcours/new" className="btn-accent inline-flex">
+                <Plus size={18} /> Eigenen Parcours anlegen
+              </Link>
+            </>
           ) : (
             <>
-              <p className="text-secondary mb-4">{t("parcours:empty_state")}</p>
-              <Link to="/parcours/new" className="btn inline-flex">
-                <Plus size={18} /> {t("parcours:create_cta")}
-              </Link>
+              <div className="text-5xl mb-2">🎯</div>
+              <p className="font-semibold text-lg">Noch kein Parcours angelegt</p>
+              <p className="text-secondary max-w-md mx-auto">
+                Lege deinen Hausparcours an: Name, Distanzen pro Pflockfarbe, Foto pro Bahn —
+                und du hast ein digitales Logbuch, das mit dir mitläuft. Beim Schießen
+                aktualisierst du Score, Heatmap und Notizen pro Station.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Link to="/parcours/new" className="btn-accent inline-flex">
+                  <Plus size={18} /> Eigenen Parcours anlegen
+                </Link>
+                <Link to="/parcours?mode=public" className="btn-secondary inline-flex">
+                  Öffentliche entdecken
+                </Link>
+              </div>
             </>
           )}
         </div>

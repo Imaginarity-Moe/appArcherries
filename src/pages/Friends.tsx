@@ -191,8 +191,14 @@ export default function Friends() {
         </section>
       ) : (
         !loading && state.incoming.length === 0 && state.outgoing.length === 0 && (
-          <section className="card text-center py-6 text-sm text-secondary">
-            Noch keine Freunde. Sende deine erste Anfrage oben.
+          <section className="card text-center py-10 space-y-3">
+            <div className="text-5xl">🤝</div>
+            <p className="font-semibold text-lg">Noch keine Freunde verbunden</p>
+            <p className="text-sm text-secondary max-w-md mx-auto">
+              Sende eine Anfrage per E-Mail an einen Mitschützen. Akzeptierte Freunde kannst du
+              mit einem Tap zu deinen Trainings einladen — oder im Highscore filtern, um nur deine
+              Gruppe zu sehen.
+            </p>
           </section>
         )
       )}
