@@ -218,6 +218,70 @@ export default function HelpConversions() {
         />
       </section>
 
+      {/* ─── Auszugslänge & Pfeillänge ──────────────────────────────────── */}
+      <section className="space-y-3">
+        <h2 className="font-display text-xl font-semibold border-b border-hairline pb-2">
+          Auszugslänge &amp; Pfeillänge
+        </h2>
+        <p className="text-sm text-secondary">
+          Pfeillänge und Auszugslänge sind <b>nicht dasselbe</b> — der Pfeil ist meist etwas
+          länger als dein tatsächlicher Auszug. Beide Werte zu kennen ist die Grundlage für
+          die richtige Spine-Wahl.
+        </p>
+
+        <div className="card-sunken text-sm space-y-2">
+          <p className="font-semibold">Auszugslänge messen — drei Methoden</p>
+          <ol className="list-decimal pl-5 space-y-1 text-secondary">
+            <li>
+              <b>Arm­spannweite ÷ 2,5</b> (gröbste, aber schnelle Methode):
+              Arme seitlich ausstrecken, Mittelfinger-zu-Mittelfinger messen, durch 2,5
+              teilen. Beispiel: 178 cm Spannweite → 71 cm ≈ <b>28 Zoll</b>.
+            </li>
+            <li>
+              <b>Im Bogenladen messen lassen</b>: Du ziehst einen Mess-Pfeil aus, der hat
+              Markierungen in Zoll-Schritten. Verkäufer:in liest ab, wo dein Anker sitzt.
+              Genaueste Methode für Anfänger.
+            </li>
+            <li>
+              <b>AMO-Standard</b>: Pfeillänge von der Sehnen­nut bis zum Ende des
+              Mittelteils + 1,75&quot;. Wird selten direkt verwendet, taucht aber in
+              Hersteller-Charts auf.
+            </li>
+          </ol>
+        </div>
+
+        <div className="card-sunken text-sm space-y-2">
+          <p className="font-semibold">Pfeillänge wählen — Faustregel</p>
+          <p className="text-secondary">
+            Die Pfeillänge (von Sehnen­nut bis Ende des Schafts, ohne Spitze) sollte
+            <b> mindestens deine Auszugslänge erreichen, aber sicherer mit 1–2 Zoll Puffer</b>:
+          </p>
+          <ul className="list-disc pl-5 mt-1 space-y-0.5 text-secondary">
+            <li><b>Anfänger / Jugend</b>: Auszugslänge + 2&quot; (1 Zoll Sicherheits-Reserve, 1 Zoll für Wachstum / Anker-Drift)</li>
+            <li><b>Erfahrene Recurve</b>: Auszugslänge + 1&quot;</li>
+            <li><b>Compound mit Release</b>: Auszugslänge fest definiert durch Wall + Cam — Pfeil = Auszugslänge ± 1&quot;</li>
+          </ul>
+          <p className="text-secondary text-xs italic mt-1">
+            <b>Sicherheit:</b> Der Pfeil darf bei vollem Auszug niemals hinter der Pfeilauflage liegen.
+            Sonst kann er beim Lösen abrutschen — schwere Verletzungsgefahr.
+          </p>
+        </div>
+
+        <div className="card-sunken text-sm space-y-2">
+          <p className="font-semibold">Typische Auszugslängen pro Statur</p>
+          <Table
+            headers={["Zielgruppe", "Auszugslänge", "Pfeillänge"]}
+            rows={[
+              ["Kinder (6–10 Jahre)",       "17–21\"",   "19–23\""],
+              ["Jugend (11–15 Jahre)",      "20–24\"",   "22–26\""],
+              ["Erwachsene (klein, <165 cm)","23–26\"",   "25–28\""],
+              ["Erwachsene (mittel, 165–180 cm)","26–28\"","28–30\""],
+              ["Erwachsene (groß, >180 cm)","28–31\"",   "30–33\""],
+            ]}
+          />
+        </div>
+      </section>
+
       {/* ─── Pfeil-Spine-Orientierung ───────────────────────────────────── */}
       <section className="space-y-3">
         <h2 className="font-display text-xl font-semibold border-b border-hairline pb-2">
@@ -225,31 +289,68 @@ export default function HelpConversions() {
         </h2>
         <div className="card-sunken text-sm flex items-start gap-2">
           <Info size={16} strokeWidth={1.75} className="text-cherry-500 shrink-0 mt-0.5" />
-          <p className="text-secondary">
-            <b>Spine</b> = Biegesteifigkeit eines Pfeils, in Carbon-Zahl (z.B. 500, 600, 700).
-            Niedrige Zahl = steifer = für stärkere Bögen. Diese Tabelle ist nur eine grobe
-            Orientierung — Hersteller-Charts (Easton, Gold Tip, …) sind genauer. Wichtige
-            Faktoren: Zuggewicht, Pfeillänge, Spitzengewicht, Bogentyp.
-          </p>
+          <div className="text-secondary space-y-1">
+            <p>
+              <b>Spine</b> = Biegesteifigkeit eines Pfeils, in Carbon-Zahl (z.B. 500, 700, 1000).
+              <b> Niedrige Zahl = steifer</b> = für stärkere Bögen. Bei niedrigen Zuggewichten
+              (Kinder, Jugend, leichte Trainings­bögen) brauchst du sehr flexible Pfeile mit
+              hoher Spine-Zahl.
+            </p>
+            <p>
+              Diese Tabelle ist eine <b>grobe Orientierung</b> für Carbon-Pfeile mit ~100&nbsp;gr
+              Spitze. Hersteller-Charts (Easton, Gold Tip, Victory) sind genauer und berücksichtigen
+              Spitzen­gewicht, Bogentyp, Cam-Aggressivität.
+            </p>
+          </div>
         </div>
-        <Table
-          headers={["Zuggewicht (lbs)", "Pfeillänge 27\"", "28\"", "29\"", "30\""]}
-          rows={[
-            ["25–30",  "800", "700", "700", "600"],
-            ["30–35",  "700", "600", "600", "500"],
-            ["35–40",  "600", "500", "500", "500"],
-            ["40–45",  "500", "500", "400", "400"],
-            ["45–50",  "500", "400", "400", "340"],
-            ["50–55",  "400", "400", "340", "340"],
-            ["55–60",  "400", "340", "340", "300"],
-            ["60–65",  "340", "340", "300", "300"],
-            ["65–70",  "340", "300", "300", "260"],
-          ]}
-        />
+        <div className="card-sunken text-sm overflow-x-auto p-0">
+          <table className="w-full text-sm font-mono tabular-nums">
+            <thead>
+              <tr className="border-b border-hairline text-secondary/80 font-semibold text-xs uppercase tracking-wider">
+                <th className="py-2 px-3 text-left">Zuggewicht</th>
+                <th className="py-2 px-3 text-right">Pfeil 22&quot;</th>
+                <th className="py-2 px-3 text-right">24&quot;</th>
+                <th className="py-2 px-3 text-right">26&quot;</th>
+                <th className="py-2 px-3 text-right">28&quot;</th>
+                <th className="py-2 px-3 text-right">30&quot;</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["10–15 lbs", "1500", "1400", "1300", "1200", "—"],
+                ["15–20 lbs", "1300", "1200", "1100", "1000",  "—"],
+                ["20–25 lbs", "1100", "1000",  "900",  "800",  "—"],
+                ["25–30 lbs",  "900",  "800",  "700",  "700",  "600"],
+                ["30–35 lbs",  "700",  "700",  "600",  "600",  "500"],
+                ["35–40 lbs",  "600",  "600",  "500",  "500",  "500"],
+                ["40–45 lbs",  "500",  "500",  "500",  "500",  "400"],
+                ["45–50 lbs",  "500",  "500",  "500",  "400",  "400"],
+                ["50–55 lbs",  "—",    "400",  "400",  "400",  "340"],
+                ["55–60 lbs",  "—",    "400",  "400",  "340",  "340"],
+                ["60–65 lbs",  "—",    "—",    "340",  "340",  "300"],
+                ["65–70 lbs",  "—",    "—",    "340",  "300",  "300"],
+              ].map((r, i) => (
+                <tr key={i} className="border-b border-hairline last:border-0 hover:bg-elevated/30 transition">
+                  <td className="py-2 px-3 text-left font-semibold">{r[0]}</td>
+                  {r.slice(1).map((c, j) => (
+                    <td key={j} className={`py-2 px-3 text-right ${c === "—" ? "text-muted/40" : "text-secondary"}`}>{c}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p className="text-xs text-secondary italic">
-          Hersteller-Charts: <a href="https://eastonarchery.com/huntingcharts/" className="underline" target="_blank" rel="noreferrer">Easton</a>
+          Sehr leichte Bögen (unter 15 lbs) + sehr kurze Pfeile sind nicht in jedem
+          Carbon-Sortiment abgedeckt. Hier sind Holz- oder Aluminium-Pfeile oft die bessere
+          Wahl — frag in deinem Bogenladen nach.
+        </p>
+        <p className="text-xs text-secondary italic">
+          Hersteller-Charts:{" "}
+          <a href="https://eastonarchery.com/huntingcharts/" className="underline" target="_blank" rel="noreferrer">Easton</a>
           {" · "}<a href="https://www.goldtip.com/spine-charts/" className="underline" target="_blank" rel="noreferrer">Gold Tip</a>
           {" · "}<a href="https://www.victoryarchery.com/spine-chart/" className="underline" target="_blank" rel="noreferrer">Victory</a>
+          {" · "}<a href="https://www.bohning.com/spine-chart" className="underline" target="_blank" rel="noreferrer">Bohning</a>
         </p>
       </section>
 

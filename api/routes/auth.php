@@ -160,11 +160,7 @@ function auth_login(): void
         res_error('Bitte E-Mail-Adresse zuerst bestätigen', 403);
     }
 
-    // Admin-Benachrichtigung — wir wollen über jeden erfolgreichen Login informiert sein.
-    // Failsafe: blockiert den Login nie. Eigenen Login (Superadmin) ausnehmen damit kein Spam.
-    if ($u['role'] !== 'superadmin') {
-        notify_admin_login((int)$u['id'], (string)$u['email'], $u['display_name'] ?? null, client_ip_from_request());
-    }
+    // User-Wunsch: KEINE Mail bei Login (nur Registrierung wird gemailt).
 
     $token = jwt_sign(['uid' => (int)$u['id'], 'role' => $u['role']]);
     res_json([
