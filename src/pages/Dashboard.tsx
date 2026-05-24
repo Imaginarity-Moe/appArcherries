@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Target, TrendingUp, Calendar, Plus, Users, Play, UserPlus, Archive, Trash2 } from "lucide-react";
+import { Target, TrendingUp, Calendar, Plus, Users, Play, UserPlus, Archive, Trash2, Flame, Ruler, Trophy as TrophyIcon, ArrowRight } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import {
   BOW_LABELS,
@@ -20,13 +20,17 @@ import { endLabel } from "../lib/format";
 import { fmtDate } from "../lib/format";
 import { useSyncListener } from "../lib/useSyncListener";
 
+type TrainingsTab = "active" | "ended" | "archived";
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { t, i18n } = useTranslation(["dashboard", "common"]);
   const [items, setItems] = useState<TrainingListItem[]>([]);
+  const [archivedItems, setArchivedItems] = useState<TrainingListItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [incomingCount, setIncomingCount] = useState(0);
+  const [tab, setTab] = useState<TrainingsTab>("active");
   const confirm = useConfirm();
 
   const loadTrainings = () => {
@@ -37,6 +41,15 @@ export default function Dashboard() {
       .catch((e) => setError(e instanceof Error ? e.message : "Fehler beim Laden"))
       .finally(() => setLoading(false));
   };
+
+  // Archiv lazy laden — erst wenn der User den Tab antippt
+  useEffect(() => {
+    if (tab === "archived" && archivedItems === null) {
+      listTrainings(1, 50, true)
+        .then((r) => setArchivedItems(r.trainings))
+        .catch(() => setArchivedItems([]));
+    }
+  }, [tab, archivedItems]);
 
   useEffect(() => {
     loadTrainings();
@@ -162,49 +175,224 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Quick-Access für neue Features: Streak + Distanz-Training + Achievements */}
+      <DashboardFeatureRow />
+
       {/* Trainings */}
       <section>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2">
           <h2 className="font-display text-xl font-semibold">{t("dashboard:recent_trainings")}</h2>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/trainings/archive"
-              className="inline-flex items-center gap-1 text-xs text-secondary hover:text-cherry-500"
-              aria-label="Archiv öffnen"
-            >
-              <Archive size={14} strokeWidth={1.75} /> Archiv
-            </Link>
-            <Link
-              to="/trainings/new"
-              className="hidden lg:inline-flex btn"
-            >
-              <Plus size={18} /> {t("dashboard:new_training")}
-            </Link>
-          </div>
+          <Link
+            to="/trainings/new"
+            className="hidden lg:inline-flex btn"
+          >
+            <Plus size={18} /> {t("dashboard:new_training")}
+          </Link>
         </div>
 
-        {loading && <Spinner className="py-4" />}
+        {/* Tab-Bar: Aktiv / Beendet / Archiv */}
+        <TrainingsTabBar
+          tab={tab}
+          onChange={setTab}
+          counts={{
+            active:   items.filter((it) => !it.ended_at).length,
+            ended:    items.filter((it) =>  it.ended_at).length,
+            archived: archivedItems?.length ?? null,
+          }}
+        />
+
+        {loading && tab === "active" && <Spinner className="py-4" />}
         {error && <p className="text-red-700">{error}</p>}
 
-        {!loading && !error && items.length === 0 && <EmptyState />}
+        <TrainingsTabContent
+          tab={tab}
+          items={items}
+          archivedItems={archivedItems}
+          loadTrainings={loadTrainings}
+          reloadArchived={() => setArchivedItems(null)}
+          confirm={confirm}
+        />
+      </section>
+    </div>
+  );
+}
 
-        {items.length > 0 && (
-          <ul className="space-y-3">
-            {items.slice(0, 10).map((it) => (
-              <li key={it.id}>
-                <SwipeableCard
-                  leftAction={{
-                    label: "Löschen",
-                    color: "#9b3340",
-                    icon: <Trash2 size={18} strokeWidth={2} />,
+/**
+ * Quick-Access-Row für die neuen Features (Streak, Distanz-Training, Achievements).
+ * Lädt Achievement-Daten via lazy-Import damit Dashboard-Initial-Render nicht blockt.
+ */
+function DashboardFeatureRow() {
+  const [data, setData] = useState<{ streak_current: number; unlocked_count: number; total: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    import("../api/achievements").then((m) => m.getAchievements()).then((r) => {
+      if (!cancelled) setData(r);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+      {/* Streak-Tile */}
+      <Link
+        to="/profile"
+        className="card-sunken flex items-center gap-3 hover:border-cherry-500/30 transition group"
+      >
+        <span className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-cherry-50 dark:bg-cherry-900/30 text-cherry-600 dark:text-cherry-200 shrink-0">
+          <Flame size={22} strokeWidth={1.75} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted uppercase tracking-wider">Streak</p>
+          <p className="font-semibold tabular-nums">
+            {data === null ? "—" : data.streak_current === 0 ? "keine aktive" : `${data.streak_current} ${data.streak_current === 1 ? "Tag" : "Tage"}`}
+          </p>
+        </div>
+        <ArrowRight size={14} strokeWidth={2} className="text-muted group-hover:text-cherry-500 group-hover:translate-x-0.5 transition shrink-0" />
+      </Link>
+
+      {/* Distanz-Training-Tile */}
+      <Link
+        to="/train/distance"
+        className="card-sunken flex items-center gap-3 hover:border-cherry-500/30 transition group"
+      >
+        <span className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-200 shrink-0">
+          <Ruler size={22} strokeWidth={1.75} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted uppercase tracking-wider">Schätz-Training</p>
+          <p className="font-semibold">Distanz üben</p>
+        </div>
+        <ArrowRight size={14} strokeWidth={2} className="text-muted group-hover:text-cherry-500 group-hover:translate-x-0.5 transition shrink-0" />
+      </Link>
+
+      {/* Achievements-Tile */}
+      <Link
+        to="/profile"
+        className="card-sunken flex items-center gap-3 hover:border-cherry-500/30 transition group"
+      >
+        <span className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 shrink-0">
+          <TrophyIcon size={22} strokeWidth={1.75} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted uppercase tracking-wider">Erfolge</p>
+          <p className="font-semibold tabular-nums">
+            {data === null ? "—" : `${data.unlocked_count} / ${data.total}`}
+          </p>
+        </div>
+        <ArrowRight size={14} strokeWidth={2} className="text-muted group-hover:text-cherry-500 group-hover:translate-x-0.5 transition shrink-0" />
+      </Link>
+    </div>
+  );
+}
+
+function TrainingsTabBar({
+  tab,
+  onChange,
+  counts,
+}: {
+  tab: TrainingsTab;
+  onChange: (t: TrainingsTab) => void;
+  counts: { active: number; ended: number; archived: number | null };
+}) {
+  const tabs: { k: TrainingsTab; label: string; count: number | null }[] = [
+    { k: "active",   label: "Aktiv",    count: counts.active   },
+    { k: "ended",    label: "Beendet",  count: counts.ended    },
+    { k: "archived", label: "Archiv",   count: counts.archived },
+  ];
+  return (
+    <div className="flex items-center gap-1 mb-3 -mx-1 px-1 overflow-x-auto">
+      {tabs.map((t) => {
+        const active = t.k === tab;
+        return (
+          <button
+            key={t.k}
+            type="button"
+            onClick={() => onChange(t.k)}
+            className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition active:scale-[0.97] ${
+              active
+                ? "bg-cherry-500 text-cream shadow-cherry"
+                : "bg-surface text-secondary hover:text-primary border border-hairline"
+            }`}
+          >
+            {t.label}
+            {t.count !== null && (
+              <span className={`tabular-nums text-xs px-1.5 py-0.5 rounded-full ${active ? "bg-cream/20" : "bg-elevated"}`}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrainingsTabContent({
+  tab,
+  items,
+  archivedItems,
+  loadTrainings,
+  reloadArchived,
+  confirm,
+}: {
+  tab: TrainingsTab;
+  items: TrainingListItem[];
+  archivedItems: TrainingListItem[] | null;
+  loadTrainings: () => void;
+  reloadArchived: () => void;
+  confirm: ReturnType<typeof useConfirm>;
+}) {
+  // Filtere für den aktuellen Tab
+  let list: TrainingListItem[];
+  if (tab === "active") list = items.filter((it) => !it.ended_at);
+  else if (tab === "ended") list = items.filter((it) => !!it.ended_at);
+  else list = archivedItems ?? [];
+
+  if (tab === "archived" && archivedItems === null) {
+    return <Spinner className="py-4" />;
+  }
+
+  if (list.length === 0) {
+    return (
+      <div className="card text-center py-8 text-sm text-secondary">
+        {tab === "active"   && 'Aktuell läuft kein Training. Tippe oben rechts auf „Neues Training".'}
+        {tab === "ended"    && "Noch keine beendeten Trainings. Wenn du eines abschließt, landet es hier."}
+        {tab === "archived" && "Keine archivierten Trainings. Beendete kannst du nach links wischen → Archivieren."}
+      </div>
+    );
+  }
+
+  return (
+    <ul className="space-y-3">
+      {list.slice(0, 20).map((it) => (
+        <li key={it.id}>
+          <SwipeableCard
+            leftAction={{
+              label: "Löschen",
+              color: "#9b3340",
+              icon: <Trash2 size={18} strokeWidth={2} />,
+              onAction: async () => {
+                const ok = await confirm({ title: "Training löschen?", message: "Das Training und alle Pfeile werden unwiderruflich entfernt.", confirmLabel: "Löschen", variant: "danger" });
+                if (!ok) return;
+                await deleteTraining(it.id);
+                loadTrainings();
+                reloadArchived();
+              },
+            }}
+            rightAction={
+              tab === "archived"
+                ? {
+                    label: "Aus Archiv",
+                    color: "#3F6D5E",
+                    icon: <Archive size={18} strokeWidth={2} />,
                     onAction: async () => {
-                      const ok = await confirm({ title: "Training löschen?", message: "Das Training und alle Pfeile werden unwiderruflich entfernt.", confirmLabel: "Löschen", variant: "danger" });
-                      if (!ok) return;
-                      await deleteTraining(it.id);
+                      await setTrainingArchived(it.id, false);
                       loadTrainings();
+                      reloadArchived();
                     },
-                  }}
-                  rightAction={it.ended_at ? {
+                  }
+                : it.ended_at
+                ? {
                     label: "Archivieren",
                     color: "#3F6D5E",
                     icon: <Archive size={18} strokeWidth={2} />,
@@ -217,17 +405,17 @@ export default function Dashboard() {
                       if (!ok) return;
                       await setTrainingArchived(it.id, true);
                       loadTrainings();
+                      reloadArchived();
                     },
-                  } : undefined}
-                >
-                  <TrainingCard item={it} />
-                </SwipeableCard>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
+                  }
+                : undefined
+            }
+          >
+            <TrainingCard item={it} />
+          </SwipeableCard>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -336,42 +524,3 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
   );
 }
 
-function EmptyState() {
-  const { t } = useTranslation("dashboard");
-  return (
-    <div className="card text-center py-10">
-      <EmptyArcher />
-      <p className="text-forest-700 dark:text-forest-300 mt-4 mb-1">{t("no_trainings")}</p>
-      <p className="text-forest-700 dark:text-forest-300 text-sm mb-5">{t("empty_cta")}</p>
-      <Link to="/trainings/new" className="btn tap-large inline-flex">
-        <Plus size={18} /> {t("first_training")}
-      </Link>
-    </div>
-  );
-}
-
-function EmptyArcher() {
-  // Mini-SVG: stilisierter Bogenschütze als Linien-Schatten in forest-300
-  return (
-    <svg viewBox="0 0 200 160" width="160" height="128" className="mx-auto opacity-60">
-      <g fill="none" stroke="#B5C58A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {/* Kopf */}
-        <circle cx="100" cy="32" r="12" />
-        {/* Körper */}
-        <line x1="100" y1="44" x2="100" y2="100" />
-        {/* Linker Arm hält Bogen */}
-        <line x1="100" y1="60" x2="60" y2="55" />
-        {/* Bogen */}
-        <path d="M 60 30 Q 40 55 60 80" />
-        {/* Sehne + Pfeil */}
-        <line x1="60" y1="55" x2="130" y2="55" />
-        <path d="M125 50 L130 55 L125 60" />
-        {/* Rechter Arm zur Sehne */}
-        <line x1="100" y1="60" x2="125" y2="55" />
-        {/* Beine */}
-        <line x1="100" y1="100" x2="85" y2="135" />
-        <line x1="100" y1="100" x2="115" y2="135" />
-      </g>
-    </svg>
-  );
-}

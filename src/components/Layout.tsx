@@ -130,6 +130,16 @@ export default function Layout() {
             <BuildInfo compact />
           </Link>
           <div className="flex items-center gap-1.5">
+            {(user.role === "admin" || user.role === "superadmin") && (
+              <Link
+                to="/admin"
+                aria-label="Admin-Bereich"
+                title="Admin"
+                className="btn-icon text-cherry-600 dark:text-cherry-200 no-tap-highlight"
+              >
+                <Shield size={20} strokeWidth={1.75} />
+              </Link>
+            )}
             <NetworkStatusIcon />
             <NotificationBell />
             <Link to="/profile" aria-label={t("nav.profile")} className="rounded-full no-tap-highlight">

@@ -194,8 +194,8 @@ export default function Admin() {
         </div>
       </div>
 
-      {/* Tabelle */}
-      <div className="card overflow-x-auto p-0">
+      {/* Desktop: volle Tabelle */}
+      <div className="card overflow-x-auto p-0 hidden lg:block">
         <table className="w-full text-base">
           <thead>
             <tr className="border-b border-hairline text-left text-sm tracking-wide text-secondary/80 font-semibold select-none">
@@ -265,6 +265,79 @@ export default function Admin() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: Card-Liste statt Tabelle (Tabellen-Spalten passen nicht auf 390px) */}
+      <div className="lg:hidden space-y-2">
+        {/* Sort-Dropdown für Mobile */}
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted shrink-0">Sortiert nach:</span>
+          <select
+            value={`${sortBy}_${sortDir}`}
+            onChange={(e) => {
+              const [k, d] = e.target.value.split("_") as [SortKey, SortDir];
+              setSortBy(k);
+              setSortDir(d);
+            }}
+            className="input py-1 text-sm flex-1"
+          >
+            <option value="created_desc">Seit ↓ (neueste zuerst)</option>
+            <option value="created_asc">Seit ↑ (älteste zuerst)</option>
+            <option value="name_asc">Name A–Z</option>
+            <option value="name_desc">Name Z–A</option>
+            <option value="role_asc">Rolle (Superadmin zuerst)</option>
+            <option value="status_asc">Status</option>
+            <option value="trainings_desc">Trainings ↓</option>
+            <option value="parcours_desc">Parcours ↓</option>
+            <option value="bows_desc">Bögen ↓</option>
+          </select>
+        </div>
+
+        {pageItems.map((u) => {
+          const isSelf = u.id === me?.id;
+          const isDeleted = !!u.deleted_at;
+          return (
+            <Link
+              key={u.id}
+              to={`/admin/users/${u.id}`}
+              className={`card flex items-center gap-3 hover:border-cherry-500/30 transition ${isDeleted ? "opacity-60" : ""}`}
+            >
+              <Avatar user={u} size="md" showPresence={!isDeleted} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {isDeleted && <Trash2 size={13} strokeWidth={1.75} className="text-muted shrink-0" />}
+                  <span className={`font-medium ${isDeleted ? "italic" : ""}`}>{u.display_name ?? "—"}</span>
+                  {isSelf && <span className="text-xs text-muted">(du)</span>}
+                </div>
+                <div className="text-sm text-muted truncate">{u.email}</div>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <RoleBadge role={u.role} size="sm" />
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    u.status === "active"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                  }`}>{u.status}</span>
+                  {isDeleted && (
+                    <span className="text-xs uppercase tracking-wider bg-surface text-muted border border-hairline rounded-full px-1.5 py-0.5">gelöscht</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-1.5 text-xs text-muted tabular-nums">
+                  <span>{u.count_trainings} Trainings</span>
+                  <span>·</span>
+                  <span>{u.count_parcours} Parcours</span>
+                  <span>·</span>
+                  <span>{u.count_bows} Bögen</span>
+                </div>
+              </div>
+              <ChevronRight size={18} strokeWidth={1.75} className="text-muted shrink-0" />
+            </Link>
+          );
+        })}
+        {sorted.length === 0 && (
+          <div className="card text-center py-10 text-base text-muted">
+            {hasActiveFilter ? "Keine User passen zum Filter." : "Keine User."}
+          </div>
+        )}
       </div>
 
       {/* Pagination */}
