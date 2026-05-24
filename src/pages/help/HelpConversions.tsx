@@ -23,7 +23,7 @@ export default function HelpConversions() {
           Live-Konverter
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <Converter
             label="Zoll ↔ Millimeter"
             unitA="in"
@@ -297,30 +297,30 @@ function Converter({
         <ArrowRightLeft size={14} strokeWidth={1.75} className="text-cherry-500" />
         {label}
       </p>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 flex items-center gap-1.5 bg-canvas rounded-lg border border-hairline px-2.5 py-1.5">
+      <div className="flex items-center gap-2 min-w-0">
+        <label className="flex-1 min-w-0 flex items-center gap-1.5 bg-canvas rounded-lg border border-hairline px-2.5 py-1.5">
           <input
             type="text"
             inputMode="decimal"
             value={a}
             onChange={(e) => changeA(e.target.value)}
-            className="flex-1 bg-transparent border-0 outline-none text-base font-mono tabular-nums min-w-0"
+            className="flex-1 min-w-0 w-0 bg-transparent border-0 outline-none text-sm font-mono tabular-nums"
             aria-label={unitA}
           />
           <span className="text-xs text-muted shrink-0">{unitA}</span>
-        </div>
-        <ArrowRightLeft size={14} strokeWidth={1.75} className="text-muted shrink-0" />
-        <div className="flex-1 flex items-center gap-1.5 bg-canvas rounded-lg border border-hairline px-2.5 py-1.5">
+        </label>
+        <ArrowRightLeft size={14} strokeWidth={1.75} className="text-muted shrink-0" aria-hidden />
+        <label className="flex-1 min-w-0 flex items-center gap-1.5 bg-canvas rounded-lg border border-hairline px-2.5 py-1.5">
           <input
             type="text"
             inputMode="decimal"
             value={b}
             onChange={(e) => changeB(e.target.value)}
-            className="flex-1 bg-transparent border-0 outline-none text-base font-mono tabular-nums min-w-0"
+            className="flex-1 min-w-0 w-0 bg-transparent border-0 outline-none text-sm font-mono tabular-nums"
             aria-label={unitB}
           />
           <span className="text-xs text-muted shrink-0">{unitB}</span>
-        </div>
+        </label>
       </div>
       {tip && <p className="text-xs text-muted">{tip}</p>}
     </div>
