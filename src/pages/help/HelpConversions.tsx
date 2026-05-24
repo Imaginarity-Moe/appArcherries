@@ -230,22 +230,44 @@ export default function HelpConversions() {
         </p>
 
         <div className="card-sunken text-sm space-y-2">
+          <p className="font-semibold">Wichtig: Auszugslänge vs. AMO-Maß</p>
+          <p className="text-secondary">
+            Es gibt zwei Maße, die oft verwechselt werden:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-secondary mt-1">
+            <li>
+              <b>Tatsächliche Auszugslänge</b> (deine reale Auszugsweite, gemessen am Bogen
+              im vollen Auszug): das ist das, was du beim Schießen wirklich machst.
+            </li>
+            <li>
+              <b>AMO-Draw-Length</b>: ein technisches Standardmaß ≈ tatsächliche Auszugslänge
+              + 1,75&quot;. Wird in Hersteller-Charts und Compound-Specs verwendet.
+            </li>
+          </ul>
+          <p className="text-secondary text-xs italic mt-1">
+            Beispiel: Wer 28&quot; tatsächlichen Auszug hat, hat AMO-Draw-Length ≈ 29,75&quot;.
+          </p>
+        </div>
+
+        <div className="card-sunken text-sm space-y-2">
           <p className="font-semibold">Auszugslänge messen — drei Methoden</p>
           <ol className="list-decimal pl-5 space-y-1 text-secondary">
             <li>
-              <b>Arm­spannweite ÷ 2,5</b> (gröbste, aber schnelle Methode):
-              Arme seitlich ausstrecken, Mittelfinger-zu-Mittelfinger messen, durch 2,5
-              teilen. Beispiel: 178 cm Spannweite → 71 cm ≈ <b>28 Zoll</b>.
+              <b>Armspannweite ÷ 2,5</b>: Arme seitlich ausstrecken, Mittelfinger-zu-Mittelfinger
+              messen, durch 2,5 teilen. Das ergibt die <b>AMO-Draw-Length</b> — die tatsächliche
+              Auszugslänge ist davon etwa 1,75&quot; kleiner. Beispiel: 188 cm Spannweite ÷ 2,5
+              ≈ 75 cm ≈ 29,6&quot; AMO → tatsächlicher Auszug ≈ 27,8&quot;. Pfeillänge dann
+              ~29–30&quot; (mit Sicherheits-Puffer).
             </li>
             <li>
-              <b>Im Bogenladen messen lassen</b>: Du ziehst einen Mess-Pfeil aus, der hat
-              Markierungen in Zoll-Schritten. Verkäufer:in liest ab, wo dein Anker sitzt.
-              Genaueste Methode für Anfänger.
+              <b>Im Bogenladen messen lassen</b> (genaueste Methode): Mess-Pfeil mit
+              Zoll-Markierungen, Verkäufer:in liest am Anker ab. Liefert direkt die
+              tatsächliche Auszugslänge.
             </li>
             <li>
-              <b>AMO-Standard</b>: Pfeillänge von der Sehnen­nut bis zum Ende des
-              Mittelteils + 1,75&quot;. Wird selten direkt verwendet, taucht aber in
-              Hersteller-Charts auf.
+              <b>Selbst nachmessen</b>: Mit ausgezogenem Pfeil im echten Bogen einen Marker
+              an der Stelle setzen, an der die Pfeilauflage anliegt. Distanz zum Nockenende =
+              tatsächliche Auszugslänge.
             </li>
           </ol>
         </div>
@@ -254,12 +276,12 @@ export default function HelpConversions() {
           <p className="font-semibold">Pfeillänge wählen — Faustregel</p>
           <p className="text-secondary">
             Die Pfeillänge (von Sehnen­nut bis Ende des Schafts, ohne Spitze) sollte
-            <b> mindestens deine Auszugslänge erreichen, aber sicherer mit 1–2 Zoll Puffer</b>:
+            <b> mindestens deine tatsächliche Auszugslänge erreichen, mit 1–2 Zoll Puffer</b>:
           </p>
           <ul className="list-disc pl-5 mt-1 space-y-0.5 text-secondary">
-            <li><b>Anfänger / Jugend</b>: Auszugslänge + 2&quot; (1 Zoll Sicherheits-Reserve, 1 Zoll für Wachstum / Anker-Drift)</li>
-            <li><b>Erfahrene Recurve</b>: Auszugslänge + 1&quot;</li>
-            <li><b>Compound mit Release</b>: Auszugslänge fest definiert durch Wall + Cam — Pfeil = Auszugslänge ± 1&quot;</li>
+            <li><b>Anfänger / Jugend</b>: tatsächlicher Auszug + 2&quot; (1 Zoll Sicherheits-Reserve, 1 Zoll für Wachstum / Anker-Drift)</li>
+            <li><b>Erfahrene Recurve / Blank</b>: tatsächlicher Auszug + 1 bis 1,5&quot;</li>
+            <li><b>Compound mit Release</b>: Auszugslänge ist durch Wall + Cam fest definiert — Pfeil = Auszug + 0,5 bis 1&quot;</li>
           </ul>
           <p className="text-secondary text-xs italic mt-1">
             <b>Sicherheit:</b> Der Pfeil darf bei vollem Auszug niemals hinter der Pfeilauflage liegen.
@@ -268,15 +290,19 @@ export default function HelpConversions() {
         </div>
 
         <div className="card-sunken text-sm space-y-2">
-          <p className="font-semibold">Typische Auszugslängen pro Statur</p>
+          <p className="font-semibold">Typische tatsächliche Auszugslängen pro Statur</p>
+          <p className="text-xs text-secondary italic">
+            Grobe Orientierungs­werte — individuelle Anker, Schulter­beweglichkeit und
+            Bogentechnik verschieben das. Die Pfeillänge ist Auszug + 1–2&quot; Puffer.
+          </p>
           <Table
-            headers={["Zielgruppe", "Auszugslänge", "Pfeillänge"]}
+            headers={["Zielgruppe", "Auszug", "Pfeillänge"]}
             rows={[
-              ["Kinder (6–10 Jahre)",       "17–21\"",   "19–23\""],
-              ["Jugend (11–15 Jahre)",      "20–24\"",   "22–26\""],
-              ["Erwachsene (klein, <165 cm)","23–26\"",   "25–28\""],
-              ["Erwachsene (mittel, 165–180 cm)","26–28\"","28–30\""],
-              ["Erwachsene (groß, >180 cm)","28–31\"",   "30–33\""],
+              ["Kinder (6–10 Jahre)",            "17–20\"",   "19–22\""],
+              ["Jugend (11–15 Jahre)",           "20–24\"",   "22–26\""],
+              ["Erwachsene klein (155–170 cm)",  "23–26\"",   "25–28\""],
+              ["Erwachsene mittel (170–185 cm)", "26–28\"",   "27–30\""],
+              ["Erwachsene groß (185+ cm)",      "28–30\"",   "29–31\""],
             ]}
           />
         </div>
@@ -298,8 +324,8 @@ export default function HelpConversions() {
             </p>
             <p>
               Diese Tabelle ist eine <b>grobe Orientierung</b> für Carbon-Pfeile mit ~100&nbsp;gr
-              Spitze. Hersteller-Charts (Easton, Gold Tip, Victory) sind genauer und berücksichtigen
-              Spitzen­gewicht, Bogentyp, Cam-Aggressivität.
+              Spitze. Spitzen­gewicht, Bogentyp und Cam-Aggressivität verschieben den optimalen
+              Spine — im Zweifel das Setup in einem Bogenladen prüfen lassen.
             </p>
           </div>
         </div>
@@ -345,18 +371,7 @@ export default function HelpConversions() {
           Carbon-Sortiment abgedeckt. Hier sind Holz- oder Aluminium-Pfeile oft die bessere
           Wahl — frag in deinem Bogenladen nach.
         </p>
-        <p className="text-xs text-secondary italic">
-          Hersteller-Charts:{" "}
-          <a href="https://eastonarchery.com/huntingcharts/" className="underline" target="_blank" rel="noreferrer">Easton</a>
-          {" · "}<a href="https://www.goldtip.com/spine-charts/" className="underline" target="_blank" rel="noreferrer">Gold Tip</a>
-          {" · "}<a href="https://www.victoryarchery.com/spine-chart/" className="underline" target="_blank" rel="noreferrer">Victory</a>
-          {" · "}<a href="https://www.bohning.com/spine-chart" className="underline" target="_blank" rel="noreferrer">Bohning</a>
-        </p>
       </section>
-
-      <p className="text-xs text-secondary italic text-center pt-3 border-t border-hairline">
-        Inspiration für diese Tabellen: <a href="https://www.arrowforge.de" target="_blank" rel="noreferrer" className="underline">arrowforge.de</a>
-      </p>
     </div>
   );
 }

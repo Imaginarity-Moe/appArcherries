@@ -80,14 +80,14 @@ export default function HelpPegs() {
 
       {/* Standpunkt-Regeln */}
       <section className="space-y-2">
-        <h2 className="eyebrow">Standpunkt-Regeln (offizielles Regelwerk)</h2>
+        <h2 className="eyebrow">Standpunkt-Regeln</h2>
         <p className="text-sm text-secondary">
-          Wo genau du beim Schuss stehen musst, regeln die Verbände unterschiedlich. Hier die
-          Kernregeln aus den offiziellen Rule-Books:
+          Wo genau du beim Schuss stehen musst, regeln die Verbände unterschiedlich. Die
+          Kernregeln:
         </p>
 
         <div className="card-sunken space-y-1.5">
-          <p className="font-semibold text-sm">WA / DSB (World Archery, Book 4)</p>
+          <p className="font-semibold text-sm">WA / DSB</p>
           <p className="text-sm text-secondary">
             Beide Füße stehen <b>auf einer gedachten Linie</b> durch den Pflock — die Schießlinie
             verläuft quer zur Schussrichtung am Pflock entlang. Der Pflock selbst markiert die
@@ -96,7 +96,7 @@ export default function HelpPegs() {
         </div>
 
         <div className="card-sunken space-y-1.5">
-          <p className="font-semibold text-sm">IFAA / DFBV (IFAA Book of Rules)</p>
+          <p className="font-semibold text-sm">IFAA / DFBV</p>
           <p className="text-sm text-secondary">
             Mindestens <b>ein Fuß muss den Pflock berühren</b> oder direkt daneben aufliegen (es gilt
             der Standpunkt am Pflock). Der zweite Fuß kann frei stehen, solange er nicht näher zur
