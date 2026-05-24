@@ -4,7 +4,49 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-23 (Differentiators-Drop: Achievements + Distanzschätz-Training + Wetter-Logger + Self-Delete + Empty-States)
+**Letzte Aktualisierung:** 2026-05-24 (Sichtbarkeits-Fixes: Trainings-Tabs + Mobile-Admin + Quick-Tiles + Umrechnungstabellen)
+
+## Session 2026-05-24 — User-Feedback umgesetzt
+
+User-Kritik: „Verlinkungen fehlen, Trainings-Übersicht braucht Kategorie Beendet, Mobile-Menü kein Admin-Link, Playwright war oberflächlich". Konkrete Fixes:
+
+### Trainings-Liste mit Tabs (Aktiv / Beendet / Archiv)
+Dashboard.tsx zeigt jetzt drei Pills statt einer einzigen Mischliste:
+- **Aktiv**: `ended_at IS NULL`
+- **Beendet**: `ended_at != NULL && archived_at IS NULL`
+- **Archiv**: lazy via `listTrainings(archived=true)` — separater API-Call, erst wenn Tab angetippt
+
+Counts in jedem Tab-Chip. Empty-States pro Tab. Swipe-Aktion „Aus Archiv" rückt archivierte zurück.
+
+### Mobile-Admin-Link
+Layout-Mobile-Header zeigt für admin/superadmin ein Cherry-Shield-Icon zwischen NetworkStatus und NotificationBell. Tap = direkter Sprung zu `/admin`. Vorher war das nur über URL erreichbar.
+
+### Dashboard-Quick-Tiles für neue Features
+Drei sichtbare Cards direkt unter den Glimpse-Stats:
+- 🔥 **Streak** → `/profile` (aktuelle Tag-Reihe)
+- 📏 **Schätz-Training** → `/train/distance`
+- 🏆 **Erfolge** → `/profile` (X / Y freigeschaltet)
+
+Daten via lazy `/me/achievements`. Vorher waren diese Features nur tief versteckt erreichbar.
+
+### Mobile-Admin: Card-Layout statt Tabelle
+8-Spalten-Tabelle war auf 390px schwer lesbar (Spalten überlappen / abgeschnitten). Neue `lg:hidden`-Variante:
+- Pro User eine Card mit Avatar + Name + Email + Role-Badge + Status-Pill + Counts-Zeile
+- Sort-Dropdown statt Spalten-Klick-Header (Mobile-tauglich)
+- Desktop-Tabelle (`hidden lg:block`) unverändert
+
+### Gründlicher Playwright-Sweep (`tests/e2e/full-sweep.mjs`)
+Migration 0056 promoted claude-test2 zum Admin für E2E-Tests. Sweep deckt 28 Pages × 4 Varianten = 112 Screenshots ab (mobile/desktop × light/dark). Sofort sichtbar: Tabellen-Overflow auf Mobile (war oben). Sauberer Workflow für künftige Layout-Checks.
+
+### Umrechnungstabellen & Tools (`/help/conversions`)
+User-Idee aus arrowforge.de übernommen + erweitert:
+- **6 Live-Konverter** (bidirektional, sofort): Zoll↔mm, Grain↔g, Zoll↔cm, lbs↔kg, Yards↔m, Fuß↔m
+- **5 statische Tabellen**: Zoll-Brüche, Grain, Zoll-Ganz, lbs, Yards mit Standardwerten
+- **Pfeil-Spine-Orientierungsmatrix** (Zuggewicht × Pfeillänge) mit Disclaimer + Hersteller-Links
+- Eingereiht in Help-Gruppe „Sport & Regelwerk" hinter Bogenklassen
+- i18n DE+EN
+
+## Session 2026-05-23 (Teil 4) — Wettbewerbs-Differentiator-Drop
 
 ## Session 2026-05-23 (Teil 4) — Wettbewerbs-Differentiator-Drop
 
