@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/Mailer.php';
+require_once __DIR__ . '/../lib/AdminNotify.php';
 
 function handle_auth(string $method, string $path): void
 {
@@ -102,6 +103,9 @@ function auth_register(): void
         res_error('Konnte Bestätigungs-Mail nicht senden', 500);
     }
 
+    // Admin-Benachrichtigung — failsafe, blockiert die Registrierung nicht
+    notify_admin_new_registration($userId, $email, $name);
+
     res_json(['ok' => true]);
 }
 
@@ -154,6 +158,12 @@ function auth_login(): void
     }
     if ($u['status'] !== 'active') {
         res_error('Bitte E-Mail-Adresse zuerst bestätigen', 403);
+    }
+
+    // Admin-Benachrichtigung — wir wollen über jeden erfolgreichen Login informiert sein.
+    // Failsafe: blockiert den Login nie. Eigenen Login (Superadmin) ausnehmen damit kein Spam.
+    if ($u['role'] !== 'superadmin') {
+        notify_admin_login((int)$u['id'], (string)$u['email'], $u['display_name'] ?? null, client_ip_from_request());
     }
 
     $token = jwt_sign(['uid' => (int)$u['id'], 'role' => $u['role']]);
