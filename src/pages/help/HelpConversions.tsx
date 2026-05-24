@@ -7,22 +7,32 @@ import { ArrowRightLeft, Info } from "lucide-react";
  * Vier Klassiker: Zoll↔mm, Grain↔Gramm, Inch↔cm, lbs↔kg.
  * Plus Yards↔Meter und Pfeilspine-Übersicht.
  */
+type Mode = "converter" | "tables";
+
 export default function HelpConversions() {
+  const [mode, setMode] = useState<Mode>("converter");
   return (
     <div className="space-y-7">
       <h1 className="font-display text-2xl font-semibold">Umrechnungstabellen &amp; Tools</h1>
       <p className="text-secondary">
         US-Maße sind im Bogensport allgegenwärtig: Pfeile in <b>Zoll</b>, Spitzen in
-        <b> Grain</b>, Bogen-Zuggewichte in <b>lbs</b>. Hier findest du die wichtigsten
-        Umrechnungen — als Tabelle zum Nachschlagen und als interaktiver Live-Rechner.
+        <b> Grain</b>, Bogen-Zuggewichte in <b>lbs</b>. Wähle, ob du schnell rechnen
+        willst oder Werte nachschlagen.
       </p>
 
-      {/* ─── Live-Konverter ─────────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <h2 className="font-display text-xl font-semibold border-b border-hairline pb-2">
+      {/* ─── Pill-Switch: Konverter ↔ Tabellen ─────────────────────────── */}
+      <div className="flex items-center gap-1 -mx-1 px-1 overflow-x-auto">
+        <PillButton active={mode === "converter"} onClick={() => setMode("converter")}>
           Live-Konverter
-        </h2>
+        </PillButton>
+        <PillButton active={mode === "tables"} onClick={() => setMode("tables")}>
+          Umrechnungstabellen
+        </PillButton>
+      </div>
 
+      {/* ─── Live-Konverter ─────────────────────────────────────────────── */}
+      {mode === "converter" && (
+      <section className="space-y-3">
         <div className="grid grid-cols-1 gap-3">
           <Converter
             label="Zoll ↔ Millimeter"
@@ -68,8 +78,11 @@ export default function HelpConversions() {
           />
         </div>
       </section>
+      )}
 
-      {/* ─── Zoll → mm Tabelle (Pfeil-Schaft-Standards) ─────────────────── */}
+      {/* ─── Umrechnungstabellen ─────────────────────────────────────────── */}
+      {mode === "tables" && (
+      <div className="space-y-7">
       <section className="space-y-3">
         <h2 className="font-display text-xl font-semibold border-b border-hairline pb-2">
           Zoll (Bruchteile) → Millimeter
@@ -217,8 +230,10 @@ export default function HelpConversions() {
           ]}
         />
       </section>
+      </div>
+      )}
 
-      {/* ─── Auszugslänge & Pfeillänge ──────────────────────────────────── */}
+      {/* ─── Auszugslänge & Pfeillänge (immer sichtbar) ──────────────────── */}
       <section className="space-y-3">
         <h2 className="font-display text-xl font-semibold border-b border-hairline pb-2">
           Auszugslänge &amp; Pfeillänge
@@ -291,10 +306,16 @@ export default function HelpConversions() {
 
         <div className="card-sunken text-sm space-y-2">
           <p className="font-semibold">Typische tatsächliche Auszugslängen pro Statur</p>
-          <p className="text-xs text-secondary italic">
-            Grobe Orientierungs­werte — individuelle Anker, Schulter­beweglichkeit und
-            Bogentechnik verschieben das. Die Pfeillänge ist Auszug + 1–2&quot; Puffer.
-          </p>
+          <div className="flex items-start gap-2 text-xs text-secondary">
+            <Info size={14} strokeWidth={1.75} className="text-cherry-500 shrink-0 mt-0.5" />
+            <p>
+              <b>Das sind gängige Standardwerte.</b> Die echte Auszugslänge ist individuell
+              und hängt von Körperproportionen, Schulter­beweglichkeit, Anker­position,
+              Bogenklasse und Schießtechnik ab. Zwei Schützen gleicher Größe können
+              durchaus 2–3 Zoll auseinander liegen. Verlasse dich nicht ausschließlich
+              auf diese Tabelle — lass dich im Bogenladen ausmessen.
+            </p>
+          </div>
           <Table
             headers={["Zielgruppe", "Auszug", "Pfeillänge"]}
             rows={[
@@ -323,9 +344,11 @@ export default function HelpConversions() {
               hoher Spine-Zahl.
             </p>
             <p>
-              Diese Tabelle ist eine <b>grobe Orientierung</b> für Carbon-Pfeile mit ~100&nbsp;gr
-              Spitze. Spitzen­gewicht, Bogentyp und Cam-Aggressivität verschieben den optimalen
-              Spine — im Zweifel das Setup in einem Bogenladen prüfen lassen.
+              <b>Gängige Standardwerte für Carbon-Pfeile mit ~100&nbsp;gr Spitze.</b> Der optimale
+              Spine ist individuell — Spitzen­gewicht, Befiederung, Bogentyp, Cam-Aggressivität
+              und Schießstil verschieben das deutlich. Zwei Schützen mit gleichem Setup können
+              unterschiedliche Spines bevorzugen. Im Zweifel: Setup in einem Bogenladen prüfen
+              lassen.
             </p>
           </div>
         </div>
@@ -373,6 +396,28 @@ export default function HelpConversions() {
         </p>
       </section>
     </div>
+  );
+}
+
+// ─── Pill-Button für Mode-Switch ────────────────────────────────────────────
+
+function PillButton({
+  active, onClick, children,
+}: {
+  active: boolean; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition active:scale-[0.97] ${
+        active
+          ? "bg-cherry-500 text-cream shadow-cherry"
+          : "bg-surface text-secondary hover:text-primary border border-hairline"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
