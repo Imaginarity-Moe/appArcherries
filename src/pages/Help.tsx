@@ -23,6 +23,7 @@ import {
   Lock,
   Sparkles,
   Wrench,
+  Calculator,
 } from "lucide-react";
 
 import HelpGettingStarted from "./help/HelpGettingStarted";
@@ -42,6 +43,7 @@ import HelpRoutines from "./help/HelpRoutines";
 import HelpPowerUser from "./help/HelpPowerUser";
 import HelpFAQ from "./help/HelpFAQ";
 import HelpPrivacy from "./help/HelpPrivacy";
+import HelpConversions from "./help/HelpConversions";
 
 type Section = {
   key: string;
@@ -67,6 +69,7 @@ const SECTIONS: Record<string, Section> = {
   scoring:         { key: "scoring",         icon: <Award size={20} strokeWidth={1.75} />,      keywords: "wertung punkte score vital wound kill miss treffer zone ring inner outer x bowhunter ifaa",                  content: <HelpScoring /> },
   pegs:            { key: "pegs",            icon: <Compass size={20} strokeWidth={1.75} />,    keywords: "pflock peg blau rot gelb weiss farbe distanz markiert unmarkiert",                                            content: <HelpPegs /> },
   bows:            { key: "bows",            icon: <Crosshair size={20} strokeWidth={1.75} />,  keywords: "bogen recurve compound barebow longbow traditional jagd profil setup pfeilspine zuggewicht visiermarken",   content: <HelpBows /> },
+  conversions:     { key: "conversions",     icon: <Calculator size={20} strokeWidth={1.75} />, keywords: "umrechnung tabelle inch zoll mm millimeter grain gramm lbs pfund kg kilogramm yards meter spine pfeil rechner calculator",  content: <HelpConversions /> },
   shared:          { key: "shared",          icon: <Users size={20} strokeWidth={1.75} />,      keywords: "qr code einladung freunde gast scoren teilen invitation share runde gemeinsam",                              content: <HelpShared /> },
   community:       { key: "community",       icon: <Trophy size={20} strokeWidth={1.75} />,     keywords: "öffentlich review bewertung kommentar vorlage clone highscore favorit stern public rating",                  content: <HelpCommunity /> },
   stats:           { key: "stats",           icon: <BarChart3 size={20} strokeWidth={1.75} />,  keywords: "statistik heatmap verlauf konsistenz pfeil score chart graph diagramm",                                       content: <HelpStats /> },
@@ -91,8 +94,8 @@ const GROUPS: Group[] = [
     key: "sport",
     label: "Sport & Regelwerk",
     icon: <Target size={16} strokeWidth={2} />,
-    description: "Disziplinen, Wertungssysteme, Pflöcke, Bogenklassen.",
-    sections: [SECTIONS.disciplines, SECTIONS.scoring, SECTIONS.pegs, SECTIONS.bows],
+    description: "Disziplinen, Wertungssysteme, Pflöcke, Bogenklassen, Umrechnungstabellen.",
+    sections: [SECTIONS.disciplines, SECTIONS.scoring, SECTIONS.pegs, SECTIONS.bows, SECTIONS.conversions],
   },
   {
     key: "social",
