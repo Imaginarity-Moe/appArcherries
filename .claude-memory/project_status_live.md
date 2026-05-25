@@ -4,7 +4,22 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-25 (Sight-Marks-Calculator + Help-Polish)
+**Letzte Aktualisierung:** 2026-05-25 (Was-ist-Neu-Banner + Sight-Marks-Calculator + Help-Polish)
+
+## Session 2026-05-25 (Teil 2) — Was-ist-Neu-Banner
+
+User-Feedback: viele neue Features sind nicht auffindbar — Sichtbarkeits-Problem.
+Lösung: pro-User-Changelog im Dashboard.
+
+**Migration 0058**: `users.last_changelog_seen TIMESTAMP NULL` — Marker bis zu welchem `released_at` der User die Items gesehen hat.
+
+**Backend** (`api/lib/Changelog.php`): hardcoded `CHANGELOG_ITEMS`-Array mit 8 großen Features (key, released_at, icon, title, desc, link?). Endpoints:
+- `GET /me/changelog` → filtert Items mit `released_at > last_changelog_seen`
+- `POST /me/changelog/seen` → setzt `last_changelog_seen = NOW()`
+
+**Frontend** (`src/components/ChangelogBanner.tsx`): Cherry-Card im Dashboard direkt unter dem Greeting. Sparkles-Icon + Item-Count + Liste der Sub-Cards mit Icon/Titel/Desc/Datum/optionalem Link (Hover-Pfeil-Animation). Zwei Dismiss-Wege: X-Button oder „Verstanden"-Button — beide POSTen `/me/changelog/seen`.
+
+**Wartung**: Bei neuen Features einfach Eintrag in `CHANGELOG_ITEMS` ergänzen (im PHP). Kein DB-Update nötig — alle User mit `last_seen < neues_released_at` sehen es automatisch.
 
 ## Session 2026-05-25 — Sight-Marks-Calculator + Help-Polish
 
