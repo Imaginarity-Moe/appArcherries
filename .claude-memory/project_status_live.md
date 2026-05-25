@@ -4,7 +4,47 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-24 (Sichtbarkeits-Fixes: Trainings-Tabs + Mobile-Admin + Quick-Tiles + Umrechnungstabellen)
+**Letzte Aktualisierung:** 2026-05-25 (Sight-Marks-Calculator + Help-Polish)
+
+## Session 2026-05-25 — Sight-Marks-Calculator + Help-Polish
+
+### Sight-Marks-Calculator (Migration 0057) — Killer-Feature für Visier-Schützen
+Eines der Top-Differentiators aus der Wettbewerbs-Recherche. Pro Bogen
+kann der User 2+ bekannte Visiermarken eintragen, die App interpoliert
+quadratisch alle Zwischen-Distanzen.
+
+**DB**: `bow_sight_marks` (id, bow_id, distance_m DECIMAL(5,2), mark_value DECIMAL(8,3), notes), UNIQUE auf (bow_id, distance_m), ON DELETE CASCADE.
+
+**Backend** (`routes/bows.php`):
+- `GET    /bows/<id>/sight-marks`
+- `POST   /bows/<id>/sight-marks` (UNIQUE-Check → 409 bei Duplikat)
+- `PATCH  /bows/<id>/sight-marks/<smid>`
+- `DELETE /bows/<id>/sight-marks/<smid>`
+
+**Frontend** (`src/components/BowSightMarks.tsx`):
+- Eigene Section unter dem BowEdit-Formular (nur im Edit-Mode)
+- Mathematik: 3+ Punkte = quadratische Least-Squares-Regression via 3×3 Gauss mit Pivotwahl + R²-Anzeige; 2 Punkte = lineare Interpolation; 1 Punkt = „mehr nötig"; 0 = nur Form
+- Interpolierte Tabelle in 5m-Schritten von min−5 bis max+10m
+- Eingegebene Distanzen werden cherry-tinted hervorgehoben („eingegeben") vs. „interpoliert"
+- Nicht-5er-Distanzen (z.B. 18m, 22m) werden inline einsortiert
+- Einheit ist beliebig (mm / Skalen-Schritte / Schraub-Umdrehungen — der Calculator skaliert linear)
+
+**E2E-Test** (`tests/e2e/check-sight-marks.mjs`): 4 Szenarien (empty / single / linear / quadratic) × Desktop + Mobile = 8 Screenshots, verifiziert alle Layout- und Berechnungs-States.
+
+### Help-Polish nach User-Feedback
+- **HelpConversions Pill-Switch**: Live-Konverter und Umrechnungstabellen sind entweder/oder via PillButton-Bar (default: Konverter). Reduziert Section-Höhe ~50%.
+- **Individuell-Disclaimer** klar in Statur-Tabelle UND Spine-Tabelle: „Das sind gängige Standardwerte. Zwei Schützen gleicher Größe können 2–3 Zoll auseinander liegen. Lass dich im Bogenladen ausmessen."
+- **Spine-Tabelle korrigiert**: 12 Reihen von 10–15 lbs bis 65–70 lbs, fünf Pfeillängen-Spalten 22"–30". Sehr flexible Spines bis 1500 für Kinder/Jugend/leichte Bögen. Fehlende Kombinationen als „—".
+- **Neue Sektion „Auszugslänge & Pfeillänge"** mit klarer Trennung tatsächlicher Auszug vs. AMO-Draw-Length (= tatsächlich + 1,75"). Drei Methoden zum Messen, Faustregel pro Bogentyp, Sicherheitshinweis „Pfeil darf nie hinter der Auflage liegen", korrigierte Statur-Tabelle (Erwachsene groß 185+ cm: Auszug 28–30" / Pfeil 29–31").
+- **Konverter-Layout-Fix**: 2-Spalten-Grid → 1-Spalten + Inputs mit `w-0 min-w-0 flex-1` damit intrinsic-width nicht überläuft.
+- **Externe Quellen/Links entfernt** (User-Wunsch): Hersteller-Charts-Links (Easton, Gold Tip, Victory, Bohning), „Inspiration: arrowforge.de"-Footer, „World Archery Book 4" / „IFAA Book of Rules" in HelpPegs.
+
+### Admin-Email bei Registrierung
+`api/lib/AdminNotify.php` mit `notify_superadmins()`, `notify_admin_new_registration()`. Bei Registrierung: alle aktiven Superadmins bekommen Mail mit User-ID, Name, E-Mail, Zeitpunkt + Profil-Link `/admin/users/<id>`.
+
+Login-Mail wurde NICHT implementiert (User-Wunsch nach dem ersten Aufruf: „nur bei Registrierung"). Helper bleibt in der Lib für etwaige spätere selektive Nutzung.
+
+## Session 2026-05-24 — Sichtbarkeits-Fixes: Trainings-Tabs + Mobile-Admin + Quick-Tiles + Umrechnungstabellen
 
 ## Session 2026-05-24 — User-Feedback umgesetzt
 
