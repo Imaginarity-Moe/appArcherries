@@ -19,6 +19,7 @@ import { Spinner } from "../components/Spinner";
 import { endLabel } from "../lib/format";
 import { fmtDate } from "../lib/format";
 import { useSyncListener } from "../lib/useSyncListener";
+import ChangelogBanner from "../components/ChangelogBanner";
 
 type TrainingsTab = "active" | "ended" | "archived";
 
@@ -106,6 +107,9 @@ export default function Dashboard() {
         </h1>
         <p className="text-sm text-secondary mt-0.5 capitalize">{today}</p>
       </div>
+
+      {/* Changelog-Banner: zeigt neue Features seit letztem Besuch */}
+      <ChangelogBanner />
 
       {/* Friend-Request-Banner: offene Anfragen */}
       {incomingCount > 0 && (

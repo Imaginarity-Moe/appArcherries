@@ -52,8 +52,36 @@ function handle_me(string $method, string $path = '/me'): void
         me_achievements_get($user_id);
         return;
     }
+    if ($path === '/me/changelog' && $method === 'GET') {
+        me_changelog_get($user_id);
+        return;
+    }
+    if ($path === '/me/changelog/seen' && $method === 'POST') {
+        me_changelog_mark_seen($user_id);
+        return;
+    }
 
     res_error('Not found', 404);
+}
+
+function me_changelog_get(int $user_id): void
+{
+    require_once __DIR__ . '/../lib/Changelog.php';
+    $stmt = db()->prepare('SELECT last_changelog_seen FROM users WHERE id = ?');
+    $stmt->execute([$user_id]);
+    $since = (string)($stmt->fetchColumn() ?: '');
+    $items = changelog_items($since !== '' ? $since : null);
+    res_json([
+        'items'      => $items,
+        'last_seen'  => $since !== '' ? $since : null,
+        'unseen_count' => count($items),
+    ]);
+}
+
+function me_changelog_mark_seen(int $user_id): void
+{
+    db()->prepare('UPDATE users SET last_changelog_seen = NOW() WHERE id = ?')->execute([$user_id]);
+    res_json(['ok' => true]);
 }
 
 function me_achievements_get(int $user_id): void
