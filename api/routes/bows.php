@@ -42,6 +42,26 @@ function handle_bows(string $method, string $path): void
         return;
     }
 
+    if (preg_match('#^/(\d+)/sight-marks$#', $sub, $m)) {
+        $id = (int)$m[1];
+        match ($method) {
+            'GET'  => sight_marks_list($user['id'], $id),
+            'POST' => sight_marks_create($user['id'], $id),
+            default => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+
+    if (preg_match('#^/(\d+)/sight-marks/(\d+)$#', $sub, $m)) {
+        $bow_id = (int)$m[1]; $sm_id = (int)$m[2];
+        match ($method) {
+            'PATCH'  => sight_marks_update($user['id'], $bow_id, $sm_id),
+            'DELETE' => sight_marks_delete($user['id'], $bow_id, $sm_id),
+            default  => res_error('Method not allowed', 405),
+        };
+        return;
+    }
+
     if (preg_match('#^/(\d+)/equipment$#', $sub, $m)) {
         $id = (int)$m[1];
         match ($method) {
@@ -366,4 +386,81 @@ function bows_image_delete(int $user_id, int $id): void
     delete_upload_file($row['image_path'] ?? null);
     db()->prepare('UPDATE bows SET image_path = NULL WHERE id = ?')->execute([$id]);
     bow_detail($user_id, $id);
+}
+
+// ─── Sight-Marks (Visiermarken) ─────────────────────────────────────────────
+
+/** Owner-Check + Bow existiert. Wirft 404 wenn nicht. */
+function sight_marks_require_owner(int $user_id, int $bow_id): void
+{
+    $stmt = db()->prepare('SELECT id FROM bows WHERE id = ? AND user_id = ?');
+    $stmt->execute([$bow_id, $user_id]);
+    if (!$stmt->fetch()) res_error('Bogen nicht gefunden', 404);
+}
+
+function sight_marks_list(int $user_id, int $bow_id): void
+{
+    sight_marks_require_owner($user_id, $bow_id);
+    $stmt = db()->prepare('SELECT id, distance_m, mark_value, notes FROM bow_sight_marks WHERE bow_id = ? ORDER BY distance_m ASC');
+    $stmt->execute([$bow_id]);
+    $marks = array_map(fn($r) => [
+        'id'         => (int)$r['id'],
+        'distance_m' => (float)$r['distance_m'],
+        'mark_value' => (float)$r['mark_value'],
+        'notes'      => $r['notes'],
+    ], $stmt->fetchAll());
+    res_json(['marks' => $marks]);
+}
+
+function sight_marks_create(int $user_id, int $bow_id): void
+{
+    sight_marks_require_owner($user_id, $bow_id);
+    $in = req_json();
+    $distance_m = (float)($in['distance_m'] ?? 0);
+    $mark_value = (float)($in['mark_value'] ?? 0);
+    $notes      = isset($in['notes']) ? trim((string)$in['notes']) : null;
+    if ($distance_m <= 0 || $distance_m > 200) res_error('Distanz muss zwischen 0 und 200 m liegen');
+
+    try {
+        db()->prepare('INSERT INTO bow_sight_marks (bow_id, distance_m, mark_value, notes) VALUES (?, ?, ?, ?)')
+            ->execute([$bow_id, $distance_m, $mark_value, $notes ?: null]);
+    } catch (PDOException $e) {
+        // UNIQUE-Constraint: für diese Distanz existiert schon eine Marke
+        if ((int)$e->getCode() === 23000) {
+            res_error('Für diese Distanz ist bereits ein Wert hinterlegt — bearbeite den existierenden Eintrag', 409);
+        }
+        throw $e;
+    }
+    sight_marks_list($user_id, $bow_id);
+}
+
+function sight_marks_update(int $user_id, int $bow_id, int $sm_id): void
+{
+    sight_marks_require_owner($user_id, $bow_id);
+    $in = req_json();
+    $sets = [];
+    $vals = [];
+    if (array_key_exists('distance_m', $in)) {
+        $d = (float)$in['distance_m'];
+        if ($d <= 0 || $d > 200) res_error('Distanz muss zwischen 0 und 200 m liegen');
+        $sets[] = 'distance_m = ?'; $vals[] = $d;
+    }
+    if (array_key_exists('mark_value', $in)) {
+        $sets[] = 'mark_value = ?'; $vals[] = (float)$in['mark_value'];
+    }
+    if (array_key_exists('notes', $in)) {
+        $sets[] = 'notes = ?'; $vals[] = trim((string)$in['notes']) ?: null;
+    }
+    if (!$sets) res_error('Nichts zu ändern');
+    $vals[] = $sm_id;
+    $vals[] = $bow_id;
+    db()->prepare('UPDATE bow_sight_marks SET ' . implode(', ', $sets) . ' WHERE id = ? AND bow_id = ?')->execute($vals);
+    sight_marks_list($user_id, $bow_id);
+}
+
+function sight_marks_delete(int $user_id, int $bow_id, int $sm_id): void
+{
+    sight_marks_require_owner($user_id, $bow_id);
+    db()->prepare('DELETE FROM bow_sight_marks WHERE id = ? AND bow_id = ?')->execute([$sm_id, $bow_id]);
+    sight_marks_list($user_id, $bow_id);
 }

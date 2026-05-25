@@ -79,6 +79,38 @@ export async function deleteBowImage(id: number): Promise<{ bow: Bow }> {
   return api(`/bows/${id}/image`, { method: "DELETE" });
 }
 
+// ─── Sight-Marks (Visiermarken pro Bogen) ─────────────────────────────────
+
+export type SightMark = {
+  id: number;
+  distance_m: number;
+  mark_value: number;
+  notes: string | null;
+};
+
+export async function listSightMarks(bowId: number): Promise<{ marks: SightMark[] }> {
+  return api(`/bows/${bowId}/sight-marks`);
+}
+
+export async function createSightMark(
+  bowId: number,
+  body: { distance_m: number; mark_value: number; notes?: string | null }
+): Promise<{ marks: SightMark[] }> {
+  return api(`/bows/${bowId}/sight-marks`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function updateSightMark(
+  bowId: number,
+  smId: number,
+  body: Partial<{ distance_m: number; mark_value: number; notes: string | null }>
+): Promise<{ marks: SightMark[] }> {
+  return api(`/bows/${bowId}/sight-marks/${smId}`, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export async function deleteSightMark(bowId: number, smId: number): Promise<{ marks: SightMark[] }> {
+  return api(`/bows/${bowId}/sight-marks/${smId}`, { method: "DELETE" });
+}
+
 // ─── Bow ↔ Equipment-Verknüpfungen ────────────────────────────────────────
 
 export async function addBowEquipment(

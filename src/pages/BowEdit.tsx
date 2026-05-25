@@ -23,6 +23,7 @@ import {
 import { BOW_LABELS, type BowType } from "../api/trainings";
 import { usePageFooter } from "../components/FooterContext";
 import { useConfirm } from "../components/ConfirmDialog";
+import BowSightMarks from "../components/BowSightMarks";
 
 const BOW_TYPES: BowType[] = ["recurve", "compound", "barebow", "traditional"];
 
@@ -507,6 +508,13 @@ export default function BowEdit({ mode }: { mode: Mode }) {
           </span>
         </label>
       </form>
+
+      {/* Sight-Marks-Calculator — nur im Edit-Modus, eigenständige Section unter dem Formular */}
+      {mode === "edit" && bow && (
+        <div className="card">
+          <BowSightMarks bowId={bow.id} />
+        </div>
+      )}
     </div>
   );
 }
