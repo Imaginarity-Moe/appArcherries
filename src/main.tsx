@@ -6,6 +6,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 import { FooterProvider } from "./components/FooterContext";
+import { ToastProvider } from "./components/Toast";
 import { startSync } from "./lib/sync";
 import "./i18n";
 import "./styles/index.css";
@@ -30,8 +31,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <FooterProvider>
           <ConfirmProvider>
-            <App />
-            <PWAUpdatePrompt />
+            <ToastProvider>
+              <App />
+              <PWAUpdatePrompt />
+            </ToastProvider>
           </ConfirmProvider>
         </FooterProvider>
       </AuthProvider>

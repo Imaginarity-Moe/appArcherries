@@ -347,10 +347,10 @@ function trainings_create(int $user_id): void
         $stmt = db()->prepare(
             'INSERT INTO trainings
                (user_id, parcours_id, started_at, discipline, nfaa_mode, bow_type, bow_id,
-                peg_color, distance_marked, location, weather, notes, summary_score,
+                peg_color, distance_marked, location, weather, notes, mood, summary_score,
                 arrows_per_end, num_ends, target_distance_m, target_rings, scoring_mode,
                 legs_to_win, sets_to_win, shared_scoring_mode)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $user_id,
@@ -365,6 +365,7 @@ function trainings_create(int $user_id): void
             isset($in['location']) ? (string)$in['location'] : null,
             isset($in['weather'])  ? (string)$in['weather']  : null,
             isset($in['notes'])    ? (string)$in['notes']    : null,
+            isset($in['mood'])     ? (string)$in['mood']     : null,
             isset($in['summary_score']) ? (int)$in['summary_score'] : null,
             $tp_arrows_per_end,
             $tp_num_ends,
@@ -568,6 +569,7 @@ function trainings_update(int $user_id, int $id): void
         'location'                => 'string',
         'weather'                 => 'string',
         'notes'                   => 'string',
+        'mood'                    => 'string',
         'summary_score'           => 'int',
         'distance_marked'         => 'bool',
         'peg_color'               => 'peg',

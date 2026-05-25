@@ -29,6 +29,11 @@ function handle_highscore(string $method, string $path): void
     $bow_type     = req_query('bow_type');
     $limit        = max(1, min(20, (int)(req_query('limit', '3') ?? '3')));
     $friends_only = (req_query('friends_only', '0') ?? '0') === '1';
+    // ?period=month|year|all  — schränkt auf Trainings im Zeitfenster ein
+    $period       = req_query('period', 'all') ?? 'all';
+    $period_since = null;
+    if ($period === 'month') $period_since = date('Y-m-d H:i:s', strtotime('-30 days'));
+    elseif ($period === 'year') $period_since = date('Y-m-d H:i:s', strtotime('-365 days'));
 
     // Wenn friends_only: User-IDs der Freunde (+ ich selbst) sammeln, sonst null = alle
     $allowed_users = null;
@@ -44,22 +49,26 @@ function handle_highscore(string $method, string $path): void
     }
 
     if ($discipline !== null && $discipline !== '') {
-        $rows = highscore_query($parcours_id, $discipline, $bow_type, $limit, $allowed_users);
-        res_json(['scores' => $rows]);
+        $rows = highscore_query($parcours_id, $discipline, $bow_type, $limit, $allowed_users, $period_since);
+        res_json(['scores' => $rows, 'period' => $period]);
         return;
     }
 
     // Aggregate: gruppiert nach (discipline, bow_type)
-    $s = db()->prepare(
-        'SELECT discipline, bow_type FROM trainings
-         WHERE parcours_id = ? AND published_to_highscore = 1
-         GROUP BY discipline, bow_type'
-    );
-    $s->execute([$parcours_id]);
+    $sql = 'SELECT discipline, bow_type FROM trainings
+            WHERE parcours_id = ? AND published_to_highscore = 1';
+    $params = [$parcours_id];
+    if ($period_since !== null) {
+        $sql .= ' AND started_at >= ?';
+        $params[] = $period_since;
+    }
+    $sql .= ' GROUP BY discipline, bow_type';
+    $s = db()->prepare($sql);
+    $s->execute($params);
     $groups = $s->fetchAll();
     $out = [];
     foreach ($groups as $g) {
-        $rows = highscore_query($parcours_id, $g['discipline'], $g['bow_type'], $limit, $allowed_users);
+        $rows = highscore_query($parcours_id, $g['discipline'], $g['bow_type'], $limit, $allowed_users, $period_since);
         if (count($rows) > 0) {
             $out[] = [
                 'discipline' => $g['discipline'],
@@ -68,10 +77,10 @@ function handle_highscore(string $method, string $path): void
             ];
         }
     }
-    res_json(['groups' => $out]);
+    res_json(['groups' => $out, 'period' => $period]);
 }
 
-function highscore_query(int $parcours_id, string $discipline, ?string $bow_type, int $limit, ?array $allowed_users = null): array
+function highscore_query(int $parcours_id, string $discipline, ?string $bow_type, int $limit, ?array $allowed_users = null, ?string $period_since = null): array
 {
     require_once __DIR__ . '/../lib/Scoring.php';
 
@@ -92,6 +101,10 @@ function highscore_query(int $parcours_id, string $discipline, ?string $bow_type
     if ($bow_type !== null && $bow_type !== '') {
         $sql .= ' AND t.bow_type = ?';
         $params[] = $bow_type;
+    }
+    if ($period_since !== null) {
+        $sql .= ' AND t.started_at >= ?';
+        $params[] = $period_since;
     }
     if ($allowed_users !== null) {
         $placeholders = implode(',', array_fill(0, count($allowed_users), '?'));

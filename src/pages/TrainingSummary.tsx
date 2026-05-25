@@ -57,6 +57,14 @@ export default function TrainingSummary() {
     }
   }
 
+  async function setMood(mood: string | null) {
+    if (!training) return;
+    try {
+      const r = await updateTraining(training.id, { mood } as Partial<Training>);
+      setTraining(r.training);
+    } catch { /* silent */ }
+  }
+
   if (loading || !data) return <PageSpinner />;
 
   return (
@@ -74,6 +82,9 @@ export default function TrainingSummary() {
           {BOW_LABELS[data.training.bow_type as BowType] ?? data.training.bow_type}
         </div>
       </div>
+
+      {/* Stimmungs-Tagebuch — wie hat sich's angefühlt? */}
+      {training && <MoodPicker mood={training.mood ?? null} onChange={setMood} />}
 
       {/* Multi-Player-Vergleich: wenn ≥2 Participants gescored haben, zeige
           pro-Spieler-Karten mit Total, Avg, ggf. Legs/Sets. */}
@@ -238,6 +249,51 @@ export default function TrainingSummary() {
  */
 const HEATMAP_COLORS = ["#C0464F", "#3F6D5E", "#3FA6C9", "#D4A547", "#7A5C8A", "#A85A47"];
 const HEATMAP_RING_COLORS = ["#D4A547", "#C0464F", "#3FA6C9", "#1F1F1F", "#F5F2EB"];
+// ─── Mood-Picker (Trainings-Tagebuch) ──────────────────────────────────────
+
+const MOOD_OPTIONS: { key: string; emoji: string; label: string }[] = [
+  { key: "great",      emoji: "🤩", label: "Top-Lauf" },
+  { key: "good",       emoji: "😊", label: "Gut" },
+  { key: "neutral",    emoji: "😐", label: "Mittel" },
+  { key: "tired",      emoji: "😴", label: "Müde" },
+  { key: "frustrated", emoji: "😤", label: "Frustriert" },
+];
+
+function MoodPicker({ mood, onChange }: { mood: string | null; onChange: (m: string | null) => void }) {
+  return (
+    <section className="card">
+      <h2 className="eyebrow mb-2">Wie war's?</h2>
+      <p className="text-sm text-secondary mb-3">
+        Deine Stimmung zum Training — optional, nur für dein Tagebuch.
+      </p>
+      <div className="grid grid-cols-5 gap-2">
+        {MOOD_OPTIONS.map((opt) => {
+          const active = mood === opt.key;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => onChange(active ? null : opt.key)}
+              className={`flex flex-col items-center gap-1 rounded-2xl border-2 p-2 transition active:scale-[0.96] ${
+                active
+                  ? "border-cherry-500 bg-cherry-50 dark:bg-cherry-900/20"
+                  : "border-hairline bg-surface hover:border-hairline-strong"
+              }`}
+              title={opt.label}
+              aria-pressed={active}
+            >
+              <span className="text-2xl leading-none">{opt.emoji}</span>
+              <span className={`text-xs ${active ? "text-cherry-600 dark:text-cherry-200 font-semibold" : "text-secondary"}`}>
+                {opt.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ParticipantsHeatmap({ training }: { training: Training }) {
   const rings = training.target_rings ?? 10;
   const participants = (training.participants ?? []).filter((p) => p.role !== "viewer");

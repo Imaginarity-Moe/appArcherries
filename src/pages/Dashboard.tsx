@@ -448,6 +448,27 @@ function GlimpseCard({
   );
 }
 
+function moodEmoji(mood: string): string {
+  switch (mood) {
+    case "great":      return "🤩";
+    case "good":       return "😊";
+    case "neutral":    return "😐";
+    case "tired":      return "😴";
+    case "frustrated": return "😤";
+    default:           return "";
+  }
+}
+function moodLabel(mood: string): string {
+  switch (mood) {
+    case "great":      return "Top-Lauf";
+    case "good":       return "Gut";
+    case "neutral":    return "Mittel";
+    case "tired":      return "Müde";
+    case "frustrated": return "Frustriert";
+    default:           return "";
+  }
+}
+
 function TrainingCard({ item }: { item: TrainingListItem }) {
   const isEnded = !!item.ended_at;
   const participants = item.participants ?? [];
@@ -512,6 +533,11 @@ function TrainingCard({ item }: { item: TrainingListItem }) {
         {item.location && (
           <div className="text-sm text-forest-700 dark:text-forest-300 truncate">
             📍 {item.location}
+          </div>
+        )}
+        {item.mood && (
+          <div className="text-sm text-secondary truncate" title="Stimmung beim Training">
+            {moodEmoji(item.mood)} <span className="text-xs">{moodLabel(item.mood)}</span>
           </div>
         )}
       </div>

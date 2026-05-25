@@ -19,6 +19,7 @@ import NotificationBell from "./NotificationBell";
 import { useConfirm } from "./ConfirmDialog";
 import Avatar from "./Avatar";
 import { useFooter, type FooterAction } from "./FooterContext";
+import { useAchievementWatcher } from "../lib/useAchievementWatcher";
 
 /**
  * Responsive Layout (Archerries Premium-Shell):
@@ -35,6 +36,9 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const confirm = useConfirm();
+
+  // Hintergrund-Watcher zeigt Toast bei neu freigeschalteten Achievements
+  useAchievementWatcher();
 
   const isAuthRoute =
     /^\/(login|register|verify|forgot-password|reset-password|join)/.test(location.pathname);

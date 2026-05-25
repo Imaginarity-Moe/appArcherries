@@ -17,9 +17,16 @@ export type HighscoreGroup = {
   scores: HighscoreEntry[];
 };
 
-export async function listHighscores(parcoursId: number, friendsOnly = false): Promise<{ groups: HighscoreGroup[] }> {
-  const suffix = friendsOnly ? "&friends_only=1" : "";
-  return apiCached(`/highscore?parcours_id=${parcoursId}${suffix}`);
+export type HighscorePeriod = "month" | "year" | "all";
+
+export async function listHighscores(
+  parcoursId: number,
+  friendsOnly = false,
+  period: HighscorePeriod = "all"
+): Promise<{ groups: HighscoreGroup[]; period: HighscorePeriod }> {
+  const params = new URLSearchParams({ parcours_id: String(parcoursId), period });
+  if (friendsOnly) params.set("friends_only", "1");
+  return apiCached(`/highscore?${params}`);
 }
 
 export async function getHighscore(

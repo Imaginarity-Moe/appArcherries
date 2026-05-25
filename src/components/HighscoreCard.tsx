@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Trophy, Medal, Globe, Users } from "lucide-react";
-import { listHighscores, type HighscoreGroup } from "../api/highscore";
+import { Trophy, Medal, Globe, Users, Calendar } from "lucide-react";
+import { listHighscores, type HighscoreGroup, type HighscorePeriod } from "../api/highscore";
 import { BOW_LABELS, DISCIPLINE_LABELS } from "../api/trainings";
 import Avatar from "./Avatar";
 import { Spinner } from "./Spinner";
@@ -14,18 +14,20 @@ type Tab = "global" | "friends";
 /**
  * Top-3 Scores pro (Disziplin, Bow-Type) für einen Parcours.
  * Tabs: Global (alle) / Freunde (nur akzeptierte Freunde + ich selbst).
+ * Period-Pill: Monat / Jahr / Alle.
  */
 export default function HighscoreCard({ parcoursId }: Props) {
   const [tab, setTab] = useState<Tab>("global");
+  const [period, setPeriod] = useState<HighscorePeriod>("all");
   const [groups, setGroups] = useState<HighscoreGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    listHighscores(parcoursId, tab === "friends")
+    listHighscores(parcoursId, tab === "friends", period)
       .then((r) => setGroups(r.groups))
       .finally(() => setLoading(false));
-  }, [parcoursId, tab]);
+  }, [parcoursId, tab, period]);
 
   return (
     <section className="card space-y-4">
@@ -42,12 +44,21 @@ export default function HighscoreCard({ parcoursId }: Props) {
           </TabBtn>
         </div>
       </div>
+
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Calendar size={12} strokeWidth={1.75} className="text-muted shrink-0" />
+        <PeriodBtn active={period === "month"} onClick={() => setPeriod("month")}>30 Tage</PeriodBtn>
+        <PeriodBtn active={period === "year"} onClick={() => setPeriod("year")}>365 Tage</PeriodBtn>
+        <PeriodBtn active={period === "all"} onClick={() => setPeriod("all")}>Alle</PeriodBtn>
+      </div>
+
       {loading && <Spinner />}
       {!loading && groups.length === 0 && (
         <p className="text-sm text-muted">
-          {tab === "friends"
-            ? "Keine Freundes-Scores auf diesem Parcours. Lade Freunde ein oder schalte auf Global."
-            : "Noch keine veröffentlichten Scores. Beende ein Training und tippe „in Highscore aufnehmen“."}
+          {tab === "friends" && "Keine Freundes-Scores auf diesem Parcours. Lade Freunde ein oder schalte auf Global."}
+          {tab !== "friends" && period === "month" && 'Keine Scores in den letzten 30 Tagen. Schalte oben auf „Alle", um die Allzeit-Liste zu sehen.'}
+          {tab !== "friends" && period === "year"  && 'Keine Scores im letzten Jahr. Schalte oben auf „Alle", um die Allzeit-Liste zu sehen.'}
+          {tab !== "friends" && period === "all"   && 'Noch keine veröffentlichten Scores. Beende ein Training und tippe „in Highscore aufnehmen".'}
         </p>
       )}
       {groups.map((g) => (
@@ -82,6 +93,21 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
       onClick={onClick}
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
         active ? "bg-cherry-500 text-cream" : "text-secondary hover:text-primary"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PeriodBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium transition ${
+        active
+          ? "bg-cherry-100 text-cherry-700 dark:bg-cherry-900/40 dark:text-cherry-200 border border-cherry-300 dark:border-cherry-700"
+          : "bg-surface text-secondary border border-hairline hover:text-primary"
       }`}
     >
       {children}

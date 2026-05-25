@@ -72,6 +72,8 @@ export type Training = {
   location: string | null;
   weather: string | null;
   notes: string | null;
+  /** Optionaler Stimmungs-Marker pro Training: great / good / neutral / tired / frustrated */
+  mood?: string | null;
   summary_score: number | null;
   published_to_highscore?: boolean;
   total_score: number;
