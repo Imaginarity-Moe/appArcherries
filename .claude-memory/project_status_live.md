@@ -4,7 +4,31 @@ description: Was steht, was läuft, was noch offen ist. Wird am Ende jeder Sessi
 type: project
 originSessionId: 791df5d4-2800-4b75-8e19-816a5c3b7e18
 ---
-**Letzte Aktualisierung:** 2026-05-25 (Was-ist-Neu-Banner + Sight-Marks-Calculator + Help-Polish)
+**Letzte Aktualisierung:** 2026-05-26 (Toast-System + Mood-Tag + Monatliche Leaderboards)
+
+## Session 2026-05-26 — Achievement-Toasts + Mood + Leaderboards
+
+Drei Features in einer Iteration.
+
+### Toast-System (`src/components/Toast.tsx`)
+Minimaler Context-Provider mit Stack. Mobile: oben unter Header. Desktop: rechts unten. Auto-Dismiss 6s, klickbarer `href` möglich, 3 Varianten (default/success/cherry). Eingebunden in `main.tsx` direkt unter `ConfirmProvider`.
+
+### Achievement-Watcher (`src/lib/useAchievementWatcher.ts`)
+Hook im Layout: triggert nach App-Boot (3s delay) + nach jedem Sync-Drain einen `/me/achievements`-Call. Items mit `is_new=true` → Cherry-Toast „Neuer Erfolg: …" mit Icon + Desc + href=`/profile`. Set verhindert Doppel-Anzeigen pro Session. Backend setzt `is_new=true` nur für gerade-evaluierte Achievements — die App muss nichts tracken.
+
+### Trainings-Tagebuch mit Mood-Tag (Migration 0059)
+`trainings.mood VARCHAR(20) NULL`. Backend (`trainings.php`) hat das Feld in `create` (INSERT) und `update` (PATCH-Field-Liste) aufgenommen. Training-Type um `mood?: string|null`.
+
+`TrainingSummary.tsx`: `MoodPicker`-Section direkt unter dem Score-Header. 5 Optionen mit Emojis: 🤩 Top-Lauf / 😊 Gut / 😐 Mittel / 😴 Müde / 😤 Frustriert. Click toggled (zweiter Klick = entfernen). Sofortiges `updateTraining()`.
+
+`Dashboard.tsx::TrainingCard`: unter Location-Zeile Mood-Emoji + Label-Mini-Anzeige. Helpers `moodEmoji()` / `moodLabel()` mit Switch.
+
+### Monatliche Leaderboards
+`/highscore?period=month|year|all` — Backend (`highscore.php`) filtert `started_at >= NOW() - INTERVAL X DAYS`. Default `all`. Beim Aggregate-Modus (ohne discipline-Filter) wird die Period-Bedingung auch beim Group-Discovery angewendet, damit leere Period-Gruppen rausfliegen.
+
+`HighscoreCard.tsx`: neue `PeriodBtn`-Pill-Bar (30 Tage / 365 Tage / Alle) unter dem Global/Friends-Toggle. Lädt bei Period-Wechsel neu. Empty-States pro Period mit Hinweis „schalte auf Alle".
+
+`api/highscore.ts`: `listHighscores(parcoursId, friendsOnly, period)` mit `HighscorePeriod = "month"|"year"|"all"`.
 
 ## Session 2026-05-25 (Teil 2) — Was-ist-Neu-Banner
 
