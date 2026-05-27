@@ -937,6 +937,7 @@ function training_owned(int $user_id, int $training_id): bool
 
 function user_can_access_training(int $user_id, int $training_id): bool
 {
+    // 1) Owner oder Teilnehmer
     $s = db()->prepare(
         'SELECT 1 FROM trainings t
          LEFT JOIN training_participants tp ON tp.training_id = t.id AND tp.user_id = ?
@@ -944,6 +945,21 @@ function user_can_access_training(int $user_id, int $training_id): bool
          LIMIT 1'
     );
     $s->execute([$user_id, $training_id, $user_id]);
+    if ($s->fetchColumn()) return true;
+
+    // 2) Coach-Zugriff: Read-only auf Trainings von Vereinsmitgliedern, wenn
+    //    der Aufrufer selbst als Coach in einem Verein des Owners ist.
+    $s = db()->prepare(
+        'SELECT 1
+         FROM trainings t
+         JOIN club_members cm_owner ON cm_owner.user_id = t.user_id
+         JOIN club_members cm_coach ON cm_coach.club_id = cm_owner.club_id
+                                    AND cm_coach.user_id = ?
+                                    AND cm_coach.role = "coach"
+         WHERE t.id = ?
+         LIMIT 1'
+    );
+    $s->execute([$user_id, $training_id]);
     return (bool)$s->fetchColumn();
 }
 

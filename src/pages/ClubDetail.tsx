@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Users, Copy, Check, RefreshCw, Trash2, LogOut, Settings, Loader2, ShieldCheck,
-  Trophy, Medal, BarChart3,
+  Trophy, Medal, BarChart3, GraduationCap, Activity, ChevronRight,
 } from "lucide-react";
 import {
   getClub,
@@ -12,11 +12,17 @@ import {
   removeClubMember,
   regenerateClubInviteCode,
   getClubStats,
+  getClubFeed,
+  updateClubMemberRole,
   type Club,
   type ClubMember,
+  type ClubRole,
   type ClubStats,
+  type ClubFeedResponse,
 } from "../api/clubs";
 import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
+import { fmtDate } from "../lib/format";
+import { useAuth } from "../auth/AuthContext";
 import { PageSpinner } from "../components/Spinner";
 import Avatar from "../components/Avatar";
 import { useConfirm } from "../components/ConfirmDialog";
@@ -26,6 +32,7 @@ export default function ClubDetail() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const confirm = useConfirm();
+  const { user } = useAuth();
   const cid = Number(id);
 
   const [club, setClub] = useState<Club | null>(null);
@@ -39,6 +46,7 @@ export default function ClubDetail() {
   const [busy, setBusy] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [stats, setStats] = useState<ClubStats | null>(null);
+  const [feed, setFeed] = useState<ClubFeedResponse | null>(null);
 
   const isAdmin = club?.my_role === "admin";
 
@@ -53,9 +61,27 @@ export default function ClubDetail() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Verein nicht gefunden"))
       .finally(() => setLoading(false));
-    // Stats parallel laden — fehlt sie, blendet sich die Sektion still aus
+    // Stats + Feed parallel laden — fehlen sie, blenden sich die Sektionen still aus
     getClubStats(cid).then(setStats).catch(() => setStats(null));
+    getClubFeed(cid, 15).then(setFeed).catch(() => setFeed(null));
   }, [cid]);
+
+  async function handleSetMemberRole(m: ClubMember, role: ClubRole) {
+    if (!club || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await updateClubMemberRole(club.id, m.user_id, role);
+      setClub(r.club);
+      setMembers(r.members);
+      // Feed neu laden, da Coach-Status sich evtl. geändert hat
+      getClubFeed(club.id, 15).then(setFeed).catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Rolle ändern fehlgeschlagen");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const footerActions = useMemo(
     () => [
@@ -291,30 +317,29 @@ export default function ClubDetail() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate flex items-center gap-2">
                   {m.display_name ?? "Anonym"}
-                  {m.role === "admin" && (
-                    <span className="text-[10px] uppercase tracking-wider bg-cherry-100 dark:bg-cherry-900/40 text-cherry-700 dark:text-cherry-200 px-1.5 py-0.5 rounded-full font-semibold">
-                      Admin
-                    </span>
-                  )}
+                  {m.role === "admin" && <RoleBadge variant="admin" />}
+                  {m.role === "coach" && <RoleBadge variant="coach" />}
                 </div>
                 <div className="text-xs text-muted">
                   Beigetreten {new Date(m.joined_at).toLocaleDateString("de-DE")}
                 </div>
               </div>
-              {isAdmin && m.role !== "admin" && (
-                <button
-                  onClick={() => handleRemoveMember(m)}
-                  disabled={busy}
-                  className="btn-icon text-muted"
-                  aria-label={`${m.display_name ?? "Mitglied"} entfernen`}
-                >
-                  <Trash2 size={15} strokeWidth={1.75} />
-                </button>
+              {isAdmin && (
+                <MemberRoleMenu
+                  current={m.role}
+                  busy={busy}
+                  onSetRole={(r) => handleSetMemberRole(m, r)}
+                  onRemove={() => handleRemoveMember(m)}
+                  isSelf={m.user_id === user?.id}
+                />
               )}
             </li>
           ))}
         </ul>
       </section>
+
+      {/* Feed: Trainings im Verein. Coach/Admin sieht alle, Member nur eigene. */}
+      {feed && feed.trainings.length > 0 && <ClubFeedSection feed={feed} />}
 
       {/* Vereins-Stats — lazy geladen, blendet sich aus wenn keine Daten */}
       {stats && (stats.members_ranked.some((m) => m.count_all > 0) || stats.parcours_records.length > 0) && (
@@ -442,6 +467,155 @@ function ClubStatsSection({ stats }: { stats: ClubStats }) {
           </ul>
         </div>
       )}
+    </section>
+  );
+}
+
+// ─── Role-Badge + Admin-Menü ──────────────────────────────────────────────
+
+function RoleBadge({ variant }: { variant: "admin" | "coach" }) {
+  if (variant === "admin") {
+    return (
+      <span className="text-[10px] uppercase tracking-wider bg-cherry-100 dark:bg-cherry-900/40 text-cherry-700 dark:text-cherry-200 px-1.5 py-0.5 rounded-full font-semibold">
+        Admin
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-200 px-1.5 py-0.5 rounded-full font-semibold">
+      <GraduationCap size={10} strokeWidth={2} /> Coach
+    </span>
+  );
+}
+
+function MemberRoleMenu({
+  current,
+  busy,
+  onSetRole,
+  onRemove,
+  isSelf,
+}: {
+  current: ClubRole;
+  busy: boolean;
+  onSetRole: (role: ClubRole) => void;
+  onRemove: () => void;
+  isSelf: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // Self-Modifikation: nur Rolle wechseln möglich (Entfernen nicht — geht über „Verlassen").
+  // Auch: der letzte Admin kann sich nicht selbst degradieren (Backend wirft 409).
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        className="btn-icon text-muted"
+        aria-label="Rolle ändern"
+        aria-expanded={open}
+      >
+        <Settings size={15} strokeWidth={1.75} />
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
+          <div className="absolute right-0 top-full mt-1 z-40 min-w-[180px] rounded-xl bg-elevated border border-hairline shadow-card overflow-hidden">
+            {(["admin", "coach", "member"] as ClubRole[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => { onSetRole(r); setOpen(false); }}
+                disabled={busy || r === current}
+                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed ${
+                  r === current ? "bg-surface/50" : ""
+                }`}
+              >
+                {r === current ? <Check size={14} strokeWidth={2} className="text-cherry-500" /> : <span className="w-3.5" />}
+                <span className="capitalize">{r === "admin" ? "Admin" : r === "coach" ? "Coach" : "Member"}</span>
+              </button>
+            ))}
+            {!isSelf && (
+              <>
+                <div className="border-t border-hairline" />
+                <button
+                  onClick={() => { onRemove(); setOpen(false); }}
+                  disabled={busy}
+                  className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 text-cherry-600 hover:bg-cherry-50 dark:hover:bg-cherry-900/20"
+                >
+                  <Trash2 size={14} strokeWidth={1.75} /> Aus Verein entfernen
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Trainings-Feed ───────────────────────────────────────────────────────
+
+function ClubFeedSection({ feed }: { feed: ClubFeedResponse }) {
+  return (
+    <section className="card">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="eyebrow flex items-center gap-1.5">
+          <Activity size={13} strokeWidth={1.75} /> {feed.can_see_all ? "Trainings im Verein" : "Meine letzten Trainings"}
+        </h2>
+        {feed.viewer_role === "coach" && (
+          <span className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-300 font-semibold">
+            Coach-Sicht
+          </span>
+        )}
+      </div>
+      {feed.viewer_role === "coach" && (
+        <p className="text-[11px] text-muted mb-2">
+          Als Coach siehst du alle Trainings deiner Vereinsmitglieder (Read-only).
+        </p>
+      )}
+      <ul className="space-y-1">
+        {feed.trainings.map((t) => (
+          <li key={t.id}>
+            <Link
+              to={`/trainings/${t.id}/summary`}
+              className="flex items-center gap-3 py-2 -mx-1 px-1 rounded-lg hover:bg-surface transition"
+            >
+              {feed.can_see_all && (
+                <Avatar
+                  user={{ avatar_url: t.avatar_url, display_name: t.display_name }}
+                  size="sm"
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate flex items-center gap-2">
+                  {feed.can_see_all && (
+                    <span className={t.is_own ? "text-cherry-700 dark:text-cherry-300" : ""}>
+                      {t.display_name ?? "Anonym"}
+                    </span>
+                  )}
+                  {feed.can_see_all && <span className="text-muted">·</span>}
+                  <span className="truncate">
+                    {DISCIPLINE_LABELS[t.discipline as Discipline] ?? t.discipline}
+                    {" · "}
+                    {BOW_LABELS[t.bow_type as BowType] ?? t.bow_type}
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted truncate">
+                  {fmtDate(t.ended_at)}
+                  {t.parcours_name ? <> · {t.parcours_name}</> : null}
+                </div>
+              </div>
+              {t.summary_score !== null && (
+                <span className="score text-base tabular-nums shrink-0">{t.summary_score}</span>
+              )}
+              <ChevronRight size={14} strokeWidth={1.75} className="text-muted shrink-0" />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { api, apiCached } from "./client";
 
-export type ClubRole = "admin" | "member";
+export type ClubRole = "admin" | "member" | "coach";
 
 export type Club = {
   id: number;
@@ -96,4 +96,45 @@ export type ClubStats = {
 
 export async function getClubStats(id: number): Promise<ClubStats> {
   return apiCached(`/clubs/${id}/stats`);
+}
+
+// ─── Coach-Rolle + Feed ───────────────────────────────────────────────────
+
+export async function updateClubMemberRole(
+  id: number,
+  user_id: number,
+  role: ClubRole
+): Promise<ClubDetail> {
+  return api(`/clubs/${id}/members/${user_id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+}
+
+export type ClubFeedTraining = {
+  id: number;
+  user_id: number;
+  discipline: string;
+  bow_type: string;
+  peg_color: string | null;
+  started_at: string;
+  ended_at: string;
+  summary_score: number | null;
+  mood: string | null;
+  notes: string | null;
+  parcours_id: number | null;
+  parcours_name: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  is_own: boolean;
+};
+
+export type ClubFeedResponse = {
+  trainings: ClubFeedTraining[];
+  viewer_role: ClubRole;
+  can_see_all: boolean;
+};
+
+export async function getClubFeed(id: number, limit = 20): Promise<ClubFeedResponse> {
+  return apiCached(`/clubs/${id}/feed?limit=${limit}`);
 }

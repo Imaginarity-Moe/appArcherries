@@ -45,8 +45,14 @@ function handle_clubs(string $method, string $path): void
     }
     if (preg_match('#^/clubs/(\d+)/members/(\d+)$#', $path, $m)) {
         $cid = (int)$m[1]; $target = (int)$m[2];
-        if ($method !== 'DELETE') res_error('Method not allowed', 405);
-        clubs_remove_member($me, $cid, $target);
+        if ($method === 'DELETE') { clubs_remove_member($me, $cid, $target); return; }
+        if ($method === 'PATCH')  { clubs_update_member_role($me, $cid, $target); return; }
+        res_error('Method not allowed', 405);
+    }
+    if (preg_match('#^/clubs/(\d+)/feed$#', $path, $m)) {
+        $cid = (int)$m[1];
+        if ($method !== 'GET') res_error('Method not allowed', 405);
+        clubs_feed($me, $cid);
         return;
     }
     if (preg_match('#^/clubs/(\d+)/regenerate-code$#', $path, $m)) {
@@ -249,6 +255,99 @@ function clubs_remove_member(int $me, int $cid, int $target): void
     db()->prepare('DELETE FROM club_members WHERE club_id = ? AND user_id = ?')
         ->execute([$cid, $target]);
     clubs_detail($me, $cid);
+}
+
+function clubs_update_member_role(int $me, int $cid, int $target): void
+{
+    if (club_member_role($cid, $me) !== 'admin') res_error('Nur Admins können Rollen ändern', 403);
+    $in = req_json();
+    $new_role = (string)($in['role'] ?? '');
+    if (!in_array($new_role, ['admin', 'member', 'coach'], true)) {
+        res_error('Ungültige Rolle (admin, member oder coach)');
+    }
+    // Verhindern, dass der letzte Admin sich selbst degradiert
+    if ($target === $me && $new_role !== 'admin') {
+        $s = db()->prepare('SELECT COUNT(*) FROM club_members WHERE club_id = ? AND role = "admin"');
+        $s->execute([$cid]);
+        $admin_count = (int)$s->fetchColumn();
+        if ($admin_count <= 1) {
+            res_error('Du bist der einzige Admin — befördere zuerst jemand anderen', 409);
+        }
+    }
+    // Target muss Mitglied sein
+    $s = db()->prepare('SELECT 1 FROM club_members WHERE club_id = ? AND user_id = ?');
+    $s->execute([$cid, $target]);
+    if (!$s->fetchColumn()) res_error('Person ist kein Mitglied dieses Vereins', 404);
+
+    db()->prepare('UPDATE club_members SET role = ? WHERE club_id = ? AND user_id = ?')
+        ->execute([$new_role, $cid, $target]);
+    clubs_detail($me, $cid);
+}
+
+/**
+ * Feed: letzte beendete Trainings im Verein.
+ * - Coaches und Admins: alle Member-Trainings
+ * - Members: nur eigene Trainings
+ * Limit per ?limit=N (1..50, default 20). Liefert maximale Sicht ohne PII von
+ * fremden Teilnehmern (Display-Name + Avatar reichen für eine Listen-Ansicht).
+ */
+function clubs_feed(int $me, int $cid): void
+{
+    $my_role = club_member_role($cid, $me);
+    if ($my_role === null) res_error('Kein Mitglied dieses Vereins', 403);
+    $limit = max(1, min(50, (int)(req_query('limit', '20') ?? '20')));
+
+    $can_see_all = $my_role === 'admin' || $my_role === 'coach';
+
+    if ($can_see_all) {
+        $sql = 'SELECT user_id FROM club_members WHERE club_id = ?';
+        $s = db()->prepare($sql);
+        $s->execute([$cid]);
+        $user_ids = array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN));
+    } else {
+        $user_ids = [$me];
+    }
+    if (!$user_ids) { res_json(['trainings' => []]); return; }
+
+    $placeholders = implode(',', array_fill(0, count($user_ids), '?'));
+    $sql = "SELECT t.id, t.user_id, t.discipline, t.bow_type, t.peg_color,
+                   t.started_at, t.ended_at, t.summary_score, t.mood, t.notes,
+                   t.parcours_id, p.name AS parcours_name,
+                   u.display_name, u.avatar_path
+            FROM trainings t
+            JOIN users u ON u.id = t.user_id
+            LEFT JOIN parcours p ON p.id = t.parcours_id
+            WHERE t.user_id IN ($placeholders)
+              AND t.ended_at IS NOT NULL
+              AND t.archived_at IS NULL
+              AND u.deleted_at IS NULL
+            ORDER BY t.ended_at DESC
+            LIMIT $limit";
+    $s = db()->prepare($sql);
+    $s->execute($user_ids);
+    $rows = array_map(fn($r) => [
+        'id'             => (int)$r['id'],
+        'user_id'        => (int)$r['user_id'],
+        'discipline'     => (string)$r['discipline'],
+        'bow_type'       => (string)$r['bow_type'],
+        'peg_color'      => $r['peg_color'],
+        'started_at'     => (string)$r['started_at'],
+        'ended_at'       => (string)$r['ended_at'],
+        'summary_score'  => $r['summary_score'] !== null ? (int)$r['summary_score'] : null,
+        'mood'           => $r['mood'],
+        'notes'          => $r['notes'],
+        'parcours_id'    => $r['parcours_id'] !== null ? (int)$r['parcours_id'] : null,
+        'parcours_name'  => $r['parcours_name'],
+        'display_name'   => $r['display_name'],
+        'avatar_url'     => $r['avatar_path'] ?: null,
+        'is_own'         => (int)$r['user_id'] === $me,
+    ], $s->fetchAll());
+
+    res_json([
+        'trainings'    => $rows,
+        'viewer_role'  => $my_role,
+        'can_see_all'  => $can_see_all,
+    ]);
 }
 
 function clubs_regen_code(int $me, int $cid): void
