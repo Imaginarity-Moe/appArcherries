@@ -126,6 +126,12 @@ export type ParcoursLane = {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  // Crowdsourced anonyme Distanz-Schätzungen (Median + n) plus eigene Schätzung
+  crowd_distance_median: number | null;
+  crowd_distance_min:    number | null;
+  crowd_distance_max:    number | null;
+  crowd_distance_count:  number;
+  my_distance_estimate:  number | null;
 };
 
 export type ParcoursLaneInput = {
@@ -171,6 +177,24 @@ export async function uploadParcoursLaneImage(
 
 export async function deleteParcoursLaneImage(parcoursId: number, laneId: number): Promise<{ lane: ParcoursLane }> {
   return api(`/parcours/${parcoursId}/lanes/${laneId}/image`, { method: "DELETE" });
+}
+
+/**
+ * Eigene Distanz-Schätzung für eine Bahn setzen (anonym aggregiert).
+ * `distance === null` löscht die eigene Schätzung.
+ */
+export async function setLaneDistanceEstimate(
+  parcoursId: number,
+  laneId: number,
+  distance: number | null,
+): Promise<{ lane: ParcoursLane }> {
+  if (distance === null) {
+    return api(`/parcours/${parcoursId}/lanes/${laneId}/distance-estimate`, { method: "DELETE" });
+  }
+  return api(`/parcours/${parcoursId}/lanes/${laneId}/distance-estimate`, {
+    method: "PUT",
+    body: JSON.stringify({ estimated_distance_m: distance }),
+  });
 }
 
 // ─── Reviews ───────────────────────────────────────────────────────────────

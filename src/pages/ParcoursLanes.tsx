@@ -12,6 +12,7 @@ import {
   deleteParcoursLane,
   uploadParcoursLaneImage,
   deleteParcoursLaneImage,
+  setLaneDistanceEstimate,
   type Parcours,
   type ParcoursLane,
 } from "../api/parcours";
@@ -245,6 +246,13 @@ export default function ParcoursLanes() {
     }
   }
 
+  async function handleEstimateSubmit(lane: ParcoursLane, distance: number | null) {
+    if (!parcours) return;
+    const r = await setLaneDistanceEstimate(parcours.id, lane.id, distance);
+    // Punktuell ersetzen, statt komplettes Refresh
+    setLanes((prev) => prev.map((l) => (l.id === lane.id ? r.lane : l)));
+  }
+
   async function handleImageDelete(lane: ParcoursLane) {
     if (!parcours) return;
     const ok = await confirm({
@@ -367,6 +375,7 @@ export default function ParcoursLanes() {
                 onMoveDown={() => handleMove(lane, +1)}
                 onImageUpload={(f) => handleImageUpload(lane, f)}
                 onImageDelete={() => handleImageDelete(lane)}
+                onEstimateSubmit={(d) => handleEstimateSubmit(lane, d)}
                 busy={busy}
               />
             )}
@@ -629,6 +638,7 @@ function LaneRow({
   onMoveDown,
   onImageUpload,
   onImageDelete,
+  onEstimateSubmit,
   busy,
 }: {
   lane: ParcoursLane;
@@ -642,6 +652,7 @@ function LaneRow({
   onMoveDown: () => void;
   onImageUpload: (f: File) => void;
   onImageDelete: () => void;
+  onEstimateSubmit: (distance: number | null) => Promise<void>;
   busy: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -652,30 +663,33 @@ function LaneRow({
   // Read-Only: einfache Zeile ohne Aktionen
   if (readOnly) {
     return (
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 shrink-0 rounded-xl bg-surface text-secondary flex items-center justify-center font-bold tabular-nums">
-          {lane.lane_number}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold truncate">{lane.animal_description ?? "—"}</div>
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {lane.distance_blue   != null && <DistanceChip color="bg-blue-500"   value={lane.distance_blue} />}
-            {lane.distance_red    != null && <DistanceChip color="bg-red-500"    value={lane.distance_red} />}
-            {lane.distance_yellow != null && <DistanceChip color="bg-yellow-400" value={lane.distance_yellow} />}
-            {lane.distance_white  != null && <DistanceChip color="bg-white border border-warm-graphite/20" value={lane.distance_white} />}
+      <div className="space-y-2">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 shrink-0 rounded-xl bg-surface text-secondary flex items-center justify-center font-bold tabular-nums">
+            {lane.lane_number}
           </div>
-          {lane.notes && <div className="text-xs text-muted mt-1 line-clamp-2">{lane.notes}</div>}
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold truncate">{lane.animal_description ?? "—"}</div>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {lane.distance_blue   != null && <DistanceChip color="bg-blue-500"   value={lane.distance_blue} />}
+              {lane.distance_red    != null && <DistanceChip color="bg-red-500"    value={lane.distance_red} />}
+              {lane.distance_yellow != null && <DistanceChip color="bg-yellow-400" value={lane.distance_yellow} />}
+              {lane.distance_white  != null && <DistanceChip color="bg-white border border-warm-graphite/20" value={lane.distance_white} />}
+            </div>
+            {lane.notes && <div className="text-xs text-muted mt-1 line-clamp-2">{lane.notes}</div>}
+          </div>
+          {displayImageUrl && (
+            <button
+              type="button"
+              onClick={() => setZoomImage(displayImageUrl)}
+              className="shrink-0"
+              aria-label="Foto vergrößern"
+            >
+              <img src={displayImageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
+            </button>
+          )}
         </div>
-        {displayImageUrl && (
-          <button
-            type="button"
-            onClick={() => setZoomImage(displayImageUrl)}
-            className="shrink-0"
-            aria-label="Foto vergrößern"
-          >
-            <img src={displayImageUrl} alt="" className="w-12 h-12 rounded-lg object-cover" />
-          </button>
-        )}
+        <CrowdDistanceWidget lane={lane} onSubmit={onEstimateSubmit} busy={busy} />
         {zoomImage && (
           <div
             className="fixed inset-0 z-50 bg-warm-black/85 flex items-center justify-center p-4"
@@ -772,6 +786,10 @@ function LaneRow({
         </div>
       </div>
 
+      <div className="mt-2">
+        <CrowdDistanceWidget lane={lane} onSubmit={onEstimateSubmit} busy={busy} />
+      </div>
+
       {/* Untere Aktionen */}
       <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-hairline">
         <div className="flex items-center gap-1">
@@ -807,6 +825,160 @@ function LaneRow({
           onClick={() => setZoomImage(null)}
         >
           <img src={zoomImage} alt="" className="max-w-full max-h-full rounded-xl" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Crowdsourced-Distanz: Median + eigene Schätzung ──────────────────────
+
+function CrowdDistanceWidget({
+  lane,
+  onSubmit,
+  busy,
+}: {
+  lane: ParcoursLane;
+  onSubmit: (distance: number | null) => Promise<void>;
+  busy: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [input, setInput] = useState<string>(
+    lane.my_distance_estimate != null ? String(lane.my_distance_estimate) : ""
+  );
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Sync input mit Lane-State, wenn Lane sich extern ändert
+  useEffect(() => {
+    setInput(lane.my_distance_estimate != null ? String(lane.my_distance_estimate) : "");
+  }, [lane.my_distance_estimate]);
+
+  const hasOfficial =
+    lane.distance_blue != null ||
+    lane.distance_red != null ||
+    lane.distance_yellow != null ||
+    lane.distance_white != null;
+
+  const hasCrowd = lane.crowd_distance_count > 0;
+  const hasMine = lane.my_distance_estimate != null;
+
+  // Wenn weder Crowd noch eigene Schätzung existieren und der Owner schon
+  // offizielle Distanzen gepflegt hat, dann verstecke das Widget komplett —
+  // nicht jeder will hier Schätzungen abgeben. Es bleibt sichtbar, sobald
+  // jemand schätzt, oder wenn keine offiziellen Distanzen existieren.
+  if (!hasCrowd && !hasMine && hasOfficial) return null;
+
+  async function save() {
+    const v = parseFloat(input.replace(",", "."));
+    if (!Number.isFinite(v) || v <= 0 || v > 200) {
+      setErr("Bitte zwischen 1 und 200 m eingeben");
+      return;
+    }
+    setErr(null);
+    setSaving(true);
+    try {
+      await onSubmit(v);
+      setExpanded(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Speichern fehlgeschlagen");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function clear() {
+    setErr(null);
+    setSaving(true);
+    try {
+      await onSubmit(null);
+      setInput("");
+      setExpanded(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Löschen fehlgeschlagen");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="text-xs">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="inline-flex items-center gap-1.5 text-secondary hover:text-primary transition"
+        aria-expanded={expanded}
+      >
+        <span className="text-muted">Crowdsourced</span>
+        {hasCrowd ? (
+          <span className="tabular-nums">
+            <b className="text-primary">~{lane.crowd_distance_median}</b> m
+            <span className="text-muted ml-1">(n={lane.crowd_distance_count})</span>
+          </span>
+        ) : (
+          <span className="text-muted italic">noch keine Schätzungen</span>
+        )}
+        {hasMine && (
+          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-cherry-50 dark:bg-cherry-900/30 text-cherry-700 dark:text-cherry-200 px-1.5 py-0.5">
+            Du: {lane.my_distance_estimate} m
+          </span>
+        )}
+        <ChevronDown
+          size={12}
+          strokeWidth={1.75}
+          className={`transition ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {expanded && (
+        <div className="mt-2 card-sunken space-y-2">
+          <div className="text-[11px] text-muted">
+            {hasOfficial
+              ? "Deine Schätzung hilft anderen, die unmarkierte Distanz besser einzuordnen."
+              : "Diese Bahn hat keine offiziellen Distanzen. Deine Schätzung wird anonym aggregiert."}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex-1 min-w-0">
+              <input
+                type="number"
+                min={1}
+                max={200}
+                step={0.5}
+                inputMode="decimal"
+                className="input text-sm"
+                placeholder="z.B. 22"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+              />
+            </label>
+            <span className="text-xs text-muted">m</span>
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy || saving || input === ""}
+              className="btn-accent text-xs px-3 py-1.5"
+            >
+              {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} strokeWidth={2} />}
+              {hasMine ? "Aktualisieren" : "Schätzen"}
+            </button>
+            {hasMine && (
+              <button
+                type="button"
+                onClick={clear}
+                disabled={busy || saving}
+                className="btn-ghost danger text-xs px-2 py-1.5"
+                aria-label="Schätzung zurückziehen"
+              >
+                <Trash2 size={12} strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
+          {hasCrowd && lane.crowd_distance_min !== lane.crowd_distance_max && (
+            <div className="text-[11px] text-muted">
+              Spannweite: {lane.crowd_distance_min} – {lane.crowd_distance_max} m
+            </div>
+          )}
+          {err && <div className="text-[11px] text-cherry-500">{err}</div>}
         </div>
       )}
     </div>
