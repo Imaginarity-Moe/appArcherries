@@ -19,13 +19,24 @@ export type HighscoreGroup = {
 
 export type HighscorePeriod = "month" | "year" | "all";
 
+export type HighscoreScope =
+  | { kind: "global" }
+  | { kind: "friends" }
+  | { kind: "club"; club_id: number };
+
 export async function listHighscores(
   parcoursId: number,
-  friendsOnly = false,
+  scope: HighscoreScope | boolean = { kind: "global" },
   period: HighscorePeriod = "all"
 ): Promise<{ groups: HighscoreGroup[]; period: HighscorePeriod }> {
+  // Legacy: boolean = friends_only
+  const resolved: HighscoreScope =
+    typeof scope === "boolean"
+      ? scope ? { kind: "friends" } : { kind: "global" }
+      : scope;
   const params = new URLSearchParams({ parcours_id: String(parcoursId), period });
-  if (friendsOnly) params.set("friends_only", "1");
+  if (resolved.kind === "friends") params.set("friends_only", "1");
+  if (resolved.kind === "club") params.set("club_id", String(resolved.club_id));
   return apiCached(`/highscore?${params}`);
 }
 

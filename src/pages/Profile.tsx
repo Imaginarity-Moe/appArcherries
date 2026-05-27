@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type AriaAttributes } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users, Bell, Compass, AlertTriangle, Loader2, X as XIcon } from "lucide-react";
+import { Moon, Sun, Globe, Trash2, Target, ChevronRight, Zap, Users, Bell, Compass, AlertTriangle, Loader2, X as XIcon, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api } from "../api/client";
@@ -167,6 +167,19 @@ export default function Profile() {
               )}
             </div>
             <div className="text-sm text-secondary">Anfragen senden, annehmen und Freundes-Liste verwalten</div>
+          </div>
+        </div>
+        <ChevronRight size={18} strokeWidth={1.75} className="text-muted" />
+      </Link>
+
+      <Link to="/clubs" className="card-interactive flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-9 rounded-full bg-surface flex items-center justify-center text-cherry-500">
+            <Building2 size={18} strokeWidth={1.75} />
+          </span>
+          <div>
+            <div className="font-semibold">Vereine</div>
+            <div className="text-sm text-secondary">Mit Code beitreten oder eigenen Verein gründen — Vereins-Highscore inklusive</div>
           </div>
         </div>
         <ChevronRight size={18} strokeWidth={1.75} className="text-muted" />

@@ -63,6 +63,9 @@ try {
     } elseif (str_starts_with($path, '/highscore')) {
         require __DIR__ . '/routes/highscore.php';
         handle_highscore($method, $path);
+    } elseif (str_starts_with($path, '/clubs')) {
+        require __DIR__ . '/routes/clubs.php';
+        handle_clubs($method, $path);
     } elseif (str_starts_with($path, '/admin/')) {
         require __DIR__ . '/routes/admin.php';
         handle_admin($method, $path);

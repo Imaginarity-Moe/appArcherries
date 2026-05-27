@@ -29,13 +29,17 @@ function handle_highscore(string $method, string $path): void
     $bow_type     = req_query('bow_type');
     $limit        = max(1, min(20, (int)(req_query('limit', '3') ?? '3')));
     $friends_only = (req_query('friends_only', '0') ?? '0') === '1';
+    $club_id      = (int)(req_query('club_id', '0') ?? '0');
     // ?period=month|year|all  — schränkt auf Trainings im Zeitfenster ein
     $period       = req_query('period', 'all') ?? 'all';
     $period_since = null;
     if ($period === 'month') $period_since = date('Y-m-d H:i:s', strtotime('-30 days'));
     elseif ($period === 'year') $period_since = date('Y-m-d H:i:s', strtotime('-365 days'));
 
-    // Wenn friends_only: User-IDs der Freunde (+ ich selbst) sammeln, sonst null = alle
+    // Filter-Modi für die User-Allowlist:
+    //  - friends_only: nur akzeptierte Freunde + ich
+    //  - club_id:      nur Mitglieder dieses Vereins (ich muss selbst Mitglied sein)
+    //  - sonst:        null = alle
     $allowed_users = null;
     if ($friends_only) {
         $s = db()->prepare(
@@ -46,6 +50,17 @@ function handle_highscore(string $method, string $path): void
         $s->execute([$me, $me, $me]);
         $allowed_users = array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN));
         $allowed_users[] = $me; // eigenes Score immer mit dabei
+    } elseif ($club_id > 0) {
+        // Prüfen, dass ich selbst in dem Verein bin (sonst 403 — Verein-Highscores
+        // sind nicht öffentlich, müssen wir absichern)
+        $s = db()->prepare('SELECT 1 FROM club_members WHERE club_id = ? AND user_id = ?');
+        $s->execute([$club_id, $me]);
+        if (!$s->fetchColumn()) res_error('Kein Mitglied dieses Vereins', 403);
+
+        $s = db()->prepare('SELECT user_id FROM club_members WHERE club_id = ?');
+        $s->execute([$club_id]);
+        $allowed_users = array_map('intval', $s->fetchAll(PDO::FETCH_COLUMN));
+        if (!$allowed_users) $allowed_users = [$me];
     }
 
     if ($discipline !== null && $discipline !== '') {

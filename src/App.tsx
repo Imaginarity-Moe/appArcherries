@@ -34,6 +34,8 @@ const ArrowEdit       = lazy(() => import("./pages/ArrowEdit"));          // Pfe
 const Equipment       = lazy(() => import("./pages/Equipment"));          // Sehnen/Tabs/Releases/Sonstiges
 const EquipmentEdit   = lazy(() => import("./pages/EquipmentEdit"));      // Equipment-Form (new + edit)
 const Friends         = lazy(() => import("./pages/Friends"));            // Freundschafts-Verwaltung
+const Clubs           = lazy(() => import("./pages/Clubs"));              // Vereine
+const ClubDetail      = lazy(() => import("./pages/ClubDetail"));         // Verein-Detail
 const TrainingArchive = lazy(() => import("./pages/TrainingArchive"));    // Archivierte Trainings
 const Admin           = lazy(() => import("./pages/Admin"));              // User-Verwaltung (admin-only)
 const AdminUserDetail = lazy(() => import("./pages/AdminUserDetail"));    // User-Detail (admin-only)
@@ -100,6 +102,8 @@ export default function App() {
         <Route path="/equipment/new" element={<RequireAuth><L><EquipmentEdit mode="new" /></L></RequireAuth>} />
         <Route path="/equipment/:id/edit" element={<RequireAuth><L><EquipmentEdit mode="edit" /></L></RequireAuth>} />
         <Route path="/friends" element={<RequireAuth><L><Friends /></L></RequireAuth>} />
+        <Route path="/clubs" element={<RequireAuth><L><Clubs /></L></RequireAuth>} />
+        <Route path="/clubs/:id" element={<RequireAuth><L><ClubDetail /></L></RequireAuth>} />
         <Route path="/trainings/archive" element={<RequireAuth><L><TrainingArchive /></L></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><L><Admin /></L></RequireAuth>} />
         <Route path="/admin/users/:id" element={<RequireAuth><L><AdminUserDetail /></L></RequireAuth>} />
