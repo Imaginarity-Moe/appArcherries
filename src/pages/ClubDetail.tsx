@@ -585,8 +585,13 @@ function ClubFeedSection({ feed }: { feed: ClubFeedResponse }) {
             >
               {feed.can_see_all && (
                 <Avatar
-                  user={{ avatar_url: t.avatar_url, display_name: t.display_name }}
+                  user={{
+                    avatar_url: t.avatar_url,
+                    display_name: t.display_name,
+                    last_seen_at: t.last_seen_at,
+                  }}
                   size="sm"
+                  showPresence
                 />
               )}
               <div className="flex-1 min-w-0">

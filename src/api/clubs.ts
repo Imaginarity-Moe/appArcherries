@@ -126,6 +126,7 @@ export type ClubFeedTraining = {
   parcours_name: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  last_seen_at: string | null;
   is_own: boolean;
 };
 

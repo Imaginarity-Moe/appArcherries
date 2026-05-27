@@ -313,7 +313,7 @@ function clubs_feed(int $me, int $cid): void
     $sql = "SELECT t.id, t.user_id, t.discipline, t.bow_type, t.peg_color,
                    t.started_at, t.ended_at, t.summary_score, t.mood, t.notes,
                    t.parcours_id, p.name AS parcours_name,
-                   u.display_name, u.avatar_path
+                   u.display_name, u.avatar_path, u.last_seen_at
             FROM trainings t
             JOIN users u ON u.id = t.user_id
             LEFT JOIN parcours p ON p.id = t.parcours_id
@@ -340,6 +340,7 @@ function clubs_feed(int $me, int $cid): void
         'parcours_name'  => $r['parcours_name'],
         'display_name'   => $r['display_name'],
         'avatar_url'     => $r['avatar_path'] ?: null,
+        'last_seen_at'   => $r['last_seen_at'],
         'is_own'         => (int)$r['user_id'] === $me,
     ], $s->fetchAll());
 
