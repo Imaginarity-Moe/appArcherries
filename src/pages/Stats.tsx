@@ -212,6 +212,9 @@ export default function Stats() {
             </section>
           )}
 
+          <MoodStatsSection />
+
+
           <section className="card">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <h2 className="font-display text-lg font-semibold">Treffer-Heatmap</h2>
@@ -258,6 +261,91 @@ export default function Stats() {
         </>
       )}
     </div>
+  );
+}
+
+// ─── Mood-Verlauf + Korrelation Mood↔Score ────────────────────────────────
+
+const MOOD_DISPLAY: Record<string, { emoji: string; label: string; order: number }> = {
+  great:      { emoji: "🤩", label: "Top-Lauf",   order: 1 },
+  good:       { emoji: "😊", label: "Gut",        order: 2 },
+  neutral:    { emoji: "😐", label: "Mittel",     order: 3 },
+  tired:      { emoji: "😴", label: "Müde",       order: 4 },
+  frustrated: { emoji: "😤", label: "Frustriert", order: 5 },
+};
+
+function MoodStatsSection() {
+  const [data, setData] = useState<import("../api/stats").MoodStats | null>(null);
+
+  useEffect(() => {
+    import("../api/stats").then((m) => m.getMoodStats()).then(setData).catch(() => setData(null));
+  }, []);
+
+  if (!data || data.with_mood === 0) return null;
+
+  const sortedEntries = [...data.entries].sort((a, b) => {
+    return (MOOD_DISPLAY[a.mood]?.order ?? 99) - (MOOD_DISPLAY[b.mood]?.order ?? 99);
+  });
+  const maxCount = Math.max(...sortedEntries.map((e) => e.count), 1);
+  // Avg-Score-Maximum für Score-Balken
+  const maxAvg = Math.max(...sortedEntries.map((e) => e.avg_score ?? 0), 1);
+
+  return (
+    <section className="card">
+      <div className="flex items-baseline justify-between mb-1">
+        <h2 className="font-display text-lg font-semibold">Stimmungs-Verteilung</h2>
+        <span className="text-xs text-muted tabular-nums">
+          {data.with_mood} von {data.total_trainings} Trainings getaggt
+        </span>
+      </div>
+      <p className="text-sm text-secondary mb-3">
+        Wie oft du jede Stimmung erlebt hast — und wie sich dein Ø-Score dazu verhält.
+      </p>
+      <ul className="space-y-2">
+        {sortedEntries.map((e) => {
+          const disp = MOOD_DISPLAY[e.mood];
+          const widthCount = (e.count / maxCount) * 100;
+          const widthScore = e.avg_score ? (e.avg_score / maxAvg) * 100 : 0;
+          return (
+            <li key={e.mood} className="flex items-center gap-3">
+              <span className="text-2xl shrink-0 w-8 text-center">
+                {disp?.emoji ?? "❓"}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="font-medium">{disp?.label ?? e.mood}</span>
+                  <span className="text-xs text-muted tabular-nums">
+                    {e.count}× {e.avg_score !== null && <>· Ø <b className="text-primary">{e.avg_score}</b> Pkt</>}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 bg-surface rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-cherry-500/80"
+                    style={{ width: `${widthCount}%` }}
+                  />
+                </div>
+                {e.avg_score !== null && (
+                  <div className="mt-1 h-1 bg-surface rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500/60"
+                      style={{ width: `${widthScore}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-xs text-muted mt-3 flex items-center gap-3">
+        <span className="inline-flex items-center gap-1">
+          <span className="w-3 h-1.5 bg-cherry-500/80 rounded-sm" /> Häufigkeit
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="w-3 h-1 bg-emerald-500/60 rounded-sm" /> Ø Score
+        </span>
+      </p>
+    </section>
   );
 }
 

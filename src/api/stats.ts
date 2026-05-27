@@ -1,6 +1,16 @@
 import { apiCached, apiSWR } from "./client";
 import type { Discipline } from "./trainings";
 
+export type MoodStats = {
+  entries: Array<{ mood: string; count: number; avg_score: number | null }>;
+  total_trainings: number;
+  with_mood: number;
+};
+
+export async function getMoodStats(): Promise<MoodStats> {
+  return apiCached(`/stats/mood`);
+}
+
 export type StatsOverview = {
   trend: Array<{ id: number; date: string; discipline: string; bow_type: string; score: number }>;
   /** Zonen-Verteilung für 3D-Disziplinen (inner_kill, outer_kill, wound, miss) */

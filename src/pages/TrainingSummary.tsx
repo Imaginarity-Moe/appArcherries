@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, BarChart3, Plus, Trophy } from "lucide-react";
@@ -85,6 +85,17 @@ export default function TrainingSummary() {
 
       {/* Stimmungs-Tagebuch — wie hat sich's angefühlt? */}
       {training && <MoodPicker mood={training.mood ?? null} onChange={setMood} />}
+
+      {/* Notizen-Editor mit Auto-Save */}
+      {training && (
+        <NotesEditor
+          initial={training.notes ?? ""}
+          onSave={async (notes) => {
+            const r = await updateTraining(training.id, { notes });
+            setTraining(r.training);
+          }}
+        />
+      )}
 
       {/* Multi-Player-Vergleich: wenn ≥2 Participants gescored haben, zeige
           pro-Spieler-Karten mit Total, Avg, ggf. Legs/Sets. */}
@@ -249,6 +260,68 @@ export default function TrainingSummary() {
  */
 const HEATMAP_COLORS = ["#C0464F", "#3F6D5E", "#3FA6C9", "#D4A547", "#7A5C8A", "#A85A47"];
 const HEATMAP_RING_COLORS = ["#D4A547", "#C0464F", "#3FA6C9", "#1F1F1F", "#F5F2EB"];
+// ─── Notes-Editor mit Debounce-Auto-Save ───────────────────────────────────
+
+function NotesEditor({ initial, onSave }: { initial: string; onSave: (notes: string) => Promise<void> }) {
+  const [value, setValue] = useState(initial);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const lastSaved = useRef(initial);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setValue(initial);
+    lastSaved.current = initial;
+  }, [initial]);
+
+  useEffect(() => {
+    if (value === lastSaved.current) return;
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(async () => {
+      setStatus("saving");
+      try {
+        await onSave(value);
+        lastSaved.current = value;
+        setStatus("saved");
+        // "Gespeichert"-Indikator nach 2s wieder weg
+        window.setTimeout(() => setStatus("idle"), 2000);
+      } catch {
+        setStatus("error");
+      }
+    }, 800);
+    return () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    };
+  }, [value, onSave]);
+
+  return (
+    <section className="card">
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="eyebrow">Notizen</h2>
+        <span className={`text-xs transition ${
+          status === "saving" ? "text-secondary" :
+          status === "saved"  ? "text-emerald-600 dark:text-emerald-300" :
+          status === "error"  ? "text-cherry-500" :
+          "text-muted opacity-0"
+        }`}>
+          {status === "saving" && "Speichern…"}
+          {status === "saved"  && "✓ Gespeichert"}
+          {status === "error"  && "Speichern fehlgeschlagen"}
+        </span>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        rows={4}
+        className="input text-base"
+        placeholder="Was ist dir aufgefallen? Anker-Drift, Wind, Form-Insights, Pfeil-Wahl …"
+      />
+      <p className="text-xs text-muted mt-1.5">
+        Automatisches Speichern nach kurzer Pause. Sichtbar nur für dich.
+      </p>
+    </section>
+  );
+}
+
 // ─── Mood-Picker (Trainings-Tagebuch) ──────────────────────────────────────
 
 const MOOD_OPTIONS: { key: string; emoji: string; label: string }[] = [

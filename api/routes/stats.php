@@ -22,7 +22,45 @@ function handle_stats(string $method, string $path): void
         stats_heatmap($user['id']);
         return;
     }
+    if ($sub === '/mood') {
+        stats_mood($user['id']);
+        return;
+    }
     res_error('Not found', 404);
+}
+
+/**
+ * Stimmungs-Aggregation: Anzahl pro Mood + durchschnittlicher Summary-Score.
+ * Liefert Korrelation Mood↔Score und Mood-Verteilung in einem Schritt.
+ */
+function stats_mood(int $user_id): void
+{
+    $stmt = db()->prepare(
+        'SELECT mood, COUNT(*) AS cnt,
+                AVG(NULLIF(summary_score, 0)) AS avg_score
+         FROM trainings
+         WHERE user_id = ? AND mood IS NOT NULL AND mood != ""
+         GROUP BY mood
+         ORDER BY cnt DESC'
+    );
+    $stmt->execute([$user_id]);
+    $rows = array_map(fn($r) => [
+        'mood'      => (string)$r['mood'],
+        'count'     => (int)$r['cnt'],
+        'avg_score' => $r['avg_score'] !== null ? round((float)$r['avg_score'], 1) : null,
+    ], $stmt->fetchAll());
+
+    // Total-Counts für Prozent-Berechnung
+    $stmt = db()->prepare('SELECT COUNT(*) FROM trainings WHERE user_id = ?');
+    $stmt->execute([$user_id]);
+    $total = (int)$stmt->fetchColumn();
+    $with_mood = array_sum(array_column($rows, 'count'));
+
+    res_json([
+        'entries'         => $rows,
+        'total_trainings' => $total,
+        'with_mood'       => $with_mood,
+    ]);
 }
 
 /**
