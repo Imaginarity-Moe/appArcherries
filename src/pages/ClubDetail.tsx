@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Users, Copy, Check, RefreshCw, Trash2, LogOut, Settings, Loader2, ShieldCheck,
+  Trophy, Medal, BarChart3,
 } from "lucide-react";
 import {
   getClub,
@@ -10,9 +11,12 @@ import {
   leaveClub,
   removeClubMember,
   regenerateClubInviteCode,
+  getClubStats,
   type Club,
   type ClubMember,
+  type ClubStats,
 } from "../api/clubs";
+import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
 import { PageSpinner } from "../components/Spinner";
 import Avatar from "../components/Avatar";
 import { useConfirm } from "../components/ConfirmDialog";
@@ -34,6 +38,7 @@ export default function ClubDetail() {
   const [editDescription, setEditDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [stats, setStats] = useState<ClubStats | null>(null);
 
   const isAdmin = club?.my_role === "admin";
 
@@ -48,6 +53,8 @@ export default function ClubDetail() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Verein nicht gefunden"))
       .finally(() => setLoading(false));
+    // Stats parallel laden — fehlt sie, blendet sich die Sektion still aus
+    getClubStats(cid).then(setStats).catch(() => setStats(null));
   }, [cid]);
 
   const footerActions = useMemo(
@@ -309,6 +316,11 @@ export default function ClubDetail() {
         </ul>
       </section>
 
+      {/* Vereins-Stats — lazy geladen, blendet sich aus wenn keine Daten */}
+      {stats && (stats.members_ranked.some((m) => m.count_all > 0) || stats.parcours_records.length > 0) && (
+        <ClubStatsSection stats={stats} />
+      )}
+
       {/* Danger-Zone */}
       <section className="card border-cherry-500/20 space-y-2">
         <h2 className="eyebrow text-cherry-600">Mitgliedschaft</h2>
@@ -329,6 +341,120 @@ export default function ClubDetail() {
           </button>
         )}
       </section>
+    </div>
+  );
+}
+
+// ─── Vereins-Stats-Sektion ────────────────────────────────────────────────
+
+function ClubStatsSection({ stats }: { stats: ClubStats }) {
+  const activeRanking = stats.members_ranked.filter((m) => m.count_all > 0);
+  const maxBestAll = Math.max(...activeRanking.map((m) => m.best_score_all ?? 0), 1);
+
+  return (
+    <section className="card space-y-4">
+      <h2 className="eyebrow flex items-center gap-1.5">
+        <BarChart3 size={13} strokeWidth={1.75} /> Vereins-Stats
+      </h2>
+
+      {/* Top-Schützen-Ranking */}
+      {activeRanking.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <h3 className="text-sm font-semibold flex items-center gap-1.5">
+              <Trophy size={14} strokeWidth={1.75} /> Top-Schützen
+            </h3>
+            <span className="text-[10px] uppercase tracking-wider text-muted">
+              Best-Score · letzte 30 T / alltime
+            </span>
+          </div>
+          <ul className="space-y-2">
+            {activeRanking.slice(0, 10).map((m, i) => (
+              <li key={m.user_id} className="flex items-center gap-3">
+                <RankBadge rank={i + 1} />
+                <Avatar
+                  user={{ avatar_url: m.avatar_url, display_name: m.display_name }}
+                  size="sm"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">
+                    {m.display_name ?? "Anonym"}
+                  </div>
+                  <div className="text-[11px] text-muted tabular-nums">
+                    {m.count_30d > 0 ? <>{m.count_30d}× in 30 T</> : <span className="italic">keine Aktivität in 30 T</span>}
+                    {" · "}
+                    {m.count_all} alltime
+                  </div>
+                  {m.best_score_all !== null && (
+                    <div className="mt-1 h-1.5 bg-surface rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-cherry-500/80"
+                        style={{ width: `${((m.best_score_all ?? 0) / maxBestAll) * 100}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="text-right tabular-nums text-sm">
+                  <div className="font-mono">
+                    {m.best_score_30d ?? <span className="text-muted">—</span>}
+                  </div>
+                  <div className="text-[11px] text-muted font-mono">
+                    {m.best_score_all ?? "—"}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Vereinsrekorde */}
+      {stats.parcours_records.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <Medal size={14} strokeWidth={1.75} /> Vereinsrekorde
+          </h3>
+          <ul className="space-y-1.5">
+            {stats.parcours_records.slice(0, 8).map((r) => (
+              <li key={`${r.parcours_id}-${r.discipline}-${r.bow_type}`}>
+                <Link
+                  to={`/parcours/${r.parcours_id}`}
+                  className="flex items-center gap-2 py-1.5 -mx-1 px-1 rounded-lg hover:bg-surface transition"
+                >
+                  <Avatar
+                    user={{ avatar_url: r.avatar_url, display_name: r.display_name }}
+                    size="sm"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{r.parcours_name}</div>
+                    <div className="text-[11px] text-muted">
+                      {DISCIPLINE_LABELS[r.discipline as Discipline] ?? r.discipline}
+                      {" · "}
+                      {BOW_LABELS[r.bow_type as BowType] ?? r.bow_type}
+                      {" · "}
+                      <span className="truncate">{r.display_name ?? "Anonym"}</span>
+                    </div>
+                  </div>
+                  <span className="score text-lg tabular-nums">{r.score}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  const cls =
+    rank === 1 ? "bg-gold text-warm-black"
+    : rank === 2 ? "bg-stone-300 text-warm-black"
+    : rank === 3 ? "bg-amber-700 text-cream"
+    : "bg-surface text-secondary";
+  return (
+    <div className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-xs font-bold tabular-nums ${cls}`}>
+      {rank}
     </div>
   );
 }

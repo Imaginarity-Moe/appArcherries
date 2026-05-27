@@ -55,6 +55,12 @@ function handle_clubs(string $method, string $path): void
         clubs_regen_code($me, $cid);
         return;
     }
+    if (preg_match('#^/clubs/(\d+)/stats$#', $path, $m)) {
+        $cid = (int)$m[1];
+        if ($method !== 'GET') res_error('Method not allowed', 405);
+        clubs_stats($me, $cid);
+        return;
+    }
     res_error('Not found', 404);
 }
 
@@ -307,6 +313,126 @@ function clubs_unique_invite_code(): string
     }
     // Extrem unwahrscheinlich, aber Fallback
     return strtoupper(bin2hex(random_bytes(4)));
+}
+
+// ─── Vereins-Stats ────────────────────────────────────────────────────────
+
+/**
+ * Aggregierte Vereins-Stats:
+ *   - members_ranked: pro Mitglied best_score_30d, best_score_all_time,
+ *                     training_count_30d. Sortiert nach best_score_30d desc.
+ *   - parcours_records: pro (parcours, discipline, bow_type) der höchste Score
+ *                       eines Mitglieds — Vereinsrekord.
+ * Nur Mitglieder dürfen abfragen.
+ */
+function clubs_stats(int $me, int $cid): void
+{
+    if (club_member_role($cid, $me) === null) res_error('Kein Mitglied dieses Vereins', 403);
+
+    // Member-Liste
+    $ms = db()->prepare(
+        'SELECT u.id, u.display_name, u.avatar_path
+         FROM club_members cm
+         JOIN users u ON u.id = cm.user_id
+         WHERE cm.club_id = ? AND u.deleted_at IS NULL'
+    );
+    $ms->execute([$cid]);
+    $member_rows = $ms->fetchAll();
+    $member_ids = array_map(fn($r) => (int)$r['id'], $member_rows);
+    if (!$member_ids) {
+        res_json(['members_ranked' => [], 'parcours_records' => []]);
+        return;
+    }
+    $placeholders = implode(',', array_fill(0, count($member_ids), '?'));
+
+    // 30-Tage-Grenze
+    $since_30d = date('Y-m-d H:i:s', strtotime('-30 days'));
+
+    // 1) Best-Score & Count pro Mitglied — innerhalb 30 Tage + alltime
+    $params = array_merge($member_ids, [$since_30d]);
+    $sql = "SELECT user_id,
+                   MAX(CASE WHEN started_at >= ? THEN summary_score END) AS best_30d,
+                   MAX(summary_score) AS best_all,
+                   SUM(CASE WHEN started_at >= ? THEN 1 ELSE 0 END) AS count_30d,
+                   COUNT(*) AS count_all
+            FROM trainings
+            WHERE user_id IN ($placeholders)
+              AND summary_score IS NOT NULL
+              AND ended_at IS NOT NULL
+            GROUP BY user_id";
+    $params_full = array_merge([$since_30d, $since_30d], $member_ids);
+    $s = db()->prepare($sql);
+    $s->execute($params_full);
+    $stats_by_user = [];
+    foreach ($s->fetchAll() as $r) {
+        $stats_by_user[(int)$r['user_id']] = [
+            'best_30d'   => $r['best_30d']  !== null ? (int)$r['best_30d']  : null,
+            'best_all'   => $r['best_all']  !== null ? (int)$r['best_all']  : null,
+            'count_30d'  => (int)$r['count_30d'],
+            'count_all'  => (int)$r['count_all'],
+        ];
+    }
+    $members_ranked = array_map(function ($u) use ($stats_by_user) {
+        $uid = (int)$u['id'];
+        $st = $stats_by_user[$uid] ?? ['best_30d' => null, 'best_all' => null, 'count_30d' => 0, 'count_all' => 0];
+        return [
+            'user_id'       => $uid,
+            'display_name'  => $u['display_name'],
+            'avatar_url'    => $u['avatar_path'] ?: null,
+            'best_score_30d' => $st['best_30d'],
+            'best_score_all' => $st['best_all'],
+            'count_30d'     => $st['count_30d'],
+            'count_all'     => $st['count_all'],
+        ];
+    }, $member_rows);
+
+    // Sortierung: erst Best-30d desc, dann Best-All desc, NULLs nach unten
+    usort($members_ranked, function ($a, $b) {
+        $av = $a['best_score_30d'] ?? -1; $bv = $b['best_score_30d'] ?? -1;
+        if ($av !== $bv) return $bv <=> $av;
+        $av = $a['best_score_all'] ?? -1; $bv = $b['best_score_all'] ?? -1;
+        return $bv <=> $av;
+    });
+
+    // 2) Vereinsrekorde: höchster Score je (parcours, discipline, bow_type)
+    //    Nur veröffentlichte Highscores oder Trainings mit summary_score > 0.
+    $sql2 = "SELECT t.parcours_id, p.name AS parcours_name,
+                    t.discipline, t.bow_type,
+                    t.user_id, u.display_name, u.avatar_path,
+                    t.summary_score, t.id AS training_id, t.started_at
+             FROM trainings t
+             JOIN users u ON u.id = t.user_id
+             JOIN parcours p ON p.id = t.parcours_id
+             WHERE t.user_id IN ($placeholders)
+               AND t.parcours_id IS NOT NULL
+               AND t.summary_score IS NOT NULL
+               AND t.summary_score > 0
+               AND t.ended_at IS NOT NULL
+             ORDER BY t.summary_score DESC, t.started_at ASC";
+    $s = db()->prepare($sql2);
+    $s->execute($member_ids);
+    $records = [];
+    foreach ($s->fetchAll() as $r) {
+        $key = $r['parcours_id'] . '|' . $r['discipline'] . '|' . $r['bow_type'];
+        if (isset($records[$key])) continue; // schon der Top-Eintrag wegen ORDER BY
+        $records[$key] = [
+            'parcours_id'   => (int)$r['parcours_id'],
+            'parcours_name' => (string)$r['parcours_name'],
+            'discipline'    => (string)$r['discipline'],
+            'bow_type'      => (string)$r['bow_type'],
+            'user_id'       => (int)$r['user_id'],
+            'display_name'  => $r['display_name'],
+            'avatar_url'    => $r['avatar_path'] ?: null,
+            'score'         => (int)$r['summary_score'],
+            'training_id'   => (int)$r['training_id'],
+            'started_at'    => (string)$r['started_at'],
+        ];
+    }
+
+    res_json([
+        'members_ranked'   => $members_ranked,
+        'parcours_records' => array_values($records),
+    ]);
 }
 
 function club_serialize(array $r, bool $include_member_count): array

@@ -63,3 +63,37 @@ export async function removeClubMember(id: number, user_id: number): Promise<Clu
 export async function regenerateClubInviteCode(id: number): Promise<ClubDetail> {
   return api(`/clubs/${id}/regenerate-code`, { method: "POST" });
 }
+
+// ─── Vereins-Stats ─────────────────────────────────────────────────────────
+
+export type ClubMemberRanked = {
+  user_id: number;
+  display_name: string | null;
+  avatar_url: string | null;
+  best_score_30d: number | null;
+  best_score_all: number | null;
+  count_30d: number;
+  count_all: number;
+};
+
+export type ClubParcoursRecord = {
+  parcours_id: number;
+  parcours_name: string;
+  discipline: string;
+  bow_type: string;
+  user_id: number;
+  display_name: string | null;
+  avatar_url: string | null;
+  score: number;
+  training_id: number;
+  started_at: string;
+};
+
+export type ClubStats = {
+  members_ranked: ClubMemberRanked[];
+  parcours_records: ClubParcoursRecord[];
+};
+
+export async function getClubStats(id: number): Promise<ClubStats> {
+  return apiCached(`/clubs/${id}/stats`);
+}
