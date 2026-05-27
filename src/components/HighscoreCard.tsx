@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Trophy, Medal, Globe, Users, Calendar, Building2 } from "lucide-react";
+import { Trophy, Globe, Users, Calendar, Building2 } from "lucide-react";
 import { listHighscores, type HighscoreGroup, type HighscorePeriod, type HighscoreScope } from "../api/highscore";
 import { listMyClubs, type Club } from "../api/clubs";
 import { BOW_LABELS, DISCIPLINE_LABELS } from "../api/trainings";
 import Avatar from "./Avatar";
 import { Spinner } from "./Spinner";
+import { PillButton } from "./PillButton";
+import { RankBadge } from "./RankBadge";
 
 type Props = {
   parcoursId: number;
@@ -62,16 +64,16 @@ export default function HighscoreCard({ parcoursId }: Props) {
           <Trophy size={14} strokeWidth={1.75} /> Highscore
         </h2>
         <div className="inline-flex items-center gap-0.5 rounded-full bg-surface p-0.5">
-          <TabBtn active={tab === "global"} onClick={() => setTab("global")}>
+          <PillButton active={tab === "global"} onClick={() => setTab("global")}>
             <Globe size={12} strokeWidth={1.75} /> Global
-          </TabBtn>
-          <TabBtn active={tab === "friends"} onClick={() => setTab("friends")}>
+          </PillButton>
+          <PillButton active={tab === "friends"} onClick={() => setTab("friends")}>
             <Users size={12} strokeWidth={1.75} /> Freunde
-          </TabBtn>
+          </PillButton>
           {myClubs.length > 0 && (
-            <TabBtn active={tab === "club"} onClick={() => setTab("club")}>
+            <PillButton active={tab === "club"} onClick={() => setTab("club")}>
               <Building2 size={12} strokeWidth={1.75} /> Verein
-            </TabBtn>
+            </PillButton>
           )}
         </div>
       </div>
@@ -80,26 +82,24 @@ export default function HighscoreCard({ parcoursId }: Props) {
       {tab === "club" && myClubs.length > 1 && (
         <div className="flex items-center gap-1.5 flex-wrap">
           {myClubs.map((c) => (
-            <button
+            <PillButton
               key={c.id}
+              active={selectedClubId === c.id}
               onClick={() => setSelectedClubId(c.id)}
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium transition ${
-                selectedClubId === c.id
-                  ? "bg-cherry-100 text-cherry-700 dark:bg-cherry-900/40 dark:text-cherry-200 border border-cherry-300 dark:border-cherry-700"
-                  : "bg-surface text-secondary border border-hairline hover:text-primary"
-              }`}
+              variant="tinted"
+              size="xs"
             >
               {c.name}
-            </button>
+            </PillButton>
           ))}
         </div>
       )}
 
       <div className="flex items-center gap-1.5 flex-wrap">
         <Calendar size={12} strokeWidth={1.75} className="text-muted shrink-0" />
-        <PeriodBtn active={period === "month"} onClick={() => setPeriod("month")}>30 Tage</PeriodBtn>
-        <PeriodBtn active={period === "year"} onClick={() => setPeriod("year")}>365 Tage</PeriodBtn>
-        <PeriodBtn active={period === "all"} onClick={() => setPeriod("all")}>Alle</PeriodBtn>
+        <PillButton active={period === "month"} onClick={() => setPeriod("month")} variant="tinted" size="xs">30 Tage</PillButton>
+        <PillButton active={period === "year"} onClick={() => setPeriod("year")} variant="tinted" size="xs">365 Tage</PillButton>
+        <PillButton active={period === "all"} onClick={() => setPeriod("all")} variant="tinted" size="xs">Alle</PillButton>
       </div>
 
       {loading && <Spinner />}
@@ -120,7 +120,7 @@ export default function HighscoreCard({ parcoursId }: Props) {
           <ol className="space-y-1.5">
             {g.scores.map((s, i) => (
               <li key={s.training_id} className="flex items-center gap-2.5">
-                <RankIcon rank={i + 1} />
+                <RankBadge rank={i + 1} />
                 <Avatar
                   user={{ display_name: s.display_name, avatar_url: s.avatar_url }}
                   size="sm"
@@ -138,46 +138,3 @@ export default function HighscoreCard({ parcoursId }: Props) {
   );
 }
 
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-        active ? "bg-cherry-500 text-cream" : "text-secondary hover:text-primary"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function PeriodBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium transition ${
-        active
-          ? "bg-cherry-100 text-cherry-700 dark:bg-cherry-900/40 dark:text-cherry-200 border border-cherry-300 dark:border-cherry-700"
-          : "bg-surface text-secondary border border-hairline hover:text-primary"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function RankIcon({ rank }: { rank: number }) {
-  const colorClass =
-    rank === 1
-      ? "bg-gold text-warm-black"
-      : rank === 2
-      ? "bg-stone-300 text-warm-black"
-      : rank === 3
-      ? "bg-amber-700 text-cream"
-      : "bg-surface text-secondary";
-  return (
-    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${colorClass}`}>
-      {rank === 1 ? <Medal size={14} strokeWidth={2} /> : rank}
-    </div>
-  );
-}

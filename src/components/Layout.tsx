@@ -131,7 +131,9 @@ export default function Layout() {
         <div className="flex items-center justify-between px-5 h-12 pt-safe">
           <Link to="/" aria-label="Archerries" className="flex items-center gap-2">
             <Wordmark className="h-7" />
-            <BuildInfo compact />
+            {/* Build-SHA-Chip nur auf Desktop — auf Mobile zu noisy, gehört zur Dev-Sicht.
+                Im Sidebar-Footer (BuildInfo ohne compact) sieht man ihn beim Login/Profile. */}
+            <span className="hidden sm:inline-block"><BuildInfo compact /></span>
           </Link>
           <div className="flex items-center gap-1.5">
             {(user.role === "admin" || user.role === "superadmin") && (
@@ -169,7 +171,10 @@ export default function Layout() {
           aria-label="Hauptnavigation"
         >
           <div className="mx-auto max-w-md px-4 pb-3 pointer-events-auto">
-            <div className="glass rounded-full shadow-lift flex items-center justify-around px-2 h-14">
+            {/* glass-strong (0.85 Alpha) statt .glass (0.72) — auf langen Seiten
+                wie /parcours/<id> waren die Scores hinter der Nav-Pille
+                durchsichtig zu sehen, das war visuell unruhig. */}
+            <div className="glass-strong rounded-full shadow-lift flex items-center justify-around px-2 h-14 border border-hairline/30">
               {footerItems.map((item, i) => renderFooterItem(item, i))}
             </div>
           </div>

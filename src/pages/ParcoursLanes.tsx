@@ -903,31 +903,35 @@ function CrowdDistanceWidget({
 
   return (
     <div className="text-xs">
+      {/* Toggle-Zeile: bei wenig Platz (Mobile) wrappen die Teile, statt zu überlaufen. */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-secondary hover:text-primary transition"
+        className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1 text-secondary hover:text-primary transition text-left max-w-full"
         aria-expanded={expanded}
       >
-        <span className="text-muted">Crowdsourced</span>
-        {hasCrowd ? (
-          <span className="tabular-nums">
-            <b className="text-primary">~{lane.crowd_distance_median}</b> m
-            <span className="text-muted ml-1">(n={lane.crowd_distance_count})</span>
-          </span>
-        ) : (
-          <span className="text-muted italic">noch keine Schätzungen</span>
-        )}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="text-muted">Crowdsourced</span>
+          {hasCrowd ? (
+            <span className="tabular-nums">
+              <b className="text-primary">~{lane.crowd_distance_median}</b> m
+              <span className="text-muted ml-1">(n={lane.crowd_distance_count})</span>
+            </span>
+          ) : (
+            <span className="text-muted italic">noch keine Schätzungen</span>
+          )}
+          <ChevronDown
+            size={12}
+            strokeWidth={1.75}
+            className={`transition ${expanded ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+        </span>
         {hasMine && (
-          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-cherry-50 dark:bg-cherry-900/30 text-cherry-700 dark:text-cherry-200 px-1.5 py-0.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-cherry-50 dark:bg-cherry-900/30 text-cherry-700 dark:text-cherry-200 px-1.5 py-0.5 tabular-nums">
             Du: {lane.my_distance_estimate} m
           </span>
         )}
-        <ChevronDown
-          size={12}
-          strokeWidth={1.75}
-          className={`transition ${expanded ? "rotate-180" : ""}`}
-        />
       </button>
 
       {expanded && (

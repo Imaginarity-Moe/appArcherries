@@ -2,12 +2,14 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { useTranslation } from "react-i18next";
 import { Trophy, Ruler, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getHeatmap, getStatsOverview, type HeatmapResponse, type StatsOverview } from "../api/stats";
+import { getHeatmap, getMoodStats, getStatsOverview, type HeatmapResponse, type MoodStats, type StatsOverview } from "../api/stats";
 import { ScoreLineChart, ZoneDistributionBars, ArrowConsistencyBars } from "../components/charts";
 import { BOW_LABELS, DISCIPLINE_LABELS, type BowType, type Discipline } from "../api/trainings";
 import { fmtDate } from "../lib/format";
 import { useSyncListener } from "../lib/useSyncListener";
 import { Spinner } from "../components/Spinner";
+import { PillButton } from "../components/PillButton";
+import { ProgressBar } from "../components/ProgressBar";
 
 const Heatmap = lazy(() => import("../components/Heatmap"));
 
@@ -69,28 +71,34 @@ export default function Stats() {
 
       {/* Filter */}
       <div className="flex flex-wrap gap-2">
-        <FilterChip
-          label={t("stats:filters.all")}
+        <PillButton
           active={discFilter === ""}
           onClick={() => setDiscFilter("")}
-        />
+          variant="tinted"
+        >
+          {t("stats:filters.all")}
+        </PillButton>
         {DISCIPLINES.map((d) => (
-          <FilterChip
+          <PillButton
             key={d}
-            label={DISCIPLINE_LABELS[d]}
             active={discFilter === d}
             onClick={() => setDiscFilter(discFilter === d ? "" : d)}
-          />
+            variant="tinted"
+          >
+            {DISCIPLINE_LABELS[d]}
+          </PillButton>
         ))}
       </div>
       <div className="flex flex-wrap gap-2">
         {BOWS.map((b) => (
-          <FilterChip
+          <PillButton
             key={b}
-            label={BOW_LABELS[b]}
             active={bowFilter === b}
             onClick={() => setBowFilter(bowFilter === b ? "" : b)}
-          />
+            variant="tinted"
+          >
+            {BOW_LABELS[b]}
+          </PillButton>
         ))}
       </div>
 
@@ -165,16 +173,19 @@ export default function Stats() {
               <ul className="divide-y divide-hairline">
                 {data!.personal_bests_parcours.map((pb, i) => (
                   <li key={i} className="flex items-center gap-3 py-2">
-                    <a
-                      href={`/parcours/${pb.parcours_id}`}
-                      className="font-semibold text-sm flex-1 min-w-0 truncate text-primary hover:text-cherry-500"
-                    >
-                      {pb.parcours_name ?? `Parcours #${pb.parcours_id}`}
-                    </a>
-                    <span className="text-xs text-muted shrink-0">
-                      {DISCIPLINE_LABELS[pb.discipline as Discipline] ?? pb.discipline} ·{" "}
-                      {BOW_LABELS[pb.bow_type as BowType] ?? pb.bow_type}
-                    </span>
+                    {/* Mobile: Name + Meta stacken, Score rechts. Desktop: alles in einer Zeile. */}
+                    <div className="flex-1 min-w-0">
+                      <a
+                        href={`/parcours/${pb.parcours_id}`}
+                        className="font-semibold text-sm text-primary hover:text-cherry-500 block truncate"
+                      >
+                        {pb.parcours_name ?? `Parcours #${pb.parcours_id}`}
+                      </a>
+                      <div className="text-xs text-muted truncate">
+                        {DISCIPLINE_LABELS[pb.discipline as Discipline] ?? pb.discipline} ·{" "}
+                        {BOW_LABELS[pb.bow_type as BowType] ?? pb.bow_type}
+                      </div>
+                    </div>
                     <span className="score text-base tabular-nums shrink-0 w-12 text-right">{pb.best}</span>
                   </li>
                 ))}
@@ -266,19 +277,20 @@ export default function Stats() {
 
 // ─── Mood-Verlauf + Korrelation Mood↔Score ────────────────────────────────
 
+// Labels parallel zu MOOD_OPTIONS in TrainingSummary.tsx halten.
 const MOOD_DISPLAY: Record<string, { emoji: string; label: string; order: number }> = {
-  great:      { emoji: "🤩", label: "Top-Lauf",   order: 1 },
-  good:       { emoji: "😊", label: "Gut",        order: 2 },
-  neutral:    { emoji: "😐", label: "Mittel",     order: 3 },
-  tired:      { emoji: "😴", label: "Müde",       order: 4 },
-  frustrated: { emoji: "😤", label: "Frustriert", order: 5 },
+  great:      { emoji: "🤩", label: "Spitze", order: 1 },
+  good:       { emoji: "😊", label: "Gut",    order: 2 },
+  neutral:    { emoji: "😐", label: "Mittel", order: 3 },
+  tired:      { emoji: "😴", label: "Müde",   order: 4 },
+  frustrated: { emoji: "😤", label: "Frust",  order: 5 },
 };
 
 function MoodStatsSection() {
-  const [data, setData] = useState<import("../api/stats").MoodStats | null>(null);
+  const [data, setData] = useState<MoodStats | null>(null);
 
   useEffect(() => {
-    import("../api/stats").then((m) => m.getMoodStats()).then(setData).catch(() => setData(null));
+    getMoodStats().then(setData).catch(() => setData(null));
   }, []);
 
   if (!data || data.with_mood === 0) return null;
@@ -287,15 +299,19 @@ function MoodStatsSection() {
     return (MOOD_DISPLAY[a.mood]?.order ?? 99) - (MOOD_DISPLAY[b.mood]?.order ?? 99);
   });
   const maxCount = Math.max(...sortedEntries.map((e) => e.count), 1);
-  // Avg-Score-Maximum für Score-Balken
-  const maxAvg = Math.max(...sortedEntries.map((e) => e.avg_score ?? 0), 1);
+  // Score-Skala honest: gehe von Best-Score aus, nicht von Best-Ø
+  // (sonst werden niedrige Ø zu winzig). Mindest-Skala 100 für stabile Optik.
+  const maxAvg = Math.max(
+    ...sortedEntries.map((e) => e.avg_score ?? 0),
+    100
+  );
 
   return (
     <section className="card">
-      <div className="flex items-baseline justify-between mb-1">
+      <div className="flex items-baseline justify-between mb-1 flex-wrap gap-x-3 gap-y-0.5">
         <h2 className="font-display text-lg font-semibold">Stimmungs-Verteilung</h2>
-        <span className="text-xs text-muted tabular-nums">
-          {data.with_mood} von {data.total_trainings} Trainings getaggt
+        <span className="text-xs text-muted tabular-nums shrink-0">
+          {data.with_mood}/{data.total_trainings} getaggt
         </span>
       </div>
       <p className="text-sm text-secondary mb-3">
@@ -304,11 +320,9 @@ function MoodStatsSection() {
       <ul className="space-y-2">
         {sortedEntries.map((e) => {
           const disp = MOOD_DISPLAY[e.mood];
-          const widthCount = (e.count / maxCount) * 100;
-          const widthScore = e.avg_score ? (e.avg_score / maxAvg) * 100 : 0;
           return (
             <li key={e.mood} className="flex items-center gap-3">
-              <span className="text-2xl shrink-0 w-8 text-center">
+              <span className="text-2xl shrink-0 w-8 text-center" aria-hidden>
                 {disp?.emoji ?? "❓"}
               </span>
               <div className="flex-1 min-w-0">
@@ -318,18 +332,12 @@ function MoodStatsSection() {
                     {e.count}× {e.avg_score !== null && <>· Ø <b className="text-primary">{e.avg_score}</b> Pkt</>}
                   </span>
                 </div>
-                <div className="mt-1 h-1.5 bg-surface rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-cherry-500/80"
-                    style={{ width: `${widthCount}%` }}
-                  />
+                <div className="mt-1">
+                  <ProgressBar value={e.count} max={maxCount} tone="cherry" thickness="sm" />
                 </div>
                 {e.avg_score !== null && (
-                  <div className="mt-1 h-1 bg-surface rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500/60"
-                      style={{ width: `${widthScore}%` }}
-                    />
+                  <div className="mt-1">
+                    <ProgressBar value={e.avg_score} max={maxAvg} tone="emerald" thickness="xs" />
                   </div>
                 )}
               </div>
@@ -349,15 +357,3 @@ function MoodStatsSection() {
   );
 }
 
-function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`chip transition active:scale-95 ${
-        active ? "bg-copper-500 text-white" : "hover:bg-forest-200"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}

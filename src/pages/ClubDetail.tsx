@@ -4,6 +4,8 @@ import {
   ArrowLeft, Users, Copy, Check, RefreshCw, Trash2, LogOut, Settings, Loader2, ShieldCheck,
   Trophy, Medal, BarChart3, GraduationCap, Activity, ChevronRight,
 } from "lucide-react";
+import { RankBadge } from "../components/RankBadge";
+import { ProgressBar } from "../components/ProgressBar";
 import {
   getClub,
   updateClub,
@@ -254,48 +256,55 @@ export default function ClubDetail() {
         )}
       </section>
 
-      {/* Settings (Admin) */}
-      {isAdmin && (
-        <section className="card space-y-3">
-          <button
-            onClick={() => setShowSettings((v) => !v)}
-            className="eyebrow flex items-center gap-1.5 w-full text-left"
-          >
+      {/* Settings (Admin) — Card erscheint nur ausgeklappt, sonst nur ein dezenter Trigger-Button */}
+      {isAdmin && !showSettings && (
+        <button
+          onClick={() => setShowSettings(true)}
+          className="w-full inline-flex items-center justify-between gap-2 text-sm text-secondary hover:text-primary px-1 py-2 transition"
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Settings size={14} strokeWidth={1.75} /> Name und Beschreibung bearbeiten
+          </span>
+          <span className="text-xs text-muted">›</span>
+        </button>
+      )}
+      {isAdmin && showSettings && (
+        <section className="card space-y-3 animate-fade-in">
+          <h2 className="eyebrow flex items-center gap-1.5">
             <Settings size={13} strokeWidth={1.75} /> Einstellungen
-          </button>
-          {showSettings && (
-            <form onSubmit={handleSaveSettings} className="space-y-3 animate-fade-in">
-              <label className="block">
-                <span className="text-xs text-muted">Name</span>
-                <input
-                  type="text"
-                  className="input mt-1"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  maxLength={120}
-                  required
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs text-muted">Beschreibung</span>
-                <textarea
-                  className="input mt-1"
-                  rows={2}
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                />
-              </label>
-              {error && <div className="text-sm text-cherry-500">{error}</div>}
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setShowSettings(false)} className="btn-ghost flex-1">
-                  Abbrechen
-                </button>
-                <button type="submit" disabled={busy || !editName.trim()} className="btn-accent flex-1">
-                  {busy && <Loader2 size={14} className="animate-spin" />} Speichern
-                </button>
-              </div>
-            </form>
-          )}
+          </h2>
+          <form onSubmit={handleSaveSettings} className="space-y-3">
+            <label className="block">
+              <span className="text-xs text-muted">Name</span>
+              <input
+                type="text"
+                className="input mt-1"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                maxLength={120}
+                required
+                autoFocus
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-muted">Beschreibung</span>
+              <textarea
+                className="input mt-1"
+                rows={2}
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+              />
+            </label>
+            {error && <div className="text-sm text-cherry-500">{error}</div>}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowSettings(false)} className="btn-ghost flex-1">
+                Abbrechen
+              </button>
+              <button type="submit" disabled={busy || !editName.trim()} className="btn-accent flex-1">
+                {busy && <Loader2 size={14} className="animate-spin" />} Speichern
+              </button>
+            </div>
+          </form>
         </section>
       )}
 
@@ -331,6 +340,8 @@ export default function ClubDetail() {
                   onSetRole={(r) => handleSetMemberRole(m, r)}
                   onRemove={() => handleRemoveMember(m)}
                   isSelf={m.user_id === user?.id}
+                  isLastAdmin={m.role === "admin" && members.filter((x) => x.role === "admin").length === 1}
+                  displayName={m.display_name ?? "Mitglied"}
                 />
               )}
             </li>
@@ -411,11 +422,8 @@ function ClubStatsSection({ stats }: { stats: ClubStats }) {
                     {m.count_all} alltime
                   </div>
                   {m.best_score_all !== null && (
-                    <div className="mt-1 h-1.5 bg-surface rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-cherry-500/80"
-                        style={{ width: `${((m.best_score_all ?? 0) / maxBestAll) * 100}%` }}
-                      />
+                    <div className="mt-1">
+                      <ProgressBar value={m.best_score_all ?? 0} max={maxBestAll} tone="cherry" thickness="sm" />
                     </div>
                   )}
                 </div>
@@ -494,24 +502,41 @@ function MemberRoleMenu({
   onSetRole,
   onRemove,
   isSelf,
+  isLastAdmin,
+  displayName,
 }: {
   current: ClubRole;
   busy: boolean;
   onSetRole: (role: ClubRole) => void;
   onRemove: () => void;
   isSelf: boolean;
+  isLastAdmin: boolean;
+  displayName: string;
 }) {
   const [open, setOpen] = useState(false);
 
-  // Self-Modifikation: nur Rolle wechseln möglich (Entfernen nicht — geht über „Verlassen").
-  // Auch: der letzte Admin kann sich nicht selbst degradieren (Backend wirft 409).
+  // Close on Escape — bessere Tastatur-UX als nur Backdrop-Click.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  // Demote-Sperre für letzten Admin: wenn dieses Mitglied der einzige Admin ist
+  // und es nach `member`/`coach` wechseln würde, ist das nicht erlaubt
+  // (Backend wirft 409). UI muss das vorab sperren, damit kein Fehler-Toast nötig wird.
+  const isDemoteBlocked = (target: ClubRole) =>
+    isLastAdmin && current === "admin" && target !== "admin";
+
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
         className="btn-icon text-muted"
-        aria-label="Rolle ändern"
+        aria-label={`${displayName} verwalten`}
+        aria-haspopup="menu"
         aria-expanded={open}
       >
         <Settings size={15} strokeWidth={1.75} />
@@ -523,24 +548,37 @@ function MemberRoleMenu({
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="absolute right-0 top-full mt-1 z-40 min-w-[180px] rounded-xl bg-elevated border border-hairline shadow-card overflow-hidden">
-            {(["admin", "coach", "member"] as ClubRole[]).map((r) => (
-              <button
-                key={r}
-                onClick={() => { onSetRole(r); setOpen(false); }}
-                disabled={busy || r === current}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed ${
-                  r === current ? "bg-surface/50" : ""
-                }`}
-              >
-                {r === current ? <Check size={14} strokeWidth={2} className="text-cherry-500" /> : <span className="w-3.5" />}
-                <span className="capitalize">{r === "admin" ? "Admin" : r === "coach" ? "Coach" : "Member"}</span>
-              </button>
-            ))}
+          <div
+            className="absolute right-0 top-full mt-1 z-40 min-w-[180px] rounded-xl bg-elevated border border-hairline shadow-card overflow-hidden"
+            role="menu"
+            aria-label={`Rolle von ${displayName} ändern`}
+          >
+            {(["admin", "coach", "member"] as ClubRole[]).map((r) => {
+              const blocked = isDemoteBlocked(r);
+              const disabledItem = busy || r === current || blocked;
+              const label = r === "admin" ? "Admin" : r === "coach" ? "Coach" : "Member";
+              return (
+                <button
+                  key={r}
+                  role="menuitemradio"
+                  aria-checked={r === current}
+                  onClick={() => { if (!disabledItem) { onSetRole(r); setOpen(false); } }}
+                  disabled={disabledItem}
+                  title={blocked ? "Du bist der einzige Admin — befördere zuerst jemand anderen" : undefined}
+                  className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed ${
+                    r === current ? "bg-surface/50" : ""
+                  }`}
+                >
+                  {r === current ? <Check size={14} strokeWidth={2} className="text-cherry-500" /> : <span className="w-3.5" aria-hidden />}
+                  <span>{label}</span>
+                </button>
+              );
+            })}
             {!isSelf && (
               <>
                 <div className="border-t border-hairline" />
                 <button
+                  role="menuitem"
                   onClick={() => { onRemove(); setOpen(false); }}
                   disabled={busy}
                   className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 text-cherry-600 hover:bg-cherry-50 dark:hover:bg-cherry-900/20"
@@ -625,15 +663,3 @@ function ClubFeedSection({ feed }: { feed: ClubFeedResponse }) {
   );
 }
 
-function RankBadge({ rank }: { rank: number }) {
-  const cls =
-    rank === 1 ? "bg-gold text-warm-black"
-    : rank === 2 ? "bg-stone-300 text-warm-black"
-    : rank === 3 ? "bg-amber-700 text-cream"
-    : "bg-surface text-secondary";
-  return (
-    <div className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-xs font-bold tabular-nums ${cls}`}>
-      {rank}
-    </div>
-  );
-}

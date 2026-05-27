@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, BarChart3, Plus, Trophy } from "lucide-react";
@@ -266,43 +266,78 @@ function NotesEditor({ initial, onSave }: { initial: string; onSave: (notes: str
   const [value, setValue] = useState(initial);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const lastSaved = useRef(initial);
+  const pendingValue = useRef(initial);
   const timerRef = useRef<number | null>(null);
+  const savingRef = useRef(false);
 
+  // Externes initial-Update synchronisieren (Training-Refresh nach Mood-Change etc.)
   useEffect(() => {
     setValue(initial);
     lastSaved.current = initial;
+    pendingValue.current = initial;
   }, [initial]);
 
-  useEffect(() => {
-    if (value === lastSaved.current) return;
-    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(async () => {
+  // Save-Aufruf zentral, damit flush-on-unmount und Debounce dieselbe Logik nutzen.
+  // `flushedValue` ist die Momentaufnahme zum Zeitpunkt des Aufrufs — wichtig, weil
+  // der State zwischen Timer-Fire und await sich noch ändern kann.
+  const triggerSave = useCallback(
+    async (flushedValue: string) => {
+      if (savingRef.current) return; // schon ein Save in flight, lassen wir den durchlaufen
+      if (flushedValue === lastSaved.current) return;
+      savingRef.current = true;
       setStatus("saving");
       try {
-        await onSave(value);
-        lastSaved.current = value;
+        await onSave(flushedValue);
+        lastSaved.current = flushedValue;
         setStatus("saved");
-        // "Gespeichert"-Indikator nach 2s wieder weg
         window.setTimeout(() => setStatus("idle"), 2000);
       } catch {
         setStatus("error");
+      } finally {
+        savingRef.current = false;
       }
-    }, 800);
+    },
+    [onSave]
+  );
+
+  useEffect(() => {
+    pendingValue.current = value;
+    if (value === lastSaved.current) return;
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => triggerSave(value), 800);
     return () => {
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     };
-  }, [value, onSave]);
+  }, [value, triggerSave]);
+
+  // Beim Unmount: wenn noch ungespeicherte Änderungen offen sind, sofort flush.
+  // Verhindert verlorenen Text bei schneller Navigation (User tippt + tap Zurück).
+  // Wir nutzen sendBeacon-mäßig die normale Save-Funktion — die Outbox fängt
+  // Netzwerk-Fails ab, daher wartet die Promise hier nicht.
+  useEffect(() => {
+    return () => {
+      if (pendingValue.current !== lastSaved.current) {
+        // fire-and-forget — wir können nicht awaiten beim Unmount.
+        // onSave schreibt in die Outbox, falls offline.
+        void triggerSave(pendingValue.current);
+      }
+    };
+  }, [triggerSave]);
 
   return (
     <section className="card">
       <div className="flex items-baseline justify-between mb-2">
         <h2 className="eyebrow">Notizen</h2>
-        <span className={`text-xs transition ${
-          status === "saving" ? "text-secondary" :
-          status === "saved"  ? "text-emerald-600 dark:text-emerald-300" :
-          status === "error"  ? "text-cherry-500" :
-          "text-muted opacity-0"
-        }`}>
+        <span
+          className={`text-xs transition ${
+            status === "saving" ? "text-secondary" :
+            status === "saved"  ? "text-emerald-600 dark:text-emerald-300" :
+            status === "error"  ? "text-cherry-500" :
+            "text-muted opacity-0"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
           {status === "saving" && "Speichern…"}
           {status === "saved"  && "✓ Gespeichert"}
           {status === "error"  && "Speichern fehlgeschlagen"}
@@ -312,7 +347,7 @@ function NotesEditor({ initial, onSave }: { initial: string; onSave: (notes: str
         value={value}
         onChange={(e) => setValue(e.target.value)}
         rows={4}
-        className="input text-base"
+        className="input text-base min-h-32"
         placeholder="Was ist dir aufgefallen? Anker-Drift, Wind, Form-Insights, Pfeil-Wahl …"
       />
       <p className="text-xs text-muted mt-1.5">
@@ -324,12 +359,14 @@ function NotesEditor({ initial, onSave }: { initial: string; onSave: (notes: str
 
 // ─── Mood-Picker (Trainings-Tagebuch) ──────────────────────────────────────
 
+// Kurze Labels — 5er-Grid auf 390px iPhone gibt ~70 px pro Zelle. Längere
+// Wörter wie „Top-Lauf"/„Frustriert" wrappen sonst auf zwei Zeilen.
 const MOOD_OPTIONS: { key: string; emoji: string; label: string }[] = [
-  { key: "great",      emoji: "🤩", label: "Top-Lauf" },
+  { key: "great",      emoji: "🤩", label: "Spitze" },
   { key: "good",       emoji: "😊", label: "Gut" },
   { key: "neutral",    emoji: "😐", label: "Mittel" },
   { key: "tired",      emoji: "😴", label: "Müde" },
-  { key: "frustrated", emoji: "😤", label: "Frustriert" },
+  { key: "frustrated", emoji: "😤", label: "Frust" },
 ];
 
 function MoodPicker({ mood, onChange }: { mood: string | null; onChange: (m: string | null) => void }) {

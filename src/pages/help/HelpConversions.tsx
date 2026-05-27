@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArrowRightLeft, Info } from "lucide-react";
+import { PillButton } from "../../components/PillButton";
 
 /**
  * Umrechnungstabellen + Live-Konverter für Bogensport-Größen.
@@ -22,10 +23,10 @@ export default function HelpConversions() {
 
       {/* ─── Pill-Switch: Konverter ↔ Tabellen ─────────────────────────── */}
       <div className="flex items-center gap-1 -mx-1 px-1 overflow-x-auto">
-        <PillButton active={mode === "converter"} onClick={() => setMode("converter")}>
+        <PillButton active={mode === "converter"} onClick={() => setMode("converter")} size="md">
           Live-Konverter
         </PillButton>
-        <PillButton active={mode === "tables"} onClick={() => setMode("tables")}>
+        <PillButton active={mode === "tables"} onClick={() => setMode("tables")} size="md">
           Umrechnungstabellen
         </PillButton>
       </div>
@@ -400,26 +401,6 @@ export default function HelpConversions() {
 }
 
 // ─── Pill-Button für Mode-Switch ────────────────────────────────────────────
-
-function PillButton({
-  active, onClick, children,
-}: {
-  active: boolean; onClick: () => void; children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`shrink-0 inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition active:scale-[0.97] ${
-        active
-          ? "bg-cherry-500 text-cream shadow-cherry"
-          : "bg-surface text-secondary hover:text-primary border border-hairline"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 // ─── Live-Konverter mit Live-Update beider Felder ───────────────────────────
 

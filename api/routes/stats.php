@@ -286,17 +286,16 @@ function stats_overview(int $user_id): void
 
 function stats_per_training(int $user_id, int $training_id): void
 {
-    // Access-Check: User muss Owner ODER Participant des Trainings sein
+    require_once __DIR__ . '/../lib/TrainingAccess.php';
+    // Access-Check: Owner / Participant / Coach (zentral in TrainingAccess.php)
+    if (!user_can_read_training($user_id, $training_id)) res_error('Not found', 404);
     $access = db()->prepare(
         'SELECT t.id, t.discipline, t.bow_type, t.started_at, t.summary_score,
                 t.scoring_mode, t.num_ends, t.legs_to_win, t.sets_to_win,
                 t.arrows_per_end, t.target_distance_m, t.target_rings
-         FROM trainings t
-         LEFT JOIN training_participants tp ON tp.training_id = t.id AND tp.user_id = ?
-         WHERE t.id = ? AND (t.user_id = ? OR tp.user_id IS NOT NULL)
-         LIMIT 1'
+         FROM trainings t WHERE t.id = ?'
     );
-    $access->execute([$user_id, $training_id, $user_id]);
+    $access->execute([$training_id]);
     $t = $access->fetch();
     if (!$t) res_error('Not found', 404);
 

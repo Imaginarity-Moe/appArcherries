@@ -460,11 +460,11 @@ function moodEmoji(mood: string): string {
 }
 function moodLabel(mood: string): string {
   switch (mood) {
-    case "great":      return "Top-Lauf";
+    case "great":      return "Spitze";
     case "good":       return "Gut";
     case "neutral":    return "Mittel";
     case "tired":      return "Müde";
-    case "frustrated": return "Frustriert";
+    case "frustrated": return "Frust";
     default:           return "";
   }
 }
